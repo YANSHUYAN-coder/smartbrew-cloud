@@ -22,5 +22,4 @@ public class UmsMember extends BaseEntity {
     private Integer growth; // 成长值
     private Long levelId; // 会员等级ID
     private Integer status; // 用户状态：1-正常 0-禁用
-    private String role; // 用户角色：USER-普通用户，ADMIN-管理员
 }

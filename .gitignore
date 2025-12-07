@@ -1,6 +1,8 @@
-Maven
-
+# ==========================================
+# Maven / Build Output
+# ==========================================
 target/
+build/
 *.jar
 *.war
 *.ear
@@ -8,37 +10,71 @@ target/
 *.tar.gz
 *.rar
 
-IntelliJ IDEA
+# Maven Wrapper (如果您希望提交wrapper，请注释掉这两行)
+# .mvn/
+# mvnw
+# mvnw.cmd
 
+# ==========================================
+# IDE / Editor Support
+# ==========================================
+# IntelliJ IDEA
 .idea/
 *.iml
 *.iws
 *.ipr
 out/
 
-Eclipse
-
+# Eclipse
 .classpath
 .project
 .settings/
 bin/
 
-OS specific
+# Visual Studio Code
+.vscode/
+*.code-workspace
 
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ==========================================
+# OS Generated Files
+# ==========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-Logs
-
+# ==========================================
+# Logs & Temporary Files
+# ==========================================
 logs/
 *.log
+tmp/
+temp/
 
-Spring Boot
-
+# ==========================================
+# Spring Boot / Application Specific
+# ==========================================
 help.md
+PID
+*.pid
 
-Application specific
-
-忽略上传的本地文件存储目录（防止图片被提交）
-
+# ==========================================
+# Project Specific (业务相关)
+# ==========================================
+# 忽略本地上传的图片/文件存储目录
 upload/
+# 忽略本地测试生成的临时数据目录
+data/
+# 忽略本地的私有配置文件 (可选，防止密钥泄露)
+# src/main/resources/application-dev.yml

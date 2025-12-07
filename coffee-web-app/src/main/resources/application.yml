@@ -1,0 +1,29 @@
+server:
+  port: 8081 # App端端口
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: coffee-app
+
+  # AI 配置 (通义千问)
+  ai:
+    dashscope:
+      api-key: ${AI_API_KEY:sk-your-api-key-here} # 从环境变量获取，或直接填写
+      chat:
+        options:
+          model: qwen-turbo # 模型选择
+
+  # 数据库配置 (需修改为你本地的 MySQL)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/coffee_cloud?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+
+# MyBatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

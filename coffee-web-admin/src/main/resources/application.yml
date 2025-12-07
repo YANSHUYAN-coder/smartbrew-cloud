@@ -1,0 +1,19 @@
+server:
+  port: 8082 # Admin端端口，避免与APP(8081)冲突
+
+spring:
+  application:
+    name: coffee-admin
+
+  # 数据库配置 (需修改为你本地的 MySQL)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/coffee_cloud?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+
+# MyBatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

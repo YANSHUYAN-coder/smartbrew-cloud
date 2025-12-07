@@ -1,0 +1,44 @@
+Maven
+
+target/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+IntelliJ IDEA
+
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+Eclipse
+
+.classpath
+.project
+.settings/
+bin/
+
+OS specific
+
+.DS_Store
+Thumbs.db
+
+Logs
+
+logs/
+*.log
+
+Spring Boot
+
+help.md
+
+Application specific
+
+忽略上传的本地文件存储目录（防止图片被提交）
+
+upload/

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.coffee</groupId>
+        <artifactId>coffee-root</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>coffee-web-app</artifactId>
+    <description>C端用户APP启动模块</description>
+
+    <dependencies>
+        <!-- 1. Web 启动器 (提供 Tomcat 和 Spring MVC) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 2. 引用 System 业务模块 (用户、订单、商品) -->
+        <!-- 如果这里报错，说明 coffee-service-system 没有被 Maven 识别，请尝试对父工程执行 mvn install -->
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-service-system</artifactId>
+        </dependency>
+
+        <!-- 3. 引用 AI 业务模块 (RAG、大模型) -->
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-service-ai</artifactId>
+        </dependency>
+
+        <!-- 4. 引用 API 模块 (认证接口等) -->
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-common</artifactId>
+        </dependency>
+
+        <!-- 5. [关键] 显式引入 MyBatis Plus，防止 @MapperScan 报错 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 核心插件：打成可执行 Jar 包 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- 显式指定启动类 -->
+                    <mainClass>com.coffee.app.CoffeeAppApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

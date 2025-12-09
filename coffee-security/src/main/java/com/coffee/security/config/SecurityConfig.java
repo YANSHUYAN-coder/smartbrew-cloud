@@ -7,17 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -34,63 +32,49 @@ public class SecurityConfig {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
 
-    /**
-     * 密码编码器
-     *
-     * @return
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * 认证管理器
-     *
-     * @param config
-     * @return
-     * @throws Exception
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * 安全过滤链
-     *
-     * @param http
-     * @return
-     * @throws Exception
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. 关闭 CSRF (因为是无状态的 JWT 模式)
-                .csrf(CsrfConfigurer::disable)
-
-                // 2. 禁用 Session (使用无状态模式)
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
-                // 3. 请求授权配置
                 .authorizeHttpRequests(auth -> auth
-                        // 允许匿名访问的路径
+                        // 1. 放行登录注册
                         .requestMatchers("/auth/**").permitAll()
-                        // 其他所有请求都需要认证
+
+                        // 2. 放行错误页面 (防止过滤器异常后报401看不到真凶)
+                        .requestMatchers("/error").permitAll()
+
+                        // 3. 【关键修改】放行完整的 Knife4j / Swagger 静态资源
+                        // 如果只放行 /doc.html，css/js/api-docs 都会被拦截，导致页面空白
+                        .requestMatchers(
+                                "/doc.html",
+                                "/webjars/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/favicon.ico"
+                        ).permitAll()
+
+                        // 4. 其他接口需要认证
                         .anyRequest().authenticated()
                 )
-
-                // 4. 异常处理
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(unauthorizedHandler)
                         .accessDeniedHandler(accessDeniedHandler)
                 );
 
-        // 5. 添加自定义 JWT 过滤器
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
 
         return http.build();
     }

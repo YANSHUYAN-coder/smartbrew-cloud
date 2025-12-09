@@ -34,6 +34,7 @@
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <hutool.version>5.8.26</hutool.version>
         <lombok.version>1.18.30</lombok.version>
+        <knife4j.version>4.3.0</knife4j.version>
     </properties>
 
     <!-- 依赖版本管理 (只声明版本，不引入 jar) -->
@@ -103,6 +104,13 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- Knife4j-->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

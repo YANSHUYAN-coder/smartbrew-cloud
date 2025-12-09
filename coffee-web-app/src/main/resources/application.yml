@@ -27,3 +27,8 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+
+# 高德地图
+amap:
+  key: f5ca3cdf9f9acf90ac8fa849446a0f15

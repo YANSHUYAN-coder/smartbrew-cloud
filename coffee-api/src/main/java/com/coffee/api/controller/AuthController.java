@@ -1,4 +1,4 @@
-package com.coffee.api.auth;
+package com.coffee.api.controller;
 
 import com.coffee.common.result.Result;
 import com.coffee.common.util.JwtUtil;

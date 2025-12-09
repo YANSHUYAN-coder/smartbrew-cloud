@@ -1,6 +1,7 @@
 package com.coffee.security.filter;
 
 import com.coffee.common.constant.AuthConstants;
+import com.coffee.common.context.UserContext;
 import com.coffee.common.util.JwtUtil;
 import com.coffee.security.service.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,23 +34,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader(AuthConstants.AUTH_HEADER);
 
-        if (authHeader != null && authHeader.startsWith(AuthConstants.TOKEN_PREFIX)) {
-            String token = authHeader.substring(7);
+        try {
+            if (authHeader != null && authHeader.startsWith(AuthConstants.TOKEN_PREFIX)) {
+                String token = authHeader.substring(7);
 
-            if (jwtUtil.validateToken(token)) {
-                String userId = jwtUtil.getPhoneFromToken(token);
-                UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+                // 1. 验证 Token 是否有效
+                if (jwtUtil.validateToken(token)) {
+                    // 2. 【新增】将 UserID 放入 UserContext (ThreadLocal)
+                    // 这样后续的 Controller/Service 就可以直接用了
+                    Long userId = jwtUtil.getUserIdFromToken(token);
+                    UserContext.setUserId(userId);
 
-                if (userDetails != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    // 用户信息添加到 Spring Security 上下文中，用于后续的权限验证
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // 3. 原有的 Spring Security 认证逻辑 (加载权限等)
+                    // 注意：这里我们用 phone 来查 UserDetails，保持逻辑不变
+                    String phone = jwtUtil.getPhoneFromToken(token);
+                    if (phone != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(phone);
+
+                        if (userDetails != null) {
+                            UsernamePasswordAuthenticationToken authToken =
+                                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(authToken);
+                        }
+                    }
                 }
             }
-        }
+            // 放行请求
+            filterChain.doFilter(request, response);
 
-        filterChain.doFilter(request, response);
+        } finally {
+            // 【关键】请求结束（无论成功失败），必须清理 ThreadLocal，防止内存泄漏和数据污染
+            UserContext.remove();
+        }
     }
 }

@@ -3,15 +3,15 @@
 
  Source Server         : MySQL
  Source Server Type    : MySQL
- Source Server Version : 80300 (8.3.0)
+ Source Server Version : 80043 (8.0.43)
  Source Host           : localhost:3306
  Source Schema         : coffee_cloud
 
  Target Server Type    : MySQL
- Target Server Version : 80300 (8.3.0)
+ Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 10/12/2025 00:10:44
+ Date: 10/12/2025 17:39:20
 */
 
 SET NAMES utf8mb4;
@@ -29,10 +29,34 @@ CREATE TABLE `ai_knowledge_doc`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ai_knowledge_doc
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for oms_cart_item
+-- ----------------------------
+DROP TABLE IF EXISTS `oms_cart_item`;
+CREATE TABLE `oms_cart_item`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `member_id` bigint NOT NULL COMMENT '会员ID',
+  `product_id` bigint NULL DEFAULT NULL COMMENT '商品ID',
+  `product_sku_id` bigint NULL DEFAULT NULL COMMENT 'SKU ID',
+  `product_pic` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品主图',
+  `product_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品名称',
+  `product_sub_title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品副标题(SKU规格描述)',
+  `product_sku_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'SKU条码',
+  `price` decimal(10, 2) NULL DEFAULT NULL COMMENT '加入时价格',
+  `quantity` int NULL DEFAULT 1 COMMENT '购买数量',
+  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of oms_cart_item
 -- ----------------------------
 
 -- ----------------------------
@@ -68,10 +92,35 @@ CREATE TABLE `oms_order`  (
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_sn`(`order_sn` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for oms_order_item
+-- ----------------------------
+DROP TABLE IF EXISTS `oms_order_item`;
+CREATE TABLE `oms_order_item`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `order_id` bigint NOT NULL COMMENT '订单ID',
+  `order_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '订单编号',
+  `product_id` bigint NULL DEFAULT NULL COMMENT '商品ID',
+  `product_pic` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品图片',
+  `product_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品名称',
+  `product_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品货号',
+  `product_price` decimal(10, 2) NULL DEFAULT NULL COMMENT '销售价格',
+  `product_quantity` int NULL DEFAULT NULL COMMENT '购买数量',
+  `product_sku_id` bigint NULL DEFAULT NULL COMMENT '商品SKU ID',
+  `product_sku_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品SKU条码',
+  `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
+  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of oms_order_item
 -- ----------------------------
 
 -- ----------------------------
@@ -85,18 +134,19 @@ CREATE TABLE `pms_product`  (
   `category` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '分类(如: 咖啡, 甜点)',
   `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '描述',
   `pic_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '图片地址',
+  `sales` int NULL DEFAULT 0 COMMENT '销量',
   `status` tinyint(1) NULL DEFAULT 1 COMMENT '状态: 1-上架, 0-下架',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_product
 -- ----------------------------
-INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, '咖啡', 'YYDS的生椰拿铁，清爽好喝', NULL, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
-INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, '咖啡', '提神醒脑，打工人必备', NULL, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
-INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, '甜点', '入口即化，甜蜜享受', NULL, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
+INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, '咖啡', 'YYDS的生椰拿铁，清爽好喝', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
+INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, '咖啡', '提神醒脑，打工人必备', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
+INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, '甜点', '入口即化，甜蜜享受', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
 
 -- ----------------------------
 -- Table structure for pms_sku_stock
@@ -113,11 +163,21 @@ CREATE TABLE `pms_sku_stock`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_sku_stock
 -- ----------------------------
+INSERT INTO `pms_sku_stock` VALUES (1, 1, '2024010101', 20.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (2, 1, '2024010102', 20.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"半糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (3, 1, '2024010103', 20.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (4, 1, '2024010104', 18.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (5, 1, '2024010105', 18.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"半糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (6, 2, '2024020101', 14.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (7, 2, '2024020102', 14.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (8, 2, '2024020103', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (9, 2, '2024020104', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (10, 3, '2024030101', 22.00, 50, 5, '[{\"key\": \"规格\", \"value\": \"标准份\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 
 -- ----------------------------
 -- Table structure for ums_member
@@ -144,7 +204,7 @@ CREATE TABLE `ums_member`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `username`(`username` ASC) USING BTREE,
   UNIQUE INDEX `phone`(`phone` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_member
@@ -171,11 +231,14 @@ CREATE TABLE `ums_member_receive_address`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员收货地址表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员收货地址表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_member_receive_address
 -- ----------------------------
+INSERT INTO `ums_member_receive_address` VALUES (1, 1, '张三', '13800138000', 1, '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
+INSERT INTO `ums_member_receive_address` VALUES (2, 1, '张三(公司)', '13800138000', 0, '518057', '广东省', '深圳市', '福田区', '福田街道平安金融中心108层', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
+INSERT INTO `ums_member_receive_address` VALUES (3, 8, '李四', '13900139000', 1, '100000', '北京市', '北京市', '朝阳区', '建国门外街道国贸三期55层', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
 
 -- ----------------------------
 -- Table structure for ums_permission
@@ -190,7 +253,7 @@ CREATE TABLE `ums_permission`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_permission
@@ -236,7 +299,7 @@ CREATE TABLE `ums_role`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_role
@@ -256,7 +319,7 @@ CREATE TABLE `ums_role_permission`  (
   `permission_id` bigint NOT NULL COMMENT '权限ID',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 81 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 81 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_role_permission
@@ -332,7 +395,7 @@ CREATE TABLE `ums_user_role`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_user_role

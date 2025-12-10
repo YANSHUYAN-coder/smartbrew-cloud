@@ -86,6 +86,7 @@ public class UmsMemberReceiveAddressServiceImpl extends ServiceImpl<UmsMemberRec
      * 删除地址
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Result<String> deleteAddress(Long addressId) {
         Long userId = UserContext.getUserId();
         UmsMemberReceiveAddress exist = this.getById(addressId);

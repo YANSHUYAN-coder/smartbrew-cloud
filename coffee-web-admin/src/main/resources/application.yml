@@ -1,5 +1,7 @@
 server:
   port: 8082 # Admin端端口，避免与APP(8081)冲突
+  servlet:
+    context-path: /api
 
 spring:
   application:
@@ -17,3 +19,7 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+# 高德地图
+amap:
+  key: f5ca3cdf9f9acf90ac8fa849446a0f15

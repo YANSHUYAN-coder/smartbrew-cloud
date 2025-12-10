@@ -1,7 +1,11 @@
 package com.coffee.system.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.coffee.common.dto.MemberStatusDTO;
+import com.coffee.common.dto.UpdatePasswordDTO;
+import com.coffee.common.result.Result;
 import com.coffee.system.domain.UmsMember;
+import com.coffee.system.domain.dto.UmsMemberUpdateDTO;
 
 public interface UmsMemberService extends IService<UmsMember> {
     /**
@@ -12,5 +16,38 @@ public interface UmsMemberService extends IService<UmsMember> {
      */
     UmsMember getByPhone(String phone);
 
+    /**
+     * 修改用户状态
+     * @param dto
+     * @return
+     */
+    boolean updateStatus(MemberStatusDTO dto);
+
     // 用户模块业务接口
+
+    /**
+     * 获取用户信息
+     * @return
+     */
+    UmsMember getUserInfo();
+
+    /**
+     * 修改用户信息
+     * @param param
+     * @return
+     */
+    boolean updateUserInfo(UmsMemberUpdateDTO param);
+
+    /**
+     * 修改密码
+     * @param param 包含旧密码和新密码
+     * @return 是否成功
+     */
+    boolean updatePassword(UpdatePasswordDTO param);
+
+    /**
+     * 注销账号
+     * @return
+     */
+    boolean logoff();
 }

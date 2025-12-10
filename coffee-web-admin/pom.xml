@@ -12,20 +12,35 @@
     <artifactId>coffee-web-admin</artifactId>
 
     <dependencies>
-        <!-- Web 启动器 (提供 Tomcat 和 Spring MVC) -->
+        <!-- 1. Web 启动器 (提供 Tomcat 和 Spring MVC) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- 依赖 System 模块 (写管理接口时调用) -->
+
+        <!-- 2. 引用 System 业务模块 (用户、订单、商品) -->
+        <!-- 如果这里报错，说明 coffee-service-system 没有被 Maven 识别，请尝试对父工程执行 mvn install -->
         <dependency>
             <groupId>com.coffee</groupId>
             <artifactId>coffee-service-system</artifactId>
         </dependency>
-        <!-- 依赖 AI 模块 (上传文档时调用) -->
+
+        <!-- 3. 引用 AI 业务模块 (RAG、大模型) -->
         <dependency>
             <groupId>com.coffee</groupId>
             <artifactId>coffee-service-ai</artifactId>
+        </dependency>
+
+        <!-- 4. 引用 API 模块 (认证接口等) -->
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-api</artifactId>
+        </dependency>
+
+        <!-- 5. 引用 Common 模块-->
+        <dependency>
+            <groupId>com.coffee</groupId>
+            <artifactId>coffee-common</artifactId>
         </dependency>
     </dependencies>
 

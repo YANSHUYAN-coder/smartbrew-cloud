@@ -41,7 +41,7 @@ public class AppAddressController {
 
     // 4. 删除收货地址
     @PostMapping("/delete/{id}")
-    public Result<String> delete(@PathVariable Long id) {
+    public Result<String> delete(@PathVariable("id") Long id) {
         return addressService.deleteAddress(id);
     }
 

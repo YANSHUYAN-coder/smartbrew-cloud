@@ -1,6 +1,7 @@
 package com.coffee.system.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.coffee.common.result.Result;
 import com.coffee.system.domain.UmsMemberReceiveAddress;
 
 import java.util.List;
@@ -9,15 +10,20 @@ public interface UmsMemberReceiveAddressService extends IService<UmsMemberReceiv
     /**
      * 添加地址
      */
-    boolean add(UmsMemberReceiveAddress address);
+    Result<String> addAddress(UmsMemberReceiveAddress address);
 
     /**
      * 修改地址
      */
-    boolean updateAddress(UmsMemberReceiveAddress address);
+    Result<String> updateAddress(UmsMemberReceiveAddress address);
 
     /**
      * 获取当前用户的地址列表
      */
-    List<UmsMemberReceiveAddress> listCurrent(Long memberId);
+    List<UmsMemberReceiveAddress> listCurrent();
+
+    /**
+     * 删除地址
+     */
+    Result<String> deleteAddress(Long memberId);
 }

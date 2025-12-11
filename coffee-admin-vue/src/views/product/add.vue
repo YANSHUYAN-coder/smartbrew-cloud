@@ -10,10 +10,16 @@
         <el-form-item label="商品名称">
           <el-input v-model="form.name" />
         </el-form-item>
+        <el-form-item label="商品分类">
+            <el-select v-model="form.category" placeholder="请选择">
+                <el-option label="咖啡" value="咖啡" />
+                <el-option label="甜点" value="甜点" />
+                <el-option label="非咖啡" value="非咖啡" />
+            </el-select>
+        </el-form-item>
         <el-form-item label="商品图片">
-          <el-upload action="#" list-type="picture-card" :auto-upload="false">
-            <el-icon><Plus /></el-icon>
-          </el-upload>
+          <!-- TODO: File Upload -->
+          <el-input v-model="form.picUrl" placeholder="输入图片URL" />
         </el-form-item>
         <el-form-item label="商品描述">
           <el-input type="textarea" v-model="form.description" />
@@ -30,10 +36,15 @@
         <div style="margin-bottom: 20px;">
           <el-button type="primary" size="small" @click="handleAddSku">添加规格</el-button>
         </div>
-        <el-table :data="form.skus" border>
-          <el-table-column label="规格 (如: 大杯/热/半糖)">
+        <el-table :data="form.skuStockList" border>
+          <el-table-column label="SKU编码">
+             <template #default="scope">
+              <el-input v-model="scope.row.skuCode" />
+            </template>
+          </el-table-column>
+          <el-table-column label="规格 (JSON格式)">
             <template #default="scope">
-              <el-input v-model="scope.row.specs" placeholder='{"size": "大", "temp": "热"}' />
+              <el-input v-model="scope.row.spec" placeholder='[{"key":"大小","value":"大"}]' />
             </template>
           </el-table-column>
           <el-table-column label="价格" width="150">
@@ -66,6 +77,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import { createProduct } from '@/api/product'
 
 const router = useRouter()
 const activeStep = ref(0)
@@ -74,25 +86,29 @@ const form = reactive({
   name: '',
   description: '',
   price: 0,
-  skus: [] as any[]
+  picUrl: '',
+  category: '',
+  skuStockList: [] as any[]
 })
 
 const handleAddSku = () => {
-  form.skus.push({
-    specs: '',
+  form.skuStockList.push({
+    skuCode: Date.now().toString(),
+    spec: '[]',
     price: form.price,
     stock: 100
   })
 }
 
 const removeSku = (index: number) => {
-  form.skus.splice(index, 1)
+  form.skuStockList.splice(index, 1)
 }
 
 const handleSubmit = () => {
-  console.log('Submit', form)
-  ElMessage.success('商品发布成功')
-  router.push('/product/list')
+  createProduct(form).then(() => {
+    ElMessage.success('商品发布成功')
+    router.push('/product/list')
+  })
 }
 </script>
 
@@ -102,4 +118,3 @@ const handleSubmit = () => {
   margin: 0 auto;
 }
 </style>
-

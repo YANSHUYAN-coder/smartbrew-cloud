@@ -1,7 +1,7 @@
 package com.coffee.system.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.coffee.system.domain.SkuStock;
+import com.coffee.system.domain.entity.SkuStock;
 
 import java.util.List;
 

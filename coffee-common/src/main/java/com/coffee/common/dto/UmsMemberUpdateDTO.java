@@ -1,4 +1,4 @@
-package com.coffee.system.domain.dto;
+package com.coffee.common.dto;
 
 import lombok.Data;
 

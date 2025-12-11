@@ -1,12 +1,9 @@
 package com.coffee.app.controller;
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.StrUtil;
-import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.UpdatePasswordDTO;
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.UmsMember;
-import com.coffee.system.domain.dto.UmsMemberUpdateDTO;
+import com.coffee.system.domain.entity.UmsMember;
+import com.coffee.common.dto.UmsMemberUpdateDTO;
 import com.coffee.system.service.UmsMemberService;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

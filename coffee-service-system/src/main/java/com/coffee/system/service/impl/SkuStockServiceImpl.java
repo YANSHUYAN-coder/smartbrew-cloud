@@ -2,7 +2,7 @@ package com.coffee.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.coffee.system.domain.SkuStock;
+import com.coffee.system.domain.entity.SkuStock;
 import com.coffee.system.mapper.SkuStockMapper;
 import com.coffee.system.service.SkuStockService;
 import org.springframework.stereotype.Service;

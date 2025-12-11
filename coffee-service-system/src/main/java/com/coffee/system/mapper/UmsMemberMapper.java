@@ -1,7 +1,7 @@
 package com.coffee.system.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.coffee.system.domain.UmsMember;
+import com.coffee.system.domain.entity.UmsMember;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

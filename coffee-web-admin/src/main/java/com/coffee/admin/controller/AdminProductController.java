@@ -1,7 +1,7 @@
 package com.coffee.admin.controller;
 
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.Product;
+import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
 import com.coffee.system.service.ProductService;
 import lombok.AllArgsConstructor;

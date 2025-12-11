@@ -1,11 +1,8 @@
 package com.coffee.app.controller;
 
-import com.coffee.common.context.UserContext;
 import com.coffee.common.result.Result;
-import com.coffee.common.util.JwtUtil;
-import com.coffee.system.domain.UmsMemberReceiveAddress;
+import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import com.coffee.system.service.UmsMemberReceiveAddressService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

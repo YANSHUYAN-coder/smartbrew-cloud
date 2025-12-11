@@ -1,19 +1,14 @@
 package com.coffee.app.controller;
 
-import cn.hutool.core.bean.BeanUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.coffee.common.result.Result;
 import com.coffee.common.vo.ProductDetailVO;
-import com.coffee.system.domain.Product;
-import com.coffee.system.domain.SkuStock;
+import com.coffee.system.domain.entity.Product;
 import com.coffee.system.service.ProductService;
-import com.coffee.system.service.SkuStockService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * C端商品菜单接口

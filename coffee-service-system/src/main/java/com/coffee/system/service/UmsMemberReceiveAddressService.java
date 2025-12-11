@@ -2,7 +2,7 @@ package com.coffee.system.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.UmsMemberReceiveAddress;
+import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 
 import java.util.List;
 

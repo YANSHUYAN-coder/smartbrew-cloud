@@ -5,21 +5,15 @@
         <el-button type="primary" icon="Plus" @click="handleAdd">新增角色</el-button>
       </div>
 
-      <el-table :data="roleList" border style="width: 100%">
+      <el-table :data="roleList" border style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="roleName" label="角色名称" width="150" />
-        <el-table-column prop="roleKey" label="权限字符" width="150" />
-        <el-table-column prop="sort" label="显示顺序" width="100" />
-        <el-table-column prop="status" label="状态" width="100">
-           <template #default="scope">
-             <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0" />
-           </template>
-        </el-table-column>
+        <el-table-column prop="name" label="角色名称" width="150" />
+        <el-table-column prop="description" label="描述" />
         <el-table-column prop="createTime" label="创建时间" />
         <el-table-column label="操作" width="250">
           <template #default="scope">
             <el-button link type="primary" icon="Edit" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button link type="primary" icon="CircleCheck" @click="handleAuth(scope.row)">数据权限</el-button>
+            <el-button link type="primary" icon="CircleCheck" @click="handleAuth(scope.row)">权限分配</el-button>
             <el-button link type="danger" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
@@ -30,13 +24,10 @@
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="角色名称">
-          <el-input v-model="form.roleName" />
+          <el-input v-model="form.name" />
         </el-form-item>
-        <el-form-item label="权限字符">
-          <el-input v-model="form.roleKey" placeholder="如: admin" />
-        </el-form-item>
-        <el-form-item label="显示顺序">
-          <el-input-number v-model="form.sort" :min="0" />
+        <el-form-item label="描述">
+          <el-input v-model="form.description" type="textarea" />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
@@ -44,100 +35,138 @@
             <el-radio :label="0">停用</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="菜单权限">
-           <el-tree
-            ref="menuTreeRef"
-            :data="menuData"
-            show-checkbox
-            node-key="id"
-            :props="{ label: 'title', children: 'children' }"
-           />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog.visible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- Permission Dialog -->
+    <el-dialog title="权限分配" v-model="permDialog.visible" width="500px">
+        <el-tree
+            ref="menuTreeRef"
+            :data="menuData"
+            show-checkbox
+            node-key="id"
+            :props="{ label: 'name', children: 'children' }" 
+        />
+        <template #footer>
+             <el-button @click="permDialog.visible = false">取消</el-button>
+             <el-button type="primary" @click="handlePermSubmit">确定</el-button>
+        </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getRoleList, createRole, updateRole, deleteRole, getRoleMenuIds, updateRoleMenus } from '@/api/system/role'
+import { getMenuList } from '@/api/system/menu'
 
-const roleList = ref([
-  { id: 1, roleName: '超级管理员', roleKey: 'admin', sort: 1, status: 1, createTime: '2023-10-01' },
-  { id: 2, roleName: '店长', roleKey: 'shop_manager', sort: 2, status: 1, createTime: '2023-10-02' },
-  { id: 3, roleName: '咖啡师', roleKey: 'barista', sort: 3, status: 1, createTime: '2023-10-03' }
-])
-
-// Mock Menu Data for Tree
-const menuData = ref([
-  { id: 1, title: '系统管理', children: [
-    { id: 11, title: '用户管理' },
-    { id: 12, title: '角色管理' },
-    { id: 13, title: '菜单管理' }
-  ]},
-  { id: 2, title: '商品管理', children: [
-    { id: 21, title: '商品列表' },
-    { id: 22, title: '发布商品' }
-  ]},
-  { id: 3, title: '订单管理', children: [
-    { id: 31, title: '订单列表' }
-  ]}
-])
+const loading = ref(false)
+const roleList = ref([])
+const menuData = ref([])
 
 const dialog = reactive({
   visible: false,
   title: ''
 })
 
+const permDialog = reactive({
+    visible: false,
+    roleId: 0
+})
+
 const form = reactive({
   id: undefined,
-  roleName: '',
-  roleKey: '',
-  sort: 0,
-  status: 1,
-  menuIds: [] as number[]
+  name: '',
+  description: '',
+  status: 1
 })
 
 const menuTreeRef = ref()
 
+const getList = () => {
+    loading.value = true
+    getRoleList({}).then((res: any) => {
+        roleList.value = res.records
+        loading.value = false
+    })
+}
+
+// 加载所有菜单供选择
+const loadMenus = () => {
+    getMenuList().then((res: any) => {
+        // Backend returns flat list, tree component can handle flat list if configured or we transform it.
+        // Assuming flat list for now, we might need a transform function if backend returns flat list but we want tree.
+        // For now, let's just display flat list or assume backend returned tree if I implemented tree.
+        // I implemented flat list in backend. So let's just use it.
+        // But el-tree expects tree structure for hierarchy.
+        // Quick fix: list is flat, so just one level.
+        menuData.value = res
+    })
+}
+
+onMounted(() => {
+    getList()
+    loadMenus()
+})
+
 const handleAdd = () => {
   dialog.title = '新增角色'
   dialog.visible = true
-  Object.assign(form, { id: undefined, roleName: '', roleKey: '', sort: 0, status: 1, menuIds: [] })
-  nextTick(() => {
-    menuTreeRef.value?.setCheckedKeys([])
-  })
+  Object.assign(form, { id: undefined, name: '', description: '', status: 1 })
 }
 
 const handleEdit = (row: any) => {
   dialog.title = '编辑角色'
   dialog.visible = true
   Object.assign(form, row)
-  // Mock checked keys
-  nextTick(() => {
-    menuTreeRef.value?.setCheckedKeys([11, 21]) 
-  })
 }
 
 const handleAuth = (row: any) => {
-  ElMessage.info('数据权限配置开发中')
+    permDialog.roleId = row.id
+    permDialog.visible = true
+    getRoleMenuIds(row.id).then((res: any) => {
+        nextTick(() => {
+            menuTreeRef.value?.setCheckedKeys(res)
+        })
+    })
 }
 
 const handleDelete = (row: any) => {
   ElMessageBox.confirm('确认删除该角色吗?', '警告').then(() => {
-    ElMessage.success('删除成功')
+      deleteRole(row.id).then(() => {
+          ElMessage.success('删除成功')
+          getList()
+      })
   })
 }
 
 const handleSubmit = () => {
-  const checkedKeys = menuTreeRef.value?.getCheckedKeys()
-  console.log('Selected permissions:', checkedKeys)
-  ElMessage.success('保存成功')
-  dialog.visible = false
+    if (form.id) {
+        updateRole(form).then(() => {
+            ElMessage.success('更新成功')
+            dialog.visible = false
+            getList()
+        })
+    } else {
+        createRole(form).then(() => {
+            ElMessage.success('创建成功')
+            dialog.visible = false
+            getList()
+        })
+    }
+}
+
+const handlePermSubmit = () => {
+    const checkedKeys = menuTreeRef.value?.getCheckedKeys()
+    updateRoleMenus(permDialog.roleId, checkedKeys).then(() => {
+        ElMessage.success('权限分配成功')
+        permDialog.visible = false
+    })
 }
 </script>
 
@@ -146,4 +175,3 @@ const handleSubmit = () => {
   margin-bottom: 20px;
 }
 </style>
-

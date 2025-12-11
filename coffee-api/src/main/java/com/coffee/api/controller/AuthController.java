@@ -2,7 +2,7 @@ package com.coffee.api.controller;
 
 import com.coffee.common.result.Result;
 import com.coffee.common.util.JwtUtil;
-import com.coffee.system.domain.UmsMember;
+import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.service.UmsMemberService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;

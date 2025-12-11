@@ -1,9 +1,8 @@
-package com.coffee.system.domain;
+package com.coffee.system.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 @TableName("ums_member")

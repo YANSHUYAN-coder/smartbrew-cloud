@@ -1,7 +1,7 @@
 package com.coffee.system.domain.dto;
 
-import com.coffee.system.domain.Product;
-import com.coffee.system.domain.SkuStock;
+import com.coffee.system.domain.entity.Product;
+import com.coffee.system.domain.entity.SkuStock;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

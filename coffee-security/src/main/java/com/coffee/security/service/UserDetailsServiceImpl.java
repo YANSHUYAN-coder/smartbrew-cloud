@@ -1,7 +1,6 @@
 package com.coffee.security.service;
 
-import com.coffee.system.domain.UmsMember;
-import com.coffee.system.domain.UmsRole;
+import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.mapper.UmsPermissionMapper;
 import com.coffee.system.service.UmsMemberService;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +13,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 

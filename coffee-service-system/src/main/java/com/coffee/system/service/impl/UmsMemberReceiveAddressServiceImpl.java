@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.UmsMemberReceiveAddress;
+import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import com.coffee.system.mapper.UmsMemberReceiveAddressMapper;
 import com.coffee.system.service.UmsMemberReceiveAddressService;
 import org.springframework.beans.factory.annotation.Autowired;

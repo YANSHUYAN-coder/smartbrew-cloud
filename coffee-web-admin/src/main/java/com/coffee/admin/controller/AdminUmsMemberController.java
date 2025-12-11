@@ -2,7 +2,7 @@ package com.coffee.admin.controller;
 
 import com.coffee.common.dto.MemberStatusDTO;
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.UmsMember;
+import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.service.UmsMemberService;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

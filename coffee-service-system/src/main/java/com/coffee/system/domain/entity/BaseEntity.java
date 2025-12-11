@@ -1,4 +1,4 @@
-package com.coffee.system.domain;
+package com.coffee.system.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;

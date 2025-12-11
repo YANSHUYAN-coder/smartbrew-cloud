@@ -1,7 +1,7 @@
 package com.coffee.system.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.coffee.system.domain.Product;
+import com.coffee.system.domain.entity.Product;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

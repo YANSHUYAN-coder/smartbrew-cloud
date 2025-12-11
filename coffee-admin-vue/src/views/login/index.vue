@@ -6,8 +6,8 @@
         <p>智咖云管理后台</p>
       </div>
       <el-form ref="loginFormRef" :model="loginForm" :rules="rules" label-width="0">
-        <el-form-item prop="username">
-          <el-input v-model="loginForm.username" placeholder="用户名" prefix-icon="User" />
+        <el-form-item prop="phone">
+          <el-input v-model="loginForm.phone" placeholder="手机号" prefix-icon="Iphone" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" show-password />
@@ -26,31 +26,33 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { login } from '@/api/login'
 
 const router = useRouter()
 const loading = ref(false)
 
 const loginForm = reactive({
-  username: '',
+  phone: '', // Changed from username to phone to match backend
   password: ''
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 const handleLogin = () => {
   loading.value = true
-  setTimeout(() => {
+  login(loginForm).then((res: any) => {
     loading.value = false
-    if (loginForm.username === 'admin' && loginForm.password === '123456') {
-      ElMessage.success('登录成功')
-      router.push('/')
-    } else {
-      ElMessage.error('用户名或密码错误 (admin/123456)')
-    }
-  }, 1000)
+    ElMessage.success('登录成功')
+    localStorage.setItem('token', res.token) // Store token
+    // Store user info if needed
+    localStorage.setItem('user', JSON.stringify(res.user))
+    router.push('/')
+  }).catch(() => {
+    loading.value = false
+  })
 }
 </script>
 
@@ -70,4 +72,3 @@ const handleLogin = () => {
   margin-bottom: 30px;
 }
 </style>
-

@@ -2,7 +2,7 @@ package com.coffee.system.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.vo.ProductDetailVO;
-import com.coffee.system.domain.Product;
+import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
 
 import java.util.List;

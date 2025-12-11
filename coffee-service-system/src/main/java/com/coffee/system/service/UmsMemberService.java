@@ -3,9 +3,8 @@ package com.coffee.system.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.MemberStatusDTO;
 import com.coffee.common.dto.UpdatePasswordDTO;
-import com.coffee.common.result.Result;
-import com.coffee.system.domain.UmsMember;
-import com.coffee.system.domain.dto.UmsMemberUpdateDTO;
+import com.coffee.system.domain.entity.UmsMember;
+import com.coffee.common.dto.UmsMemberUpdateDTO;
 
 public interface UmsMemberService extends IService<UmsMember> {
     /**

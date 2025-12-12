@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function login(data: any) {
   return request({
-    url: '/admin/auth/login', // 根据实际后端接口修改
+    url: '/auth/login', // Removed /admin prefix to match backend /api/auth/login
     method: 'post',
     data
   })
@@ -10,14 +10,14 @@ export function login(data: any) {
 
 export function logout() {
   return request({
-    url: '/admin/auth/logout',
+    url: '/auth/logout',
     method: 'post'
   })
 }
 
 export function getInfo() {
   return request({
-    url: '/admin/auth/info',
+    url: '/auth/info', // Check if this exists or needs adjustment
     method: 'get'
   })
 }

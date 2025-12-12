@@ -8,39 +8,30 @@
     router
   >
     <div class="logo">
-      <h3>SmartBrew Admin</h3>
+      <h3>☕ 智咖·云 Admin</h3>
     </div>
     
     <el-menu-item index="/dashboard">
-      <el-icon><House /></el-icon>
-      <span>首页</span>
+      <el-icon><Odometer /></el-icon>
+      <span>数据大屏</span>
     </el-menu-item>
 
-    <el-sub-menu index="/product">
-      <template #title>
-        <el-icon><Goods /></el-icon>
-        <span>商品管理</span>
-      </template>
-      <el-menu-item index="/product/list">商品列表</el-menu-item>
-      <el-menu-item index="/product/add">发布商品</el-menu-item>
-    </el-sub-menu>
+    <el-menu-item index="/product/list">
+      <el-icon><Coffee /></el-icon>
+      <span>商品管理</span>
+    </el-menu-item>
 
-    <el-sub-menu index="/order">
-      <template #title>
-        <el-icon><List /></el-icon>
-        <span>订单管理</span>
-      </template>
-      <el-menu-item index="/order/list">订单列表</el-menu-item>
-    </el-sub-menu>
+    <el-menu-item index="/order/list">
+      <el-icon><List /></el-icon>
+      <span>订单管理</span>
+    </el-menu-item>
 
-    <el-sub-menu index="/member">
-      <template #title>
-        <el-icon><User /></el-icon>
-        <span>会员管理</span>
-      </template>
-      <el-menu-item index="/member/list">会员列表</el-menu-item>
-    </el-sub-menu>
+    <el-menu-item index="/member/list">
+      <el-icon><User /></el-icon>
+      <span>会员管理</span>
+    </el-menu-item>
 
+    <!-- 保留原有其他菜单但置于底部或隐藏，为了符合原型图，暂时保留但作为扩展 -->
     <el-sub-menu index="/marketing">
       <template #title>
         <el-icon><Present /></el-icon>

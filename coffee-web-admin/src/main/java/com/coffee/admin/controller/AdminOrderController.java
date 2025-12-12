@@ -28,7 +28,7 @@ public class AdminOrderController {
 
     @GetMapping("/detail/{id}")
     @PreAuthorize("hasAuthority('oms:order:detail')")
-    public Result<OrderVO> detail(@PathVariable Long id) {
+    public Result<OrderVO> detail(@PathVariable("id") Long id) {
         return Result.success(orderService.getDetail(id));
     }
 
@@ -41,7 +41,7 @@ public class AdminOrderController {
     
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAuthority('oms:order:delete')")
-    public Result<String> delete(@PathVariable Long id) {
+    public Result<String> delete(@PathVariable("id") Long id) {
         boolean success = orderService.removeById(id);
          return success ? Result.success("删除成功") : Result.failed("删除失败");
     }

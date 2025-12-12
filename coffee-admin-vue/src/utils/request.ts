@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { log } from 'node:console'
 
 // 创建 axios 实例
 const service = axios.create({
@@ -14,8 +15,11 @@ service.interceptors.request.use(
     // 例如：config.headers['Authorization'] = 'Bearer ' + getToken()
     const token = localStorage.getItem('token')
     if (token) {
-        config.headers['Authorization'] = token
-    }
+        // 后端 JwtAuthenticationFilter 明确检查了 startsWith(AuthConstants.TOKEN_PREFIX) 即 "Bearer "
+        // 且登录接口返回的 token 只是 raw token 字符串，所以前端必须手动拼接 Bearer
+        config.headers['Authorization'] = 'Bearer ' + token
+        console.log("config.headers['Authorization']",config.headers['Authorization'])
+      }
     return config
   },
   error => {

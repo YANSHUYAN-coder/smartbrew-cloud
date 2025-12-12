@@ -84,4 +84,22 @@ public class AuthController {
             return Result.failed("登录失败，用户名或密码错误");
         }
     }
+
+    /**
+     * 退出登录
+     * * JWT 退出登录说明：
+     * 1. 服务端：清除 Spring Security 上下文。
+     * 2. 客户端：接收到成功返回后，务必删除本地存储的 Token。
+     * * 进阶实现（可选）：
+     * 如果需要防止 Token 在过期前被再次使用（例如被盗用），
+     * 可以在此处将 Token 加入 Redis 的黑名单中，并在 JwtAuthenticationTokenFilter 中校验。
+     */
+    @PostMapping("/logout")
+    public Result<String> logout() {
+        // 清除当前线程的认证信息
+        SecurityContextHolder.clearContext();
+
+        // 返回成功提示，前端需据此删除本地 Token
+        return Result.success("退出成功");
+    }
 }

@@ -1,5 +1,7 @@
 package com.coffee.admin.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
@@ -8,8 +10,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/admin/product")
 @AllArgsConstructor
@@ -17,12 +17,12 @@ public class AdminProductController {
 
     private final ProductService productService;
 
-    // 1. 获取商品列表 (基础信息，包括下架商品)
+    // 1. 获取商品列表 (基础信息，包括下架商品) - 分页查询
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('pms:product:list')")
-    public Result<List<Product>> list() {
-        List<Product> list = productService.list();
-        return Result.success(list);
+    public Result<Page<Product>> list(@ModelAttribute PageParam pageParam) {
+        Page<Product> page = productService.getList(pageParam);
+        return Result.success(page);
     }
 
     // 2. 获取商品详情 (包含 SKU，用于编辑回显)

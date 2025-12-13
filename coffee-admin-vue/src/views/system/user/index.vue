@@ -5,7 +5,7 @@
         <el-button type="primary" icon="Plus" @click="handleAdd">新增用户</el-button>
       </div>
 
-      <el-table :data="userList" border style="width: 100%" v-loading="loading">
+      <el-table :data="safeUserList" border style="width: 100%" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" />
         <el-table-column prop="phone" label="手机号" />
@@ -24,6 +24,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页组件 -->
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          v-model:current-page="pageParam.page"
+          v-model:page-size="pageParam.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <el-dialog :title="dialog.title" v-model="dialog.visible" width="500px">
@@ -48,12 +61,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUserList, createUser, updateUser, deleteUser } from '@/api/system/user'
 
+interface User {
+  id?: number
+  username: string
+  phone: string
+  status: number
+  createTime?: string
+}
+
 const loading = ref(false)
-const userList = ref([])
+const userList = ref<User[]>([])
+const total = ref(0)
+const pageParam = ref({
+  page: 1,
+  pageSize: 10
+})
+
+// 确保表格数据始终是数组
+const safeUserList = computed(() => {
+  return Array.isArray(userList.value) ? userList.value : []
+})
 
 const dialog = reactive({
   visible: false,
@@ -69,10 +100,39 @@ const form = reactive({
 
 const getList = () => {
     loading.value = true
-    getUserList({}).then((res: any) => {
-        userList.value = res
+    getUserList({
+      page: pageParam.value.page,
+      pageSize: pageParam.value.pageSize
+    }).then((res: any) => {
+        if (res && res.records && Array.isArray(res.records)) {
+            userList.value = res.records
+            total.value = res.total || 0
+        } else if (Array.isArray(res)) {
+            // 兼容旧接口，直接返回数组的情况
+            userList.value = res
+            total.value = res.length
+        } else {
+            userList.value = []
+            total.value = 0
+        }
         loading.value = false
+    }).catch((err) => {
+        console.error('获取用户列表失败:', err)
+        loading.value = false
+        userList.value = []
+        total.value = 0
     })
+}
+
+const handleSizeChange = (size: number) => {
+  pageParam.value.pageSize = size
+  pageParam.value.page = 1
+  getList()
+}
+
+const handleCurrentChange = (page: number) => {
+  pageParam.value.page = page
+  getList()
 }
 
 onMounted(() => {

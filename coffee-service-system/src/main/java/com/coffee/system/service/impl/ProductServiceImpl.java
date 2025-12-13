@@ -3,7 +3,9 @@ package com.coffee.system.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.dto.PageParam;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.entity.SkuStock;
@@ -24,6 +26,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Autowired
     private SkuStockService skuStockService;
+
+    @Override
+    public Page<Product> getList(PageParam pageParam) {
+        Page<Product> productPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(Product::getCreateTime);
+        return this.page(productPage, wrapper);
+    }
 
     @Override
     public ProductDTO getDetail(Long id) {

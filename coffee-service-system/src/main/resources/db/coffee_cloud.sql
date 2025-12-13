@@ -403,4 +403,30 @@ CREATE TABLE `ums_user_role`  (
 INSERT INTO `ums_user_role` VALUES (1, 1, 6, '2025-12-07 23:13:51');
 INSERT INTO `ums_user_role` VALUES (2, 2, 3, '2025-12-07 23:28:43');
 
+-- ----------------------------
+-- Table structure for ums_member_level
+-- ----------------------------
+DROP TABLE IF EXISTS `ums_member_level`;
+CREATE TABLE `ums_member_level`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '等级名称',
+  `growth_point` int NULL DEFAULT 0 COMMENT '成长值门槛（达到此成长值可升级到此等级）',
+  `discount` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '折扣率（0.00-1.00，1.00表示无折扣）',
+  `integration_rate` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '积分倍率（积分获取倍率，1.00表示正常倍率）',
+  `icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级图标',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级描述',
+  `status` int NULL DEFAULT 1 COMMENT '状态：1-启用 0-禁用',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '会员等级表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of ums_member_level
+-- ----------------------------
+INSERT INTO `ums_member_level` VALUES (1, '普通会员', 0, 1.00, 1.00, NULL, '新注册用户默认等级', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_member_level` VALUES (2, '银卡会员', 100, 0.95, 1.10, NULL, '成长值达到100可升级，享受95折优惠，积分获取1.1倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_member_level` VALUES (3, '金卡会员', 500, 0.90, 1.20, NULL, '成长值达到500可升级，享受9折优惠，积分获取1.2倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_member_level` VALUES (4, '钻石会员', 2000, 0.85, 1.50, NULL, '成长值达到2000可升级，享受85折优惠，积分获取1.5倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+
 SET FOREIGN_KEY_CHECKS = 1;

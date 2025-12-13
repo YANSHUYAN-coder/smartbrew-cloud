@@ -3,27 +3,80 @@ package com.coffee.system.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.MemberStatusDTO;
+import com.coffee.common.dto.PageParam;
 import com.coffee.common.dto.UpdatePasswordDTO;
 import com.coffee.system.domain.entity.UmsMember;
+import com.coffee.system.domain.entity.UmsMemberLevel;
+import com.coffee.system.domain.entity.UmsRole;
+import com.coffee.system.domain.entity.UmsUserRole;
+import com.coffee.system.domain.vo.MemberVO;
 import com.coffee.common.dto.UmsMemberUpdateDTO;
+import com.coffee.system.mapper.UmsMemberLevelMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
+import com.coffee.system.mapper.UmsUserRoleMapper;
 import com.coffee.system.service.UmsMemberService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember> implements UmsMemberService {
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private UmsUserRoleMapper userRoleMapper;
+    
+    @Autowired
+    private UmsMemberLevelMapper memberLevelMapper;
+
+    @Override
+    public Page<UmsMember> getList(PageParam pageParam, String phone) {
+        Page<UmsMember> memberPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
+        LambdaQueryWrapper<UmsMember> wrapper = new LambdaQueryWrapper<>();
+        if (StrUtil.isNotBlank(phone)) {
+            wrapper.like(UmsMember::getPhone, phone);
+        }
+        wrapper.orderByDesc(UmsMember::getCreateTime);
+        return this.page(memberPage, wrapper);
+    }
+
+    @Override
+    public Page<MemberVO> getListWithRoles(PageParam pageParam, String phone) {
+        // 1. 先查询会员列表
+        Page<UmsMember> memberPage = getList(pageParam, phone);
+        
+        // 2. 转换为 MemberVO 并填充角色信息
+        Page<MemberVO> voPage = new Page<>(memberPage.getCurrent(), memberPage.getSize(), memberPage.getTotal());
+        List<MemberVO> voList = memberPage.getRecords().stream().map(member -> {
+            MemberVO vo = new MemberVO();
+            BeanUtil.copyProperties(member, vo);
+            // 查询用户角色
+            List<UmsRole> roles = userRoleMapper.selectRolesByUserId(member.getId());
+            vo.setRoles(roles);
+            // 查询会员等级
+            if (member.getLevelId() != null) {
+                UmsMemberLevel level = memberLevelMapper.selectById(member.getLevelId());
+                vo.setLevel(level);
+            }
+            return vo;
+        }).collect(Collectors.toList());
+        
+        voPage.setRecords(voList);
+        return voPage;
+    }
 
     @Override
     public UmsMember getByPhone(String phone) {
@@ -115,5 +168,25 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         return this.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getStatus, 0)); // 0 表示禁用/注销
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean allocRoles(Long userId, List<Long> roleIds) {
+        // 1. 删除用户原有的所有角色
+        LambdaQueryWrapper<UmsUserRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UmsUserRole::getUserId, userId);
+        userRoleMapper.delete(wrapper);
+
+        // 2. 批量添加新角色
+        if (roleIds != null && !roleIds.isEmpty()) {
+            for (Long roleId : roleIds) {
+                UmsUserRole userRole = new UmsUserRole();
+                userRole.setUserId(userId);
+                userRole.setRoleId(roleId);
+                userRoleMapper.insert(userRole);
+            }
+        }
+        return true;
     }
 }

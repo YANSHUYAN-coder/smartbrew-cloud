@@ -40,8 +40,32 @@ public class UmsRoleServiceImpl extends ServiceImpl<UmsRoleMapper, UmsRole> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean allocMenu(Map<String, Object> params) {
-        Long roleId = Long.valueOf(params.get("roleId").toString());
-        List<Long> menuIds = (List<Long>) params.get("menuIds");
+        // 处理 roleId：前端传递的可能是 Integer 类型，需要转换为 Long
+        Object roleIdObj = params.get("roleId");
+        Long roleId;
+        if (roleIdObj instanceof Long) {
+            roleId = (Long) roleIdObj;
+        } else if (roleIdObj instanceof Integer) {
+            roleId = ((Integer) roleIdObj).longValue();
+        } else {
+            roleId = Long.valueOf(roleIdObj.toString());
+        }
+        
+        // 处理 menuIds：前端传递的可能是 Integer 类型，需要转换为 Long
+        @SuppressWarnings("unchecked")
+        List<Object> menuIdsObj = (List<Object>) params.get("menuIds");
+        List<Long> menuIds = menuIdsObj.stream()
+                .map(id -> {
+                    if (id instanceof Long) {
+                        return (Long) id;
+                    } else if (id instanceof Integer) {
+                        return ((Integer) id).longValue();
+                    } else {
+                        return Long.valueOf(id.toString());
+                    }
+                })
+                .collect(Collectors.toList());
+        
         // 1. 删除原有关系
         LambdaQueryWrapper<UmsRolePermission> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UmsRolePermission::getRoleId, roleId);

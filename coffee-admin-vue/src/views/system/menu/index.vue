@@ -6,15 +6,17 @@
       </div>
 
       <el-table
-        :data="menuList"
+        :data="safeMenuList"
         style="width: 100%; margin-bottom: 20px;"
         row-key="id"
         border
+        v-loading="loading"
       >
-        <el-table-column prop="name" label="权限名称" width="180" />
-        <el-table-column prop="description" label="描述" />
-        <el-table-column prop="url" label="接口路径" />
-        <el-table-column prop="method" label="请求方法" width="100" />
+        <el-table-column prop="name" label="权限名称" width="240" />
+        <el-table-column prop="description" label="描述" width="240"/>
+        <el-table-column prop="url" label="接口路径" width="260" />
+        <el-table-column prop="method" label="请求方法" width="180" />
+        <el-table-column prop="createTime" label="创建时间"/>
         
         <el-table-column label="操作" width="200">
           <template #default="scope">
@@ -23,6 +25,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页组件 -->
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          v-model:current-page="pageParam.page"
+          v-model:page-size="pageParam.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- Dialog -->
@@ -55,12 +70,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMenuList, createMenu, updateMenu, deleteMenu } from '@/api/system/menu'
 
+interface Menu {
+  id?: number
+  name: string
+  description?: string
+  url?: string
+  method?: string
+}
+
 const loading = ref(false)
-const menuList = ref([])
+const menuList = ref<Menu[]>([])
+const total = ref(0)
+const pageParam = ref({
+  page: 1,
+  pageSize: 10
+})
+
+// 确保表格数据始终是数组
+const safeMenuList = computed(() => {
+  return Array.isArray(menuList.value) ? menuList.value : []
+})
 
 const dialog = reactive({
   visible: false,
@@ -77,10 +110,39 @@ const form = reactive({
 
 const getList = () => {
     loading.value = true
-    getMenuList().then((res: any) => {
-        menuList.value = res
+    getMenuList({
+      page: pageParam.value.page,
+      pageSize: pageParam.value.pageSize
+    }).then((res: any) => {
+        if (res && res.records && Array.isArray(res.records)) {
+            menuList.value = res.records
+            total.value = res.total || 0
+        } else if (Array.isArray(res)) {
+            // 兼容旧接口，直接返回数组的情况
+            menuList.value = res
+            total.value = res.length
+        } else {
+            menuList.value = []
+            total.value = 0
+        }
         loading.value = false
+    }).catch((err) => {
+        console.error('获取权限列表失败:', err)
+        loading.value = false
+        menuList.value = []
+        total.value = 0
     })
+}
+
+const handleSizeChange = (size: number) => {
+  pageParam.value.pageSize = size
+  pageParam.value.page = 1
+  getList()
+}
+
+const handleCurrentChange = (page: number) => {
+  pageParam.value.page = page
+  getList()
 }
 
 onMounted(() => {

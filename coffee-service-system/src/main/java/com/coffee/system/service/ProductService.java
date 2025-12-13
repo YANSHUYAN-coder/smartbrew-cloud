@@ -1,6 +1,8 @@
 package com.coffee.system.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.coffee.common.dto.PageParam;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
@@ -10,6 +12,11 @@ import java.util.Map;
 
 public interface ProductService extends IService<Product> {
     /*管理端*/
+    
+    /**
+     * 分页查询商品列表
+     */
+    Page<Product> getList(PageParam pageParam);
     
     /**
      * 创建商品（包含SKU）

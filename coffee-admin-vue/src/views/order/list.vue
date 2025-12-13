@@ -41,6 +41,10 @@ import { getOrderList, updateOrderStatus } from '@/api/order'
 const activeTab = ref('-1')
 const loading = ref(false)
 const tableData = ref([])
+const pageParam = ref({
+  page: 1,
+  pageSize: 10
+})
 
 const getStatusType = (status: number) => {
   const map: any = { 0: 'danger', 1: 'warning', 2: 'primary', 3: 'success', 4: 'info', 5: 'info' }
@@ -55,7 +59,14 @@ const getStatusText = (status: number) => {
 const getList = () => {
     loading.value = true
     const status = activeTab.value === '-1' ? undefined : parseInt(activeTab.value)
-    getOrderList({ status }).then((res: any) => {
+    const params: any = {
+      page: pageParam.value.page,
+      pageSize: pageParam.value.pageSize
+    }
+    if (status !== undefined) {
+      params.status = status
+    }
+    getOrderList(params).then((res: any) => {
         tableData.value = res.records
         loading.value = false
     }).catch(() => {

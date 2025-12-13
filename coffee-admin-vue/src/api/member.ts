@@ -23,3 +23,18 @@ export function updateMemberStatus(data: any) {
   })
 }
 
+export function deleteMember(id: number) {
+  return request({
+    url: `/admin/member/delete/${id}`,
+    method: 'delete'
+  })
+}
+
+export function allocMemberRoles(userId: number, roleIds: number[]) {
+  return request({
+    url: '/admin/member/allocRoles',
+    method: 'post',
+    data: { userId, roleIds }
+  })
+}
+

@@ -21,7 +21,7 @@ public class AdminRoleController {
 
     @GetMapping("/list")
 //    @PreAuthorize("hasAuthority('system:role:list')")
-    public Result<Page<UmsRole>> list(PageParam pageParam,
+    public Result<Page<UmsRole>> list(@ModelAttribute PageParam pageParam,
                                       @RequestParam(required = false) String keyword) {
         return Result.success(roleService.getAllRoles(pageParam, keyword));
     }

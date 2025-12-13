@@ -47,8 +47,8 @@ const router = useRouter()
 const loading = ref(false)
 
 const loginForm = reactive({
-  phone: '',
-  password: ''
+  phone: '1380013802',
+  password: '123456'
 })
 
 const rules = {

@@ -1,12 +1,27 @@
 package com.coffee.system.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.MemberStatusDTO;
+import com.coffee.common.dto.PageParam;
 import com.coffee.common.dto.UpdatePasswordDTO;
 import com.coffee.system.domain.entity.UmsMember;
+import com.coffee.system.domain.vo.MemberVO;
 import com.coffee.common.dto.UmsMemberUpdateDTO;
 
+import java.util.List;
+
 public interface UmsMemberService extends IService<UmsMember> {
+    /**
+     * 分页查询会员列表
+     */
+    Page<UmsMember> getList(PageParam pageParam, String phone);
+    
+    /**
+     * 分页查询会员列表（包含角色信息）
+     */
+    Page<MemberVO> getListWithRoles(PageParam pageParam, String phone);
+    
     /**
      * 根据手机号获取用户
      * 
@@ -49,4 +64,12 @@ public interface UmsMemberService extends IService<UmsMember> {
      * @return
      */
     boolean logoff();
+
+    /**
+     * 分配角色给用户
+     * @param userId 用户ID
+     * @param roleIds 角色ID列表
+     * @return 是否成功
+     */
+    boolean allocRoles(Long userId, List<Long> roleIds);
 }

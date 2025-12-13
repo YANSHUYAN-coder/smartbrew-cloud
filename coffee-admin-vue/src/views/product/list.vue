@@ -11,7 +11,7 @@
       </template>
 
       <!-- 商品表格 -->
-      <el-table :data="tableData" border style="width: 100%" v-loading="loading">
+      <el-table :data="safeTableData" border style="width: 100%" v-loading="loading">
         <el-table-column prop="name" label="商品名称"></el-table-column>
         <el-table-column label="图片" width="100">
           <template #default="scope">
@@ -45,6 +45,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页组件 -->
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          v-model:current-page="pageParam.page"
+          v-model:page-size="pageParam.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
 
     <!-- 商品编辑/新增弹窗 -->
@@ -121,9 +134,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProductList, updateProductStatus, deleteProduct, createProduct } from '@/api/product'
+import { getProductList, updateProductStatus } from '@/api/product'
 
 interface Sku {
   id?: number
@@ -149,6 +162,16 @@ const loading = ref(false)
 const tableData = ref<Product[]>([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const total = ref(0)
+const pageParam = ref({
+  page: 1,
+  pageSize: 10
+})
+
+// 确保表格数据始终是数组
+const safeTableData = computed(() => {
+  return Array.isArray(tableData.value) ? tableData.value : []
+})
 
 const form = reactive<Product>({
   id: null,
@@ -164,28 +187,41 @@ const form = reactive<Product>({
 
 const getList = () => {
   loading.value = true
-  // Mock data usage if API fails or is empty, mirroring prototype behavior for demo
-  getProductList({}).then((res: any) => {
-    if (res && res.length > 0) {
-        tableData.value = res
+  getProductList({
+    page: pageParam.value.page,
+    pageSize: pageParam.value.pageSize
+  }).then((res: any) => {
+    if (res && res.records && Array.isArray(res.records)) {
+      tableData.value = res.records
+      total.value = res.total || 0
+    } else if (Array.isArray(res)) {
+      // 兼容旧接口，直接返回数组的情况
+      tableData.value = res
+      total.value = res.length
     } else {
-        // Fallback to mock data from prototype if API returns empty (for demonstration)
-        tableData.value = [
-            { id: 1, name: '生椰拿铁', price: 18.00, category: '咖啡', sales: 1024, status: 1, picUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] },
-            { id: 2, name: '美式咖啡', price: 12.00, category: '咖啡', sales: 500, status: 1, picUrl: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] },
-            { id: 3, name: '提拉米苏', price: 22.00, category: '甜点', sales: 120, status: 0, picUrl: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] }
-        ] as Product[]
+      // 确保始终是数组
+      tableData.value = []
+      total.value = 0
     }
     loading.value = false
-  }).catch(() => {
+  }).catch((err) => {
+    console.error('获取商品列表失败:', err)
     loading.value = false
-    // Fallback on error too
-     tableData.value = [
-            { id: 1, name: '生椰拿铁', price: 18.00, category: '咖啡', sales: 1024, status: 1, picUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] },
-            { id: 2, name: '美式咖啡', price: 12.00, category: '咖啡', sales: 500, status: 1, picUrl: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] },
-            { id: 3, name: '提拉米苏', price: 22.00, category: '甜点', sales: 120, status: 0, picUrl: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', description: '', skuStockList: [] }
-        ] as Product[]
+    // 确保即使出错也是数组
+    tableData.value = []
+    total.value = 0
   })
+}
+
+const handleSizeChange = (size: number) => {
+  pageParam.value.pageSize = size
+  pageParam.value.page = 1
+  getList()
+}
+
+const handleCurrentChange = (page: number) => {
+  pageParam.value.page = page
+  getList()
 }
 
 onMounted(() => {

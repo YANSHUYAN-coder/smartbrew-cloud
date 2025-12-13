@@ -84,12 +84,6 @@ const router = createRouter({
           meta: { title: '系统管理', icon: 'Setting' },
           children: [
             {
-              path: 'user',
-              name: 'sysUser',
-              component: () => import('@/views/system/user/index.vue'),
-              meta: { title: '用户管理' }
-            },
-            {
               path: 'role',
               name: 'sysRole',
               component: () => import('@/views/system/role/index.vue'),
@@ -100,6 +94,12 @@ const router = createRouter({
               name: 'sysMenu',
               component: () => import('@/views/system/menu/index.vue'),
               meta: { title: '菜单管理' }
+            },
+            {
+              path: 'member-level',
+              name: 'sysMemberLevel',
+              component: () => import('@/views/system/memberLevel/index.vue'),
+              meta: { title: '会员等级管理' }
             }
           ]
         }

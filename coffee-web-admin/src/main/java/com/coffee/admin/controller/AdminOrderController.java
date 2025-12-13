@@ -21,9 +21,10 @@ public class AdminOrderController {
 
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('oms:order:list')")
-    public Result<Page<OmsOrder>> list(PageParam pageParam,
+    public Result<Page<OmsOrder>> list(@ModelAttribute PageParam pageParam,
                                        @RequestParam(required = false) Integer status) {
-        return Result.success(orderService.getAllList(pageParam, status));
+        Page<OmsOrder> orderList = orderService.getAllList(pageParam, status);
+        return Result.success(orderList);
     }
 
     @GetMapping("/detail/{id}")

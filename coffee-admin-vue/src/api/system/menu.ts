@@ -1,9 +1,10 @@
 import request from '@/utils/request'
 
-export function getMenuList() {
+export function getMenuList(params: any) {
   return request({
     url: '/admin/permission/list', // 对应 ums_permission
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

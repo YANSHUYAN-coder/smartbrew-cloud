@@ -131,10 +131,10 @@ const productsLoading = ref(false)
 const loadStatistics = async () => {
   try {
     const res: any = await getStatistics()
-    statistics.todaySales = res.todaySales || 0
-    statistics.todayOrderCount = res.todayOrderCount || 0
-    statistics.aiServiceCalls = res.aiServiceCalls || 0
-    statistics.todayNewMembers = res.todayNewMembers || 0
+    statistics.todaySales = typeof res.todaySales === 'number' ? res.todaySales : parseFloat(res.todaySales) || 0
+    statistics.todayOrderCount = typeof res.todayOrderCount === 'number' ? res.todayOrderCount : parseInt(res.todayOrderCount) || 0
+    statistics.aiServiceCalls = typeof res.aiServiceCalls === 'number' ? res.aiServiceCalls : parseInt(res.aiServiceCalls) || 0
+    statistics.todayNewMembers = typeof res.todayNewMembers === 'number' ? res.todayNewMembers : parseInt(res.todayNewMembers) || 0
     
     // 计算增长率（这里简化处理，实际应该对比昨日数据）
     statistics.salesGrowth = 12.5
@@ -230,7 +230,6 @@ const loadSalesTrend = async () => {
     
     salesChart.setOption(option)
   } catch (error) {
-    console.error('加载销售趋势失败:', error)
     ElMessage.error('加载销售趋势失败')
   } finally {
     chartLoading.value = false
@@ -244,7 +243,6 @@ const loadTopProducts = async () => {
     const res: any = await getTopProducts(5)
     topProducts.value = res || []
   } catch (error) {
-    console.error('加载热销商品失败:', error)
     ElMessage.error('加载热销商品失败')
   } finally {
     productsLoading.value = false

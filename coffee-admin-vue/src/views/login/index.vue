@@ -62,7 +62,6 @@ const handleLogin = () => {
     loading.value = false
     ElMessage.success('登录成功')
     localStorage.setItem('token', res.token)
-    console.log(res.token)
     localStorage.setItem('user', JSON.stringify(res.user))
     router.push('/')
   }).catch(() => {

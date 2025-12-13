@@ -22,8 +22,7 @@ service.interceptors.request.use(
     return config
   },
   error => {
-    // 对请求错误做些什么
-    console.log(error)
+    // 请求错误已在响应拦截器中处理
     return Promise.reject(error)
   }
 )

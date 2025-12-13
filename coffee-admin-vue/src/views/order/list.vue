@@ -8,7 +8,7 @@
         <el-tab-pane label="待取餐" name="3" />
       </el-tabs>
 
-      <el-table :data="tableData" border style="width: 100%" v-loading="loading">
+      <el-table :data="safeTableData" border style="width: 100%" v-loading="loading">
         <el-table-column prop="orderSn" label="订单号" width="180" />
         <el-table-column prop="createTime" label="下单时间" width="180" />
         <el-table-column prop="payAmount" label="总金额" width="100">
@@ -29,21 +29,40 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页组件 -->
+      <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          v-model:current-page="pageParam.page"
+          v-model:page-size="pageParam.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getOrderList, updateOrderStatus } from '@/api/order'
 
 const activeTab = ref('-1')
 const loading = ref(false)
-const tableData = ref([])
+const tableData = ref<any[]>([])
+const total = ref(0)
 const pageParam = ref({
   page: 1,
   pageSize: 10
+})
+
+// 确保表格数据始终是数组
+const safeTableData = computed(() => {
+  return Array.isArray(tableData.value) ? tableData.value : []
 })
 
 const getStatusType = (status: number) => {
@@ -67,14 +86,34 @@ const getList = () => {
       params.status = status
     }
     getOrderList(params).then((res: any) => {
-        tableData.value = res.records
+        if (res && res.records && Array.isArray(res.records)) {
+          tableData.value = res.records
+          total.value = res.total || 0
+        } else {
+          tableData.value = []
+          total.value = 0
+        }
         loading.value = false
     }).catch(() => {
         loading.value = false
+        tableData.value = []
+        total.value = 0
     })
 }
 
+const handleSizeChange = (size: number) => {
+  pageParam.value.pageSize = size
+  pageParam.value.page = 1
+  getList()
+}
+
+const handleCurrentChange = (page: number) => {
+  pageParam.value.page = page
+  getList()
+}
+
 const handleTabClick = () => {
+  pageParam.value.page = 1
   getList()
 }
 

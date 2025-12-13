@@ -20,7 +20,10 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const handleLogout = () => {
-  // TODO: Clear token
+  // 清除本地存储的token和用户信息
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  // 跳转到登录页
   router.push('/login')
 }
 </script>

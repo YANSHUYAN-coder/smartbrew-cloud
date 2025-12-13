@@ -136,7 +136,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getProductList, updateProductStatus } from '@/api/product'
+import { getProductList, updateProductStatus, createProduct, updateProduct, deleteProduct } from '@/api/product'
 
 interface Sku {
   id?: number
@@ -248,37 +248,37 @@ const openProductDialog = () => {
 
 const editProduct = (row: Product) => {
   isEdit.value = true
-  Object.assign(form, row)
-  // Mock SKU data if empty, for demo purposes as in prototype
-  if (!form.skuStockList || form.skuStockList.length === 0) {
-      form.skuStockList = [
-        { id: 101, skuCode: '202401', price: row.price, stock: 100, spec: '[{"key":"容量","value":"大杯"}]' },
-        { id: 102, skuCode: '202402', price: row.price - 2, stock: 50, spec: '[{"key":"容量","value":"中杯"}]' }
-      ]
+  Object.assign(form, { ...row })
+  // 如果SKU列表为空，初始化为空数组（后端会返回完整的SKU数据）
+  if (!form.skuStockList) {
+    form.skuStockList = []
   }
   dialogVisible.value = true
 }
 
 const submitProduct = () => {
-    loading.value = true
-    // Simulate API call delay
-    setTimeout(() => {
-        // In real app: createProduct(form).then(...)
-        // For now just update local list or mock success
-        if (isEdit.value) {
-            const index = tableData.value.findIndex(item => item.id === form.id)
-            if (index !== -1) {
-                tableData.value[index] = { ...form }
-            }
-        } else {
-            const newId = Math.max(...tableData.value.map(p => p.id || 0)) + 1
-            tableData.value.push({ ...form, id: newId, sales: 0 })
-        }
-        
-        loading.value = false
-        dialogVisible.value = false
-        ElMessage.success(isEdit.value ? '商品修改成功' : '商品发布成功')
-    }, 500)
+  loading.value = true
+  if (isEdit.value) {
+    updateProduct(form).then(() => {
+      ElMessage.success('商品修改成功')
+      loading.value = false
+      dialogVisible.value = false
+      getList()
+    }).catch(() => {
+      loading.value = false
+      ElMessage.error('商品修改失败')
+    })
+  } else {
+    createProduct(form).then(() => {
+      ElMessage.success('商品发布成功')
+      loading.value = false
+      dialogVisible.value = false
+      getList()
+    }).catch(() => {
+      loading.value = false
+      ElMessage.error('商品发布失败')
+    })
+  }
 }
 
 const addSkuRow = () => {
@@ -299,16 +299,17 @@ const handleStatusChange = (row: Product) => {
 }
 
 const handleDelete = (row: Product) => {
-  ElMessageBox.confirm('确认删除该商品吗?', '警告', {
-    confirmButtonText: '确定',
+  ElMessageBox.confirm('确认删除该商品吗？此操作不可恢复！', '警告', {
+    confirmButtonText: '确定删除',
     cancelButtonText: '取消',
-    type: 'error',
+    type: 'warning',
   }).then(() => {
-    // deleteProduct(row.id!).then(...)
-    // Mock delete
-    const index = tableData.value.findIndex(item => item.id === row.id)
-    if (index !== -1) tableData.value.splice(index, 1)
-    ElMessage.success('删除成功')
+    deleteProduct(row.id!).then(() => {
+      ElMessage.success('删除成功')
+      getList()
+    }).catch(() => {
+      ElMessage.error('删除失败')
+    })
   })
 }
 </script>

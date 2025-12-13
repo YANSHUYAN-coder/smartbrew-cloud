@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 10/12/2025 17:39:20
+ Date: 13/12/2025 17:51:24
 */
 
 SET NAMES utf8mb4;
@@ -29,7 +29,7 @@ CREATE TABLE `ai_knowledge_doc`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ai_knowledge_doc
@@ -117,7 +117,7 @@ CREATE TABLE `oms_order_item`  (
   `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_order_item
@@ -144,9 +144,9 @@ CREATE TABLE `pms_product`  (
 -- ----------------------------
 -- Records of pms_product
 -- ----------------------------
-INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, '咖啡', 'YYDS的生椰拿铁，清爽好喝', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
-INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, '咖啡', '提神醒脑，打工人必备', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
-INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, '甜点', '入口即化，甜蜜享受', NULL, 0, 1, '2025-12-05 23:23:00', '2025-12-05 23:23:00');
+INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, '咖啡', 'YYDS的生椰拿铁，清爽好喝', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-12 15:17:25');
+INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, '咖啡', '提神醒脑，打工人必备', 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-12 15:14:17');
+INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, '甜点', '入口即化，甜蜜享受', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-13 17:18:39');
 
 -- ----------------------------
 -- Table structure for pms_sku_stock
@@ -209,9 +209,35 @@ CREATE TABLE `ums_member`  (
 -- ----------------------------
 -- Records of ums_member
 -- ----------------------------
-INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$67icrSr09JZPjVMT5BuCKOav6TnA1TU.ZpFBbxBmMAdLP7xCisGHi', NULL, NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL);
-INSERT INTO `ums_member` VALUES (8, 'test_user1', '1380013802', '$2a$10$2asM8m6GCZYchML7cKQdaurUDLEA8Ulrv5tkTiTZKsVv6MCDuaYva', NULL, NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, NULL, NULL, NULL);
-INSERT INTO `ums_member` VALUES (9, 'test_user2', '13800138001', '.ZpFBbxBmMAdLP7xCisGHi', NULL, NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, NULL, '2025-12-07 18:23:53', '2025-12-07 18:23:53');
+INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$67icrSr09JZPjVMT5BuCKOav6TnA1TU.ZpFBbxBmMAdLP7xCisGHi', 'test_user', NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 16:54:33');
+INSERT INTO `ums_member` VALUES (8, 'admin', '1380013802', '$2a$10$2asM8m6GCZYchML7cKQdaurUDLEA8Ulrv5tkTiTZKsVv6MCDuaYva', 'admin', NULL, 1, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 17:04:19');
+INSERT INTO `ums_member` VALUES (9, 'test_user2', '13800138001', '.ZpFBbxBmMAdLP7xCisGHi', 'test_user2', NULL, 2, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 16:54:33');
+
+-- ----------------------------
+-- Table structure for ums_member_level
+-- ----------------------------
+DROP TABLE IF EXISTS `ums_member_level`;
+CREATE TABLE `ums_member_level`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '等级名称',
+  `growth_point` int NULL DEFAULT 0 COMMENT '成长值门槛（达到此成长值可升级到此等级）',
+  `discount` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '折扣率（0.00-1.00，1.00表示无折扣）',
+  `integration_rate` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '积分倍率（积分获取倍率，1.00表示正常倍率）',
+  `icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级图标',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级描述',
+  `status` int NULL DEFAULT 1 COMMENT '状态：1-启用 0-禁用',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '会员等级表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of ums_member_level
+-- ----------------------------
+INSERT INTO `ums_member_level` VALUES (1, '普通会员', 0, 1.00, 1.00, NULL, '新注册用户默认等级', 1, '2025-12-13 00:00:00', '2025-12-13 17:18:16');
+INSERT INTO `ums_member_level` VALUES (2, '银卡会员', 100, 0.95, 1.10, NULL, '成长值达到100可升级，享受95折优惠，积分获取1.1倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_member_level` VALUES (3, '金卡会员', 500, 0.90, 1.20, NULL, '成长值达到500可升级，享受9折优惠，积分获取1.2倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_member_level` VALUES (4, '钻石会员', 2000, 0.85, 1.50, NULL, '成长值达到2000可升级，享受85折优惠，积分获取1.5倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
 
 -- ----------------------------
 -- Table structure for ums_member_receive_address
@@ -253,7 +279,7 @@ CREATE TABLE `ums_permission`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 40 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '权限表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_permission
@@ -286,6 +312,17 @@ INSERT INTO `ums_permission` VALUES (25, 'app:order:create', 'APP-创建订单',
 INSERT INTO `ums_permission` VALUES (26, 'app:order:list', 'APP-订单列表', '/app/order/list', 'GET', '2025-12-07 23:02:38', '2025-12-07 23:02:38');
 INSERT INTO `ums_permission` VALUES (27, 'app:order:detail', 'APP-订单详情', '/app/order/detail/*', 'GET', '2025-12-07 23:02:38', '2025-12-07 23:02:38');
 INSERT INTO `ums_permission` VALUES (28, 'app:member:info', 'APP-个人信息', '/app/member/info', 'GET', '2025-12-07 23:02:38', '2025-12-07 23:02:38');
+INSERT INTO `ums_permission` VALUES (29, 'system:menu:list', '查看权限列表', '/admin/permission/list', 'GET', '2025-12-13 16:16:00', '2025-12-13 16:16:00');
+INSERT INTO `ums_permission` VALUES (30, 'system:menu:add', '添加权限', '/admin/permission/create', 'POST', '2025-12-13 16:16:00', '2025-12-13 16:16:00');
+INSERT INTO `ums_permission` VALUES (31, 'system:menu:update', '更新权限', '/admin/permission/update', 'POST', '2025-12-13 16:16:00', '2025-12-13 16:16:00');
+INSERT INTO `ums_permission` VALUES (32, 'system:menu:delete', '删除权限', '/admin/permission/delete', 'DELETE', '2025-12-13 16:17:29', '2025-12-13 16:29:40');
+INSERT INTO `ums_permission` VALUES (33, 'ums:member-level:list', '获取会员等级列表', '/admin/member-level/list', 'GET', '2025-12-13 17:07:29', '2025-12-13 17:07:29');
+INSERT INTO `ums_permission` VALUES (34, 'ums:member-level:detail', '获取会员等级详情', '/admin/member-level/detail', 'GET', '2025-12-13 17:08:10', '2025-12-13 17:08:10');
+INSERT INTO `ums_permission` VALUES (35, 'ums:member-level:add', '新增会员等级', '/admin/member-level/add', 'POST', '2025-12-13 17:08:50', '2025-12-13 17:08:50');
+INSERT INTO `ums_permission` VALUES (36, 'ums:member-level:update', '更新会员等级', '/admin/member-level/update', 'POST', '2025-12-13 17:09:26', '2025-12-13 17:09:26');
+INSERT INTO `ums_permission` VALUES (37, 'ums:member-level:delete', '删除会员等级', '/admin/member-level/delete', 'DELETE', '2025-12-13 17:10:05', '2025-12-13 17:10:05');
+INSERT INTO `ums_permission` VALUES (38, 'ums:member-level:update', '修改会员等级状态', '/admin/member-level/updateStatus', 'POST', '2025-12-13 17:10:53', '2025-12-13 17:10:53');
+INSERT INTO `ums_permission` VALUES (39, 'dashboard:view', '获取统计数据', '/admin/dashboard/statistics', 'GET', '2025-12-13 17:27:36', '2025-12-13 17:28:59');
 
 -- ----------------------------
 -- Table structure for ums_role
@@ -307,7 +344,7 @@ CREATE TABLE `ums_role`  (
 INSERT INTO `ums_role` VALUES (3, 'ROLE_ADMIN', '超级管理员：系统最高权限，拥有所有功能', 1, '2025-12-07 22:08:39', '2025-12-07 22:08:39');
 INSERT INTO `ums_role` VALUES (4, 'ROLE_MANAGER', '店长：负责门店运营，拥有商品管理、订单管理及门店报表权限', 1, '2025-12-07 22:08:39', '2025-12-07 22:08:39');
 INSERT INTO `ums_role` VALUES (5, 'ROLE_BARISTA', '咖啡师：负责接单、制作咖啡、核销取餐码及更新订单状态', 1, '2025-12-07 22:08:39', '2025-12-07 22:08:39');
-INSERT INTO `ums_role` VALUES (6, 'ROLE_MEMBER', '普通会员：C端APP注册用户默认角色', 1, '2025-12-07 22:08:39', '2025-12-07 22:08:39');
+INSERT INTO `ums_role` VALUES (6, 'ROLE_MEMBER', '普通会员：C端APP注册用户默认角色', 1, '2025-12-07 22:08:39', '2025-12-13 16:35:55');
 
 -- ----------------------------
 -- Table structure for ums_role_permission
@@ -318,72 +355,84 @@ CREATE TABLE `ums_role_permission`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `permission_id` bigint NOT NULL COMMENT '权限ID',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 81 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 219 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '角色权限关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_role_permission
 -- ----------------------------
-INSERT INTO `ums_role_permission` VALUES (1, 3, 1, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (2, 3, 2, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (3, 3, 3, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (4, 3, 4, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (5, 3, 5, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (6, 3, 6, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (7, 3, 7, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (8, 3, 8, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (9, 3, 9, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (10, 3, 10, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (11, 3, 11, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (12, 3, 12, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (13, 3, 13, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (14, 3, 14, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (15, 3, 15, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (16, 3, 16, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (17, 3, 17, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (18, 3, 18, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (19, 3, 19, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (20, 3, 20, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (21, 3, 21, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (22, 3, 22, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (23, 3, 23, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (24, 3, 24, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (25, 3, 25, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (26, 3, 26, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (27, 3, 27, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (28, 3, 28, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (32, 4, 1, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (33, 4, 2, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (34, 4, 3, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (35, 4, 4, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (36, 4, 5, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (37, 4, 6, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (38, 4, 7, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (39, 4, 8, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (40, 4, 9, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (41, 4, 10, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (42, 4, 11, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (43, 4, 12, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (44, 4, 13, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (45, 4, 14, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (46, 4, 15, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (47, 4, 16, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (48, 4, 17, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (63, 5, 1, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (64, 5, 6, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (65, 5, 7, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (66, 5, 8, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (70, 6, 18, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (71, 6, 19, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (72, 6, 20, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (73, 6, 21, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (74, 6, 22, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (75, 6, 23, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (76, 6, 24, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (77, 6, 25, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (78, 6, 26, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (79, 6, 27, '2025-12-07 23:10:50');
-INSERT INTO `ums_role_permission` VALUES (80, 6, 28, '2025-12-07 23:10:50');
+INSERT INTO `ums_role_permission` VALUES (32, 4, 1, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (33, 4, 2, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (34, 4, 3, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (35, 4, 4, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (36, 4, 5, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (37, 4, 6, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (38, 4, 7, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (39, 4, 8, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (40, 4, 9, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (41, 4, 10, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (42, 4, 11, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (43, 4, 12, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (44, 4, 13, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (45, 4, 14, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (46, 4, 15, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (47, 4, 16, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (48, 4, 17, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (63, 5, 1, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (64, 5, 6, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (65, 5, 7, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (66, 5, 8, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (70, 6, 18, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (71, 6, 19, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (72, 6, 20, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (73, 6, 21, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (74, 6, 22, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (75, 6, 23, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (76, 6, 24, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (77, 6, 25, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (78, 6, 26, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (79, 6, 27, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (80, 6, 28, '2025-12-07 23:10:50', '2025-12-13 15:49:44');
+INSERT INTO `ums_role_permission` VALUES (180, 3, 39, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (181, 3, 38, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (182, 3, 37, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (183, 3, 36, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (184, 3, 35, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (185, 3, 34, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (186, 3, 33, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (187, 3, 32, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (188, 3, 31, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (189, 3, 30, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (190, 3, 29, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (191, 3, 23, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (192, 3, 24, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (193, 3, 25, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (194, 3, 26, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (195, 3, 27, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (196, 3, 28, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (197, 3, 18, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (198, 3, 19, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (199, 3, 20, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (200, 3, 21, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (201, 3, 22, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (202, 3, 2, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (203, 3, 3, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (204, 3, 4, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (205, 3, 5, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (206, 3, 6, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (207, 3, 7, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (208, 3, 17, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (209, 3, 16, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (210, 3, 15, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (211, 3, 14, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (212, 3, 13, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (213, 3, 12, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (214, 3, 11, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (215, 3, 10, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (216, 3, 9, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (217, 3, 8, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
+INSERT INTO `ums_role_permission` VALUES (218, 3, 1, '2025-12-13 17:28:18', '2025-12-13 17:28:18');
 
 -- ----------------------------
 -- Table structure for ums_user_role
@@ -395,38 +444,13 @@ CREATE TABLE `ums_user_role`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_user_role
 -- ----------------------------
 INSERT INTO `ums_user_role` VALUES (1, 1, 6, '2025-12-07 23:13:51');
-INSERT INTO `ums_user_role` VALUES (2, 2, 3, '2025-12-07 23:28:43');
-
--- ----------------------------
--- Table structure for ums_member_level
--- ----------------------------
-DROP TABLE IF EXISTS `ums_member_level`;
-CREATE TABLE `ums_member_level`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '等级名称',
-  `growth_point` int NULL DEFAULT 0 COMMENT '成长值门槛（达到此成长值可升级到此等级）',
-  `discount` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '折扣率（0.00-1.00，1.00表示无折扣）',
-  `integration_rate` decimal(3, 2) NULL DEFAULT 1.00 COMMENT '积分倍率（积分获取倍率，1.00表示正常倍率）',
-  `icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级图标',
-  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '等级描述',
-  `status` int NULL DEFAULT 1 COMMENT '状态：1-启用 0-禁用',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '会员等级表' ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Records of ums_member_level
--- ----------------------------
-INSERT INTO `ums_member_level` VALUES (1, '普通会员', 0, 1.00, 1.00, NULL, '新注册用户默认等级', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
-INSERT INTO `ums_member_level` VALUES (2, '银卡会员', 100, 0.95, 1.10, NULL, '成长值达到100可升级，享受95折优惠，积分获取1.1倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
-INSERT INTO `ums_member_level` VALUES (3, '金卡会员', 500, 0.90, 1.20, NULL, '成长值达到500可升级，享受9折优惠，积分获取1.2倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
-INSERT INTO `ums_member_level` VALUES (4, '钻石会员', 2000, 0.85, 1.50, NULL, '成长值达到2000可升级，享受85折优惠，积分获取1.5倍', 1, '2025-12-13 00:00:00', '2025-12-13 00:00:00');
+INSERT INTO `ums_user_role` VALUES (2, 8, 3, '2025-12-07 23:28:43');
+INSERT INTO `ums_user_role` VALUES (3, 9, 4, '2025-12-13 16:02:09');
 
 SET FOREIGN_KEY_CHECKS = 1;

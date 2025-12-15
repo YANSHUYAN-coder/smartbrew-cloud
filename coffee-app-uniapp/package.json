@@ -1,0 +1,21 @@
+{
+  "name": "coffee-app-uniapp",
+  "version": "1.0.0",
+  "description": "智咖云 APP - uniapp 版本",
+  "main": "main.js",
+  "scripts": {
+    "dev:h5": "vite",
+    "build:h5": "vite build"
+  },
+  "dependencies": {
+    "vue": "^3.2.47",
+    "pinia": "^2.1.7"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "^3.0.0-alpha-3081220231212001",
+    "@dcloudio/types": "^3.4.8",
+    "vite": "^4.5.0",
+    "sass": "^1.69.5"
+  }
+}
+

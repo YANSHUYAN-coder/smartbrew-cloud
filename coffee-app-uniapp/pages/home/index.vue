@@ -8,7 +8,8 @@
 						<text class="location-text">智咖·云</text>
 						<text class="chevron">›</text>
 					</view>
-					<text class="bell-icon">🔔</text>
+					<!-- <text class="bell-icon">🔔</text> -->
+					<uni-icons custom-prefix="iconfont" type="icon-message" size="30"></uni-icons>
 				</view>
 
 				<!-- 搜索框：这里不再是普通的 input，而是一个点击区域 -->
@@ -439,7 +440,7 @@
 
 	.recommend-section {
 		padding: 0 40rpx;
-		margin-top: 64rpx;
+		margin-top: 48rpx;
 	}
 
 	.section-header {
@@ -575,7 +576,7 @@
 
 	/* 新品模块样式 */
 	.new-arrival-section {
-		padding: 0 0 0 40rpx;
+		padding: 0 40rpx;
 		/* 左边留白，右边不留白以便滑动 */
 		margin-top: 48rpx;
 	}

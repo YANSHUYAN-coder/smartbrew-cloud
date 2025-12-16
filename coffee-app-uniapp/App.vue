@@ -21,6 +21,7 @@ onHide(() => {
 </script>
 
 <style lang="scss">
+@import "@/static/font/iconfont.css";
 /* 全局样式 */
 page {
   background-color: #f5f5f5;

@@ -183,9 +183,7 @@
 		useCartStore
 	} from '@/store/cart.js'
 
-	import {
-		getCategories
-	} from '@/api/categories.js'
+	import { getCategories } from '@/apis/categories.js'
 
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()

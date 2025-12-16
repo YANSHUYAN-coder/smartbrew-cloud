@@ -8,9 +8,8 @@
 						<text class="location-text">智咖·云</text>
 						<text class="chevron">›</text>
 					</view>
-					<!-- <text class="bell-icon">🔔</text> -->
-					<!-- <uni-icons custom-prefix="iconfont" type="icon-message"></uni-icons> -->
-					<text class="iconfont icon-message"></text>
+					<uni-icons custom-prefix="iconfont" type="icon-message"
+					color="#000" size="24"></uni-icons>
 				</view>
 
 				<!-- 搜索框：这里不再是普通的 input，而是一个点击区域 -->
@@ -283,10 +282,6 @@
 		color: #999;
 	}
 
-	.bell-icon {
-		font-size: 48rpx;
-		color: #666;
-	}
 
 	/* 优化后的搜索框样式 */
 	.search-box {

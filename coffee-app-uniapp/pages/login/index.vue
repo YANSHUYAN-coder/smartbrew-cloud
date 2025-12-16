@@ -74,8 +74,8 @@ export default {
     return {
       isLogin: true, // true 为登录模式, false 为注册模式
       form: {
-        username: '', // 实际作为手机号 phone 使用
-        password: '',
+        username: '13800138000', // 实际作为手机号 phone 使用
+        password: '123456',
         confirmPassword: ''
       }
     }

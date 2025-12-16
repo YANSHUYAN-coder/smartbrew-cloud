@@ -5,5 +5,5 @@ import { get, post } from '@/utils/request.js'
 
 // 获取商品分类
 export const getCategories = () => {
-  return get('/api/app/categories')
+  return get('/app/categories')
 }

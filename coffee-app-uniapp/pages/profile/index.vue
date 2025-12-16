@@ -64,7 +64,8 @@
 		onMounted
 	} from 'vue'
 	import {
-		onLoad
+		onLoad,
+		onShow
 	} from '@dcloudio/uni-app'
 	import {
 		getStatusBarHeight
@@ -172,6 +173,13 @@
 
 	onLoad(() => {
 		console.log('我的页面加载')
+	})
+	
+	onShow(() => {
+	  uni.setNavigationBarColor({
+	    frontColor: '#ffffff', // 只能是 #ffffff 或 #000000
+	    backgroundColor: 'transparent' // 在 custom 模式下，背景色通常设为透明，或者跟页面背景一致
+	  })
 	})
 </script>
 

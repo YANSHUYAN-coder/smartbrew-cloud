@@ -14,7 +14,10 @@
         <text class="menu-arrow">›</text>
       </view>
     </view>
-    
+
+    <!-- 登录按钮 -->
+    <view class="login-btn" @click="goLogin">登录账号</view>
+
     <view class="logout-btn" @click="handleLogout">退出登录</view>
   </view>
 </template>
@@ -22,6 +25,10 @@
 <script setup>
 const goProfileEdit = () => {
   uni.navigateTo({ url: '/pages/profile/edit' })
+}
+
+const goLogin = () => {
+  uni.navigateTo({ url: '/pages/login/index' })
 }
 
 const handleSecurity = () => {
@@ -75,6 +82,16 @@ const handleLogout = () => {
 .menu-item:last-child { border-bottom: none; }
 .menu-name { font-size: 28rpx; color: #333; }
 .menu-arrow { font-size: 28rpx; color: #ccc; }
+
+.login-btn {
+  margin-top: 40rpx;
+  background-color: #6f4e37;
+  color: #ffffff;
+  text-align: center;
+  padding: 28rpx;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+}
 
 .logout-btn {
   margin-top: 40rpx;

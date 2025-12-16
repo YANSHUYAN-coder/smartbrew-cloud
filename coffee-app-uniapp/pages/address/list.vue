@@ -47,7 +47,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import request from '@/utils/request.js'
+import {request} from '@/utils/request.js'
 import { onShow } from '@dcloudio/uni-app'
 
 const addressList = ref([])

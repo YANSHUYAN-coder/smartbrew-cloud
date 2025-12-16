@@ -9,7 +9,8 @@
 						<text class="chevron">›</text>
 					</view>
 					<!-- <text class="bell-icon">🔔</text> -->
-					<uni-icons custom-prefix="iconfont" type="icon-message" size="30"></uni-icons>
+					<!-- <uni-icons custom-prefix="iconfont" type="icon-message"></uni-icons> -->
+					<text class="iconfont icon-message"></text>
 				</view>
 
 				<!-- 搜索框：这里不再是普通的 input，而是一个点击区域 -->

@@ -79,7 +79,8 @@
 										<text class="spec-btn">选规格</text>
 										<!-- 如果有数量，显示角标 -->
 										<view class="badge" v-if="getCartCountById(prod.id) > 0">
-											{{ getCartCountById(prod.id) }}</view>
+											{{ getCartCountById(prod.id) }}
+										</view>
 									</view>
 								</view>
 							</view>
@@ -182,6 +183,10 @@
 		useCartStore
 	} from '@/store/cart.js'
 
+	import {
+		getCategories
+	} from '@/api/categories.js'
+
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()
 
@@ -219,6 +224,10 @@
 		},
 	];
 	const products = PRODUCTS
+	
+	// 获取商品分类
+	console.log("获取商品分类",getCategories());
+	
 
 	// --- 左右联动逻辑 ---
 	const handleCategoryClick = (index) => {

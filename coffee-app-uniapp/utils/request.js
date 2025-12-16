@@ -3,7 +3,7 @@
  * 用于统一处理 API 请求
  */
 
-const BASE_URL = 'http://localhost:8080' // 根据实际情况修改
+const BASE_URL = 'http://localhost:8081' // 根据实际情况修改
 
 // 请求拦截器
 const requestInterceptor = (config) => {

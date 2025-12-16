@@ -39,7 +39,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import request from '@/utils/request.js'
+import {request} from '@/utils/request.js'
 
 const isEdit = ref(false)
 const regionStr = ref('') // 简单的省市区输入，后续优化为选择器

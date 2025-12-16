@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 13/12/2025 17:51:24
+ Date: 16/12/2025 17:52:37
 */
 
 SET NAMES utf8mb4;
@@ -92,7 +92,7 @@ CREATE TABLE `oms_order`  (
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_sn`(`order_sn` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order
@@ -117,11 +117,36 @@ CREATE TABLE `oms_order_item`  (
   `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_order_item
 -- ----------------------------
+
+-- ----------------------------
+-- Table structure for pms_category
+-- ----------------------------
+DROP TABLE IF EXISTS `pms_category`;
+CREATE TABLE `pms_category`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '分类名称',
+  `icon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '分类图标',
+  `sort` int NULL DEFAULT 0 COMMENT '排序权重, 值越大越靠前',
+  `status` tinyint(1) NULL DEFAULT 1 COMMENT '状态: 1-启用, 0-禁用',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品分类表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of pms_category
+-- ----------------------------
+INSERT INTO `pms_category` VALUES (1, '咖啡', 'https://cdn-icons-png.flaticon.com/512/2935/2935413.png', 100, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (2, '茶饮', 'https://cdn-icons-png.flaticon.com/512/924/924514.png', 90, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (3, '甜点', 'https://cdn-icons-png.flaticon.com/512/3081/3081840.png', 80, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (4, '烘焙', 'https://cdn-icons-png.flaticon.com/512/992/992747.png', 70, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (5, '轻食', 'https://cdn-icons-png.flaticon.com/512/2515/2515127.png', 60, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (6, '周边', 'https://cdn-icons-png.flaticon.com/512/862/862856.png', 50, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
 
 -- ----------------------------
 -- Table structure for pms_product
@@ -131,7 +156,7 @@ CREATE TABLE `pms_product`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '商品名称',
   `price` decimal(10, 2) NOT NULL COMMENT '价格',
-  `category` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '分类(如: 咖啡, 甜点)',
+  `category_id` bigint NULL DEFAULT NULL COMMENT '分类(如: 咖啡, 甜点)',
   `description` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '描述',
   `pic_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '图片地址',
   `sales` int NULL DEFAULT 0 COMMENT '销量',
@@ -139,14 +164,31 @@ CREATE TABLE `pms_product`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_product
 -- ----------------------------
-INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, '咖啡', 'YYDS的生椰拿铁，清爽好喝', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-12 15:17:25');
-INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, '咖啡', '提神醒脑，打工人必备', 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-12 15:14:17');
-INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, '甜点', '入口即化，甜蜜享受', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-13 17:18:39');
+INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, 1, 'YYDS的生椰拿铁，清爽好喝', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, 1, '提神醒脑，打工人必备', 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, 1, '入口即化，甜蜜享受', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (4, '焦糖玛奇朵', 32.00, 1, '精选深度烘焙的阿拉比卡咖啡豆，融合丝滑蒸奶与绵密奶泡，顶部淋上香甜浓郁的手工熬制焦糖酱。层次分明，入口先是焦糖的甜香，随后是咖啡的醇厚，甜蜜中带有微苦的复杂口感，适合喜欢丰富层次感的您。', 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=600&auto=format&fit=crop', 120, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (5, '法式草莓拿破仑', 45.00, 1, '经典法式甜品代表，采用72层手工起酥工艺，酥皮金黄酥脆，层次分明。夹层填充特制香草卡士达酱与新鲜采摘的有机红颜草莓，每一口都能感受到酥脆与柔滑的完美碰撞，甜而不腻，果香四溢。', 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?q=80&w=600&auto=format&fit=crop', 85, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (6, '冷萃耶加雪菲', 38.00, 1, '选用埃塞俄比亚耶加雪菲G1级咖啡豆，经过12小时低温慢速萃取。有效降低了咖啡的酸涩感，最大限度保留了豆子本身的花香与柑橘风味。口感干净清爽，带有明亮的果酸和回甘，是炎炎夏日的解暑神器。', 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?q=80&w=600&auto=format&fit=crop', 210, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (7, '宇治抹茶千层', 36.00, 1, '严选日本宇治丸久小山园抹茶粉，手工煎制20余层极薄的可丽饼皮。每层之间均匀涂抹特调抹茶奶油，入口即化，茶香浓郁深邃，微苦回甘，顶部撒满细腻抹茶粉，为您带来极致的日式风味体验。', 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?q=80&w=600&auto=format&fit=crop', 156, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (8, '海盐芝士拿铁', 34.00, 1, '创新风味拿铁，在浓缩咖啡与鲜奶的基础上，覆盖一层厚实的喜马拉雅粉红海盐芝士奶盖。咸甜交织的奇妙口感，极大地提升了咖啡的香气，口感顺滑细腻，独特的咸味更能衬托出牛奶的香甜。', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=600&auto=format&fit=crop', 98, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (9, '伯爵红茶司康', 18.00, 1, '传统英式下午茶必备点心，面团中揉入上等伯爵红茶碎与糖渍橙皮丁。外层烘烤至酥松，内里保持湿润松软，散发出佛手柑的独特清香。建议加热后搭配凝结奶油（Clotted Cream）或草莓果酱食用，风味更佳。', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=600&auto=format&fit=crop', 340, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (10, '焦糖玛奇朵', 32.00, 1, '精选深度烘焙的阿拉比卡咖啡豆，融合丝滑蒸奶与绵密奶泡，顶部淋上香甜浓郁的手工熬制焦糖酱。层次分明，入口先是焦糖的甜香，随后是咖啡的醇厚，甜蜜中带有微苦的复杂口感。', 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=600&auto=format&fit=crop', 120, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (11, '冷萃耶加雪菲', 38.00, 1, '选用埃塞俄比亚耶加雪菲G1级咖啡豆，经过12小时低温慢速萃取。有效降低了咖啡的酸涩感，最大限度保留了豆子本身的花香与柑橘风味。口感干净清爽，带有明亮的果酸和回甘。', 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?q=80&w=600&auto=format&fit=crop', 210, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (12, '海盐芝士拿铁', 34.00, 1, '创新风味拿铁，在浓缩咖啡与鲜奶的基础上，覆盖一层厚实的喜马拉雅粉红海盐芝士奶盖。咸甜交织的奇妙口感，极大地提升了咖啡的香气，口感顺滑细腻，独特的咸味更能衬托出牛奶的香甜。', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=600&auto=format&fit=crop', 98, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (13, '满杯红柚', 28.00, 2, '严选南非红宝石西柚，果肉饱满多汁。搭配清雅茉莉绿茶底，茶香与果香完美融合。每一口都能吸到爆汁的西柚果粒，酸甜解腻，维C满满，是夏日里的一抹清凉。', 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=600&auto=format&fit=crop', 350, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (14, '芝士白桃乌龙', 26.00, 2, '选用高山白桃乌龙茶作为茶底，香气高扬持久。顶部覆盖3cm厚打发咸芝士奶盖，撒上少许抹茶粉点缀。建议45度角大口饮用，同时品尝到奶盖的绵密与茶汤的清冽。', 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=600&auto=format&fit=crop', 280, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (15, '法式草莓拿破仑', 45.00, 3, '经典法式甜品代表，采用72层手工起酥工艺，酥皮金黄酥脆，层次分明。夹层填充特制香草卡士达酱与新鲜采摘的有机红颜草莓，每一口都能感受到酥脆与柔滑的完美碰撞。', 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?q=80&w=600&auto=format&fit=crop', 85, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (16, '宇治抹茶千层', 36.00, 3, '严选日本宇治丸久小山园抹茶粉，手工煎制20余层极薄的可丽饼皮。每层之间均匀涂抹特调抹茶奶油，入口即化，茶香浓郁深邃，微苦回甘，顶部撒满细腻抹茶粉。', 'https://images.unsplash.com/photo-1505252585461-04db1eb84625?q=80&w=600&auto=format&fit=crop', 156, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (17, '经典黄油可颂', 18.00, 4, '使用法国AOP产区发酵黄油，经过多次折叠擀压，形成蜂窝状的完美切面。外壳酥脆掉渣，内里柔软充满空气感，浓郁的黄油香气在唇齿间久久不散，早餐的最佳拍档。', 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=600&auto=format&fit=crop', 420, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (18, '蓝莓乳酪贝果', 22.00, 4, '低糖低油的健康贝果，面团经过水煮工艺，口感扎实有嚼劲。内馅包裹着大颗蓝莓果肉与顺滑奶油奶酪，经过烘烤后爆浆流心，酸甜适口，越嚼越香。', 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?q=80&w=600&auto=format&fit=crop', 190, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (19, '烟熏鸡胸肉三明治', 38.00, 5, '精选全麦吐司，夹入低温慢煮的烟熏鸡胸肉，肉质鲜嫩不柴。搭配新鲜生菜、番茄片、黄瓜与特制低脂蜂蜜芥末酱。营养均衡，饱腹感强，是健身人士的首选。', 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?q=80&w=600&auto=format&fit=crop', 160, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (20, '品牌纪念马克杯', 88.00, 6, '独家定制的品牌纪念马克杯，采用优质骨瓷烧制，质地轻盈透光。极简设计风格，杯身印有经典Logo。宽口设计适合拉花，为您居家品尝咖啡增添一份仪式感。', 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?q=80&w=600&auto=format&fit=crop', 50, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
 
 -- ----------------------------
 -- Table structure for pms_sku_stock

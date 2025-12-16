@@ -54,6 +54,12 @@
 			"style": {
 				"navigationBarTitleText": "个人资料"
 			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录注册"
+			}
 		}
 	],
 	"globalStyle": {

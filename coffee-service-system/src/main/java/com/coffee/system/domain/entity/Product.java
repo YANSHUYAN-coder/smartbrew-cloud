@@ -22,9 +22,9 @@ public class Product extends BaseEntity {
     private BigDecimal price;
 
     /**
-     * 分类 (如: 咖啡, 甜点)
+     * 分类ID (关联 pms_category 表)
      */
-    private String category;
+    private Long categoryId;
 
     /**
      * 描述

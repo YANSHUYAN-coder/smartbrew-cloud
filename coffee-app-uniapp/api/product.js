@@ -3,11 +3,6 @@
  */
 import { get, post } from '@/utils/request.js'
 
-// 获取商品分类
-export const getCategories = () => {
-  return get('/api/product/categories')
-}
-
 // 获取商品列表
 export const getProducts = (params = {}) => {
   return get('/api/product/list', params)

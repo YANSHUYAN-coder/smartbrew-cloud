@@ -121,7 +121,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import request from '@/utils/request.js'
+import {request} from '@/utils/request.js'
 
 const loading = ref(false)
 const endDate = new Date().toISOString().split('T')[0]

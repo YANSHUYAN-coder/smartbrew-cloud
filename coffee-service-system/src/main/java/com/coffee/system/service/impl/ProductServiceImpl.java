@@ -7,10 +7,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.vo.ProductDetailVO;
+import com.coffee.system.domain.entity.Category;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.entity.SkuStock;
 import com.coffee.system.domain.dto.ProductDTO;
 import com.coffee.system.mapper.ProductMapper;
+import com.coffee.system.service.CategoryService;
 import com.coffee.system.service.ProductService;
 import com.coffee.system.service.SkuStockService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Autowired
     private SkuStockService skuStockService;
+
+    @Autowired
+    private CategoryService categoryService;
 
     @Override
     public Page<Product> getList(PageParam pageParam) {
@@ -106,14 +111,20 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public Map<String, List<Product>> getMenu() {
-        // 查询所有上架商品 (status=1)
+        // 1. 查询所有上架商品 (status=1)
         List<Product> allProducts = this.list(new LambdaQueryWrapper<Product>()
                 .eq(Product::getStatus, 1)
                 .orderByDesc(Product::getSales)); // 按销量排序
 
-        // 按分类分组 (JDK 8 Stream)
+        // 2. 查询所有启用的分类，构建 ID -> 名称的映射
+        List<Category> categories = categoryService.getEnabledCategories();
+        Map<Long, String> categoryMap = categories.stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+
+        // 3. 按分类名称分组（通过 categoryId 查找分类名称）
         return allProducts.stream()
-                .collect(Collectors.groupingBy(Product::getCategory));
+                .filter(product -> product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId()))
+                .collect(Collectors.groupingBy(product -> categoryMap.get(product.getCategoryId())));
     }
 
     @Override
@@ -127,9 +138,19 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         // 2. 查 SKU 库存信息
         List<SkuStock> skuList = skuStockService.listByProductId(id);
 
-        // 3. 组装 VO
+        // 3. 查询分类名称
+        String categoryName = null;
+        if (product.getCategoryId() != null) {
+            Category category = categoryService.getById(product.getCategoryId());
+            if (category != null) {
+                categoryName = category.getName();
+            }
+        }
+
+        // 4. 组装 VO
         ProductDetailVO vo = new ProductDetailVO();
         BeanUtil.copyProperties(product, vo); // Hutool 属性拷贝
+        vo.setCategory(categoryName); // 设置分类名称
         vo.setSkuList(skuList);
         return vo;
     }

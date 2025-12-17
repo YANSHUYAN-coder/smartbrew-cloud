@@ -112,7 +112,8 @@
 		onMounted
 	} from 'vue'
 	import {
-		onLoad
+		onLoad,
+		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 	import {
 		PRODUCTS
@@ -227,8 +228,24 @@
 		})
 	}
 
+	// 加载首页数据
+	const loadHomeData = async () => {
+		// 这里可以添加加载首页数据的逻辑
+		// 例如：获取推荐商品、新品等
+		// 目前使用模拟数据，所以暂时不需要
+		return true
+	}
+
+	// 下拉刷新
+	onPullDownRefresh(async () => {
+		await loadHomeData()
+		// 停止下拉刷新动画
+		uni.stopPullDownRefresh()
+	})
+
 	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
+		loadHomeData()
 	})
 </script>
 

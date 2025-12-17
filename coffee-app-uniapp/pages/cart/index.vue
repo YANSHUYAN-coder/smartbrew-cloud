@@ -9,7 +9,14 @@
 		</view>
 
 		<!-- 2. 购物车列表 -->
-		<scroll-view class="cart-scroll" scroll-y :style="{ height: `calc(100vh - ${statusBarHeight + 44 + 100}px)` }">
+		<scroll-view 
+			class="cart-scroll" 
+			scroll-y 
+			:style="{ height: `calc(100vh - ${statusBarHeight + 44 + 100}px)` }"
+			:refresher-enabled="true"
+			:refresher-triggered="refreshing"
+			@refresherrefresh="onRefresh"
+			@refresherrestore="onRefreshRestore">
 			<view class="cart-list" v-if="cartItems.length > 0">
 
 				<!-- 商家分组标题 (预留多商家扩展) -->
@@ -17,12 +24,12 @@
 					<view class="checkbox" :class="{ checked: isAllChecked }" @click="toggleAllCheck">
 						<text class="check-icon" v-if="isAllChecked">✓</text>
 					</view>
-					<text class="shop-name">智咖·云 (科兴科学园店)</text>
+					<text class="shop-name">智咖·云</text>
 					<text class="shop-arrow">›</text>
 				</view>
 
 				<!-- 商品卡片 (支持侧滑删除) -->
-				<view v-for="(item, index) in cartItems" :key="item.id" class="cart-item-wrapper">
+				<view v-for="(item, index) in cartItems" :key="item.cartKey || `cart-${item.id}-${index}`" class="cart-item-wrapper">
 					<!-- 这里使用简单的布局模拟侧滑效果，实际可以使用 uni-swipe-action -->
 					<view class="cart-card">
 						<!-- 复选框 -->
@@ -39,10 +46,10 @@
 						<view class="info-box">
 							<view class="title-row">
 								<text class="prod-name">{{ item.name }}</text>
-								<text class="delete-icon" v-if="isManageMode" @click="removeItem(item.id)">×</text>
+								<text class="delete-icon" v-if="isManageMode" @click="removeItem(item)">×</text>
 							</view>
-							<view class="spec-row">
-								<text class="spec-tag">大杯 / 冰 / 全糖</text>
+							<view class="spec-row" v-if="getSpecText(item)">
+								<text class="spec-tag">{{ getSpecText(item) }}</text>
 							</view>
 							<view class="bottom-row">
 								<view class="price-box">
@@ -51,9 +58,9 @@
 								</view>
 								<!-- 加减器 -->
 								<view class="stepper">
-									<view class="step-btn minus" @click.stop="updateQuantity(item.id, -1)">-</view>
+									<view class="step-btn minus" @click.stop="updateQuantity(item, -1)">-</view>
 									<input type="number" class="step-input" :value="item.quantity" disabled />
-									<view class="step-btn plus" @click.stop="updateQuantity(item.id, 1)">+</view>
+									<view class="step-btn plus" @click.stop="updateQuantity(item, 1)">+</view>
 								</view>
 							</view>
 						</view>
@@ -109,6 +116,9 @@
 		onMounted
 	} from 'vue'
 	import {
+		onPullDownRefresh
+	} from '@dcloudio/uni-app'
+	import {
 		useCartStore
 	} from '@/store/cart.js'
 	import {
@@ -118,6 +128,7 @@
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()
 	const isManageMode = ref(false) // 管理模式开关
+	const refreshing = ref(false) // 下拉刷新状态
 
 	// --- 计算属性 ---
 	const cartItems = computed(() => cartStore.items)
@@ -154,37 +165,75 @@
 		cartItems.value.forEach(item => item.checked = targetStatus)
 	}
 
-	// 数量加减
-	const updateQuantity = (id, delta) => {
-		const item = cartItems.value.find(i => i.id === id)
-		if (!item) return
+	// 获取规格文本
+	const getSpecText = (item) => {
+		if (item.selectedSpecs && Object.keys(item.selectedSpecs).length > 0) {
+			return Object.values(item.selectedSpecs).join(' / ')
+		}
+		return ''
+	}
 
+	// 数量加减
+	const updateQuantity = async (item, delta) => {
+		const cartKey = item.cartKey || cartStore.getCartItemKey(item)
 		const newQty = item.quantity + delta
+		
 		if (newQty <= 0) {
 			uni.showModal({
 				title: '提示',
 				content: '确定要删除该商品吗？',
-				success: (res) => {
-					if (res.confirm) removeItem(id)
+				success: async (res) => {
+					if (res.confirm) {
+						try {
+							await cartStore.removeItemByKey(cartKey)
+						} catch (error) {
+							uni.showToast({
+								title: '删除失败',
+								icon: 'none'
+							})
+						}
+					}
 				}
 			})
 		} else {
-			// 同样，这里应该调用 store.updateQuantity
-			item.quantity = newQty
+			try {
+				await cartStore.updateQuantity(cartKey, delta)
+			} catch (error) {
+				uni.showToast({
+					title: '更新失败',
+					icon: 'none'
+				})
+			}
 		}
 	}
 
-	const removeItem = (id) => {
-		// store.remove(id)
-		const index = cartStore.items.findIndex(i => i.id === id)
-		if (index > -1) cartStore.items.splice(index, 1)
+	const removeItem = async (item) => {
+		const cartKey = item.cartKey || cartStore.getCartItemKey(item)
+		try {
+			await cartStore.removeItemByKey(cartKey)
+		} catch (error) {
+			uni.showToast({
+				title: '删除失败',
+				icon: 'none'
+			})
+		}
 	}
 
-	const removeSelected = () => {
+	const removeSelected = async () => {
 		// 批量删除逻辑
-		const unselected = cartStore.items.filter(i => !i.checked)
-		cartStore.items = unselected // 简单粗暴替换
-		isManageMode.value = false
+		const selectedItems = cartItems.value.filter(i => i.checked)
+		try {
+			for (const item of selectedItems) {
+				const cartKey = item.cartKey || cartStore.getCartItemKey(item)
+				await cartStore.removeItemByKey(cartKey)
+			}
+			isManageMode.value = false
+		} catch (error) {
+			uni.showToast({
+				title: '删除失败',
+				icon: 'none'
+			})
+		}
 	}
 
 	const goToMenu = () => {
@@ -205,8 +254,40 @@
 		})
 	}
 
+	// 加载购物车数据
+	const loadCartData = async () => {
+		try {
+			// 从后端同步购物车数据
+			await cartStore.syncCart()
+		} catch (error) {
+			console.error('加载购物车数据失败', error)
+			// 如果同步失败，继续使用本地数据
+		}
+	}
+
+	// 下拉刷新
+	const onRefresh = async () => {
+		refreshing.value = true
+		await loadCartData()
+		setTimeout(() => {
+			refreshing.value = false
+		}, 300)
+	}
+
+	// 刷新恢复
+	const onRefreshRestore = () => {
+		refreshing.value = false
+	}
+
+	// 页面下拉刷新（如果 scroll-view 的下拉刷新不工作，可以使用这个）
+	onPullDownRefresh(async () => {
+		await loadCartData()
+		uni.stopPullDownRefresh()
+	})
+
 	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
+		loadCartData()
 	})
 </script>
 

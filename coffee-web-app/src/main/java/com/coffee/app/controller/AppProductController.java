@@ -1,6 +1,7 @@
 package com.coffee.app.controller;
 
 import com.coffee.common.result.Result;
+import com.coffee.common.vo.MenuVO;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.service.ProductService;
@@ -23,11 +24,23 @@ public class AppProductController {
     /**
      * 1. 首页菜单列表 (按分类分组)
      * 返回结构：{"拿铁": [Product1, Product2], "美式": [...]}
+     * @deprecated 使用 getMenuVO() 替代
      */
     @GetMapping("/menu")
+    @Deprecated
     public Result<Map<String, List<Product>>> getMenu() {
         Map<String, List<Product>> menuMap = productService.getMenu();
         return Result.success(menuMap);
+    }
+
+    /**
+     * 获取菜单数据（新格式，前端直接使用）
+     * 返回结构：{categories: [{id, name}], products: [{id, name, categoryId, ...}]}
+     */
+    @GetMapping("/menu/vo")
+    public Result<MenuVO> getMenuVO() {
+        MenuVO menuVO = productService.getMenuVO();
+        return Result.success(menuVO);
     }
 
     /**

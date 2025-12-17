@@ -3,7 +3,7 @@
  * 用于统一处理 API 请求
  */
 
-const BASE_URL = '/api' // 根据实际情况修改
+import { BASE_URL } from './config.js'
 
 // 请求拦截器
 const requestInterceptor = (config) => {

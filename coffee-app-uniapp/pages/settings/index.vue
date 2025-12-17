@@ -84,7 +84,8 @@
 		onMounted
 	} from 'vue'
 	import {
-		onShow
+		onShow,
+		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 
 	const cacheSize = ref('0KB')
@@ -182,6 +183,23 @@
 			}
 		})
 	}
+
+	// 加载设置页面数据
+	const loadSettingsData = async () => {
+		// 重新计算缓存大小
+		calculateCache()
+		// 检查登录状态
+		const token = uni.getStorageSync('token')
+		hasLogin.value = !!token
+		return true
+	}
+
+	// 下拉刷新
+	onPullDownRefresh(async () => {
+		await loadSettingsData()
+		// 停止下拉刷新动画
+		uni.stopPullDownRefresh()
+	})
 </script>
 
 <style lang="scss" scoped>

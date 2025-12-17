@@ -3,6 +3,7 @@ package com.coffee.system.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.PageParam;
+import com.coffee.common.vo.MenuVO;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
@@ -38,9 +39,15 @@ public interface ProductService extends IService<Product> {
 
     /**
      * 获取商品菜单列表 (按分类分组，仅限上架商品)
-     * @return
+     * @return 旧格式：按分类名称分组的Map
      */
     Map<String, List<Product>> getMenu();
+
+    /**
+     * 获取商品菜单列表（新格式，前端直接使用）
+     * @return 包含分类列表和商品列表的VO
+     */
+    MenuVO getMenuVO();
 
     ProductDetailVO getMenuDetail(Long id);
 }

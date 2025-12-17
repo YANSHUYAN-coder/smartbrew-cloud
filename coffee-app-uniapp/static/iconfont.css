@@ -13,6 +13,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-search:before {
+  content: "\e6b9";
+}
+
 .icon-message:before {
 	content: "\e604";
 }

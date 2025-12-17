@@ -1,7 +1,13 @@
 <template>
   <view class="address-list-page">
     <!-- 列表区域 -->
-    <scroll-view scroll-y class="list-scroll">
+    <scroll-view 
+      scroll-y 
+      class="list-scroll"
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="onRefresh"
+      @refresherrestore="onRefreshRestore">
       <view class="address-list" v-if="addressList.length > 0">
         <view 
           v-for="(item, index) in addressList" 
@@ -48,9 +54,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import {request} from '@/utils/request.js'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 
 const addressList = ref([])
+const refreshing = ref(false) // 下拉刷新状态
 
 // 获取地址列表
 const fetchList = async () => {
@@ -84,6 +91,26 @@ const selectAddress = (item) => {
   // uni.$emit('addressSelected', item)
   // uni.navigateBack()
 }
+
+// 下拉刷新
+const onRefresh = async () => {
+  refreshing.value = true
+  await fetchList()
+  setTimeout(() => {
+    refreshing.value = false
+  }, 300)
+}
+
+// 刷新恢复
+const onRefreshRestore = () => {
+  refreshing.value = false
+}
+
+// 页面下拉刷新（如果 scroll-view 的下拉刷新不工作，可以使用这个）
+onPullDownRefresh(async () => {
+  await fetchList()
+  uni.stopPullDownRefresh()
+})
 
 // 每次页面显示时刷新列表
 onShow(() => {

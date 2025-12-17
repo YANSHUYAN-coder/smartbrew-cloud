@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coffee.common.dto.PageParam;
+import com.coffee.common.vo.MenuVO;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Category;
 import com.coffee.system.domain.entity.Product;
@@ -125,6 +126,50 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         return allProducts.stream()
                 .filter(product -> product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId()))
                 .collect(Collectors.groupingBy(product -> categoryMap.get(product.getCategoryId())));
+    }
+
+    @Override
+    public MenuVO getMenuVO() {
+        // 1. 查询所有上架商品 (status=1)
+        List<Product> allProducts = this.list(new LambdaQueryWrapper<Product>()
+                .eq(Product::getStatus, 1)
+                .orderByDesc(Product::getSales));
+
+        // 2. 查询所有启用的分类
+        List<Category> categories = categoryService.getEnabledCategories();
+
+        // 3. 构建分类列表
+        List<MenuVO.CategoryVO> categoryList = categories.stream()
+                .map(category -> {
+                    MenuVO.CategoryVO categoryVO = new MenuVO.CategoryVO();
+                    categoryVO.setId(category.getId());
+                    categoryVO.setName(category.getName());
+                    return categoryVO;
+                })
+                .collect(Collectors.toList());
+
+        // 4. 构建商品列表（每个商品包含 categoryId）
+        List<MenuVO.ProductVO> productList = allProducts.stream()
+                .filter(product -> product.getCategoryId() != null)
+                .map(product -> {
+                    MenuVO.ProductVO productVO = new MenuVO.ProductVO();
+                    BeanUtil.copyProperties(product, productVO);
+                    productVO.setPicUrl(product.getPicUrl()); // 确保图片URL正确映射
+                    productVO.setDescription(product.getDescription()); // 确保描述正确映射
+                    productVO.setCategoryId(product.getCategoryId()); // 设置分类ID
+                    // 如果没有评分字段，可以设置默认值
+                    if (productVO.getRating() == null) {
+                        productVO.setRating(4.5); // 默认评分
+                    }
+                    return productVO;
+                })
+                .collect(Collectors.toList());
+
+        // 5. 组装返回对象
+        MenuVO menuVO = new MenuVO();
+        menuVO.setCategories(categoryList);
+        menuVO.setProducts(productList);
+        return menuVO;
     }
 
     @Override

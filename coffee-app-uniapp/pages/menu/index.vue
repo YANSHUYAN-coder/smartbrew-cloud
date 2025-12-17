@@ -5,7 +5,8 @@
 			<!-- 搜索与切换行 -->
 			<view class="header-content">
 				<view class="search-bar">
-					<text class="search-icon">🔍</text>
+					<uni-icons custom-prefix="iconfont" type="icon-search"
+					color="#000" size="24"></uni-icons>
 					<input class="search-input" type="text" placeholder="搜拿铁/美式/甜点" disabled @click="handleSearch" />
 				</view>
 				<!-- 业务切换胶囊 -->
@@ -20,7 +21,7 @@
 			<!-- 门店/地址提示 -->
 			<view class="shop-info">
 				<view class="shop-name-row">
-					<text class="shop-name">智咖·云 (科兴科学园店)</text>
+					<text class="shop-name">智咖·云</text>
 					<text class="distance">距您 120m</text>
 				</view>
 				<text class="shop-desc" v-if="orderType === 'pickup'">营业中 07:30-22:00 · 制作约3分钟</text>
@@ -34,7 +35,7 @@
 			<scroll-view class="category-sidebar" scroll-y :scroll-into-view="leftScrollId" scroll-with-animation>
 				<view v-for="(cat, index) in categories" :key="cat.id" :id="'cat-left-' + index" class="category-item"
 					:class="{ active: activeCategoryIndex === index }" @click="handleCategoryClick(index)">
-					<view class="category-icon" v-if="cat.icon">{{ cat.icon }}</view>
+					<!-- <image :src="cat.icon" class="category-icon" v-if="cat.icon">{{ cat.icon }}</image> -->
 					<text class="category-name">{{ cat.name }}</text>
 					<!-- 选中指示器 -->
 					<view v-if="activeCategoryIndex === index" class="active-indicator"></view>
@@ -46,8 +47,16 @@
 			</scroll-view>
 
 			<!-- 右侧商品列表 -->
-			<scroll-view class="product-list" scroll-y :scroll-into-view="rightScrollId" scroll-with-animation
-				@scroll="onRightScroll">
+			<scroll-view 
+				class="product-list" 
+				scroll-y 
+				:scroll-into-view="rightScrollId" 
+				scroll-with-animation
+				@scroll="onRightScroll"
+				:refresher-enabled="true"
+				:refresher-triggered="refreshing"
+				@refresherrefresh="onRefresh"
+				@refresherrestore="onRefreshRestore">
 				<view class="product-wrapper">
 					<view v-for="(cat, cIndex) in categories" :key="cat.id" :id="'cat-right-' + cIndex"
 						class="category-section">
@@ -57,7 +66,7 @@
 						<!-- 商品卡片 -->
 						<!-- 逻辑：如果是 'new' 分类，展示所有新品(模拟前2个)；否则展示对应分类商品 -->
 						<view
-							v-for="prod in (cat.id === 'new' ? products.slice(0,2) : products.filter(p => p.categoryId === cat.id))"
+							v-for="prod in (cat.id === 7 ? products.slice(0,2) : products.filter(p => p.categoryId === cat.id))"
 							:key="prod.id" class="product-item" @click="openSkuModal(prod)">
 							<image :src="prod.image" mode="aspectFill" class="prod-img" />
 							<view class="prod-info">
@@ -124,21 +133,22 @@
 
 				<!-- 规格选项 -->
 				<scroll-view scroll-y class="modal-scroll">
-					<view class="spec-group">
-						<text class="spec-title">温度</text>
+					<view v-for="group in specGroups" :key="group.key" class="spec-group">
+						<text class="spec-title">{{ group.key }}</text>
 						<view class="spec-options">
-							<view class="spec-opt active">标准冰</view>
-							<view class="spec-opt">少冰</view>
-							<view class="spec-opt">热</view>
+							<view 
+								v-for="value in group.values" 
+								:key="value"
+								class="spec-opt" 
+								:class="{ active: isSpecSelected(group.key, value) }"
+								@click="selectSpec(group.key, value)">
+								{{ value }}
+							</view>
 						</view>
 					</view>
-					<view class="spec-group">
-						<text class="spec-title">糖度</text>
-						<view class="spec-options">
-							<view class="spec-opt active">标准糖</view>
-							<view class="spec-opt">半糖</view>
-							<view class="spec-opt">不加糖</view>
-						</view>
+					<!-- 如果没有规格，显示提示 -->
+					<view v-if="specGroups.length === 0" class="no-spec-tip">
+						<text>该商品暂无规格选项</text>
 					</view>
 				</scroll-view>
 
@@ -146,8 +156,8 @@
 				<view class="modal-footer">
 					<view class="price-box">
 						<text class="symbol">¥</text>
-						<text class="num">{{ currentProduct.price }}</text>
-						<text class="selected-spec">已选: 标准冰, 标准糖</text>
+						<text class="num">{{ selectedSku ? selectedSku.price : currentProduct.price }}</text>
+						<text class="selected-spec">已选: {{ getSelectedSpecText() }}</text>
 					</view>
 					<view class="action-box">
 						<!-- 简单的加减器 -->
@@ -182,8 +192,10 @@
 	import {
 		useCartStore
 	} from '@/store/cart.js'
+	
+	import { getCategories } from '@/services/categories.js'
+	import { getMenuVO, getProductDetail } from '@/services/product.js'
 
-	import { getCategories } from '@/apis/categories.js'
 
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()
@@ -196,37 +208,17 @@
 	const showModal = ref(false)
 	const currentProduct = ref({})
 	const currentTempCount = ref(0)
+	const skuList = ref([]) // SKU列表
+	const specGroups = ref([]) // 规格分组（按key分组）
+	const selectedSpecs = ref({}) // 选中的规格 {容量: '大杯', 温度: '冰', ...}
+	const selectedSku = ref(null) // 当前选中的SKU
+	const refreshing = ref(false) // 下拉刷新状态
 
 	// 数据别名
 	// 【新增】在最前面添加新品分类
-	const categories = [{
-			id: 'new',
-			name: '人气新品',
-			icon: '🔥'
-		}, // 新增的分类
-		{
-			id: 'c1',
-			name: '大师咖啡'
-		},
-		{
-			id: 'c2',
-			name: '零度拿铁'
-		},
-		{
-			id: 'c3',
-			name: '瑞纳冰'
-		},
-		{
-			id: 'c4',
-			name: '经典甜点'
-		},
-	];
-	const products = PRODUCTS
+	const categories = ref([])
+	const products = ref([])
 	
-	// 获取商品分类
-	console.log("获取商品分类",getCategories());
-	
-
 	// --- 左右联动逻辑 ---
 	const handleCategoryClick = (index) => {
 		activeCategoryIndex.value = index
@@ -241,12 +233,171 @@
 	}
 
 	// --- 弹窗逻辑 ---
-	const openSkuModal = (product) => {
+	const openSkuModal = async (product) => {
 		currentProduct.value = product
-		// 获取当前商品在购物车中的数量 (简化：只获取总数，不分规格)
-		const cartItem = cartStore.items.find(i => i.id === product.id)
+		currentTempCount.value = 0
+		selectedSpecs.value = {}
+		selectedSku.value = null
+		
+		try {
+			// 获取商品详情（包含SKU列表）
+			const detail = await getProductDetail(product.id)
+			console.log('商品详情', detail)
+			
+			if (detail && detail.skuList && detail.skuList.length > 0) {
+				skuList.value = detail.skuList
+				// 解析规格并分组
+				parseSpecGroups(detail.skuList)
+				// 默认选中第一个SKU
+				selectSku(detail.skuList[0])
+			} else {
+				// 如果没有SKU，使用商品基础价格
+				skuList.value = []
+				specGroups.value = []
+				selectedSku.value = {
+					price: product.price,
+					stock: 999
+				}
+				// 没有SKU时，直接更新购物车数量显示
+				updateCartCountDisplay()
+			}
+			
+			showModal.value = true
+			
+			// 如果有SKU，在选择SKU后会自动更新购物车数量显示
+		} catch (error) {
+			console.error('获取商品详情失败', error)
+			uni.showToast({
+				title: '加载商品详情失败',
+				icon: 'none'
+			})
+		}
+	}
+	
+	// 解析规格分组
+	const parseSpecGroups = (skus) => {
+		const groupsMap = {}
+		
+		// 遍历所有SKU，提取规格
+		skus.forEach(sku => {
+			if (sku.spec) {
+				try {
+					const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
+					specs.forEach(spec => {
+						const key = spec.key
+						const value = spec.value
+						
+						if (!groupsMap[key]) {
+							groupsMap[key] = {
+								key: key,
+								values: new Set()
+							}
+						}
+						groupsMap[key].values.add(value)
+					})
+				} catch (e) {
+					console.error('解析规格失败', e)
+				}
+			}
+		})
+		
+		// 转换为数组格式
+		specGroups.value = Object.values(groupsMap).map(group => ({
+			key: group.key,
+			values: Array.from(group.values)
+		}))
+	}
+	
+	// 选择规格
+	const selectSpec = (specKey, specValue) => {
+		selectedSpecs.value[specKey] = specValue
+		// 根据选中的规格查找对应的SKU
+		findMatchingSku()
+		// 更新购物车数量显示（基于当前选中的规格）
+		updateCartCountDisplay()
+	}
+	
+	// 查找匹配的SKU
+	const findMatchingSku = () => {
+		const selectedKeys = Object.keys(selectedSpecs.value)
+		if (selectedKeys.length === 0) {
+			// 如果还没有选择任何规格，使用第一个SKU
+			if (skuList.value.length > 0) {
+				selectSku(skuList.value[0])
+			}
+			return
+		}
+		
+		// 查找匹配的SKU
+		const matchedSku = skuList.value.find(sku => {
+			if (!sku.spec) return false
+			
+			try {
+				const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
+				// 检查所有选中的规格是否都匹配
+				return selectedKeys.every(key => {
+					const selectedValue = selectedSpecs.value[key]
+					return specs.some(spec => spec.key === key && spec.value === selectedValue)
+				}) && specs.length === selectedKeys.length
+			} catch (e) {
+				return false
+			}
+		})
+		
+		if (matchedSku) {
+			selectSku(matchedSku)
+		}
+	}
+	
+	// 选择SKU
+	const selectSku = (sku) => {
+		selectedSku.value = sku
+		// 如果SKU有规格，自动设置选中的规格
+		if (sku.spec) {
+			try {
+				const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
+				specs.forEach(spec => {
+					selectedSpecs.value[spec.key] = spec.value
+				})
+			} catch (e) {
+				console.error('解析SKU规格失败', e)
+			}
+		}
+		// 更新购物车数量显示
+		updateCartCountDisplay()
+	}
+	
+	// 更新购物车数量显示（基于当前选中的规格）
+	const updateCartCountDisplay = () => {
+		if (!currentProduct.value.id) return
+		
+		// 构建当前选中规格的商品对象
+		const productWithSku = {
+			...currentProduct.value,
+			selectedSku: selectedSku.value,
+			selectedSpecs: { ...selectedSpecs.value },
+			price: selectedSku.value ? selectedSku.value.price : currentProduct.value.price
+		}
+		
+		// 查找购物车中该规格的商品数量
+		const cartItem = cartStore.findCartItem(productWithSku)
 		currentTempCount.value = cartItem ? cartItem.quantity : 0
-		showModal.value = true
+	}
+	
+	// 获取已选规格文本
+	const getSelectedSpecText = () => {
+		const texts = []
+		specGroups.value.forEach(group => {
+			if (selectedSpecs.value[group.key]) {
+				texts.push(selectedSpecs.value[group.key])
+			}
+		})
+		return texts.length > 0 ? texts.join(', ') : '请选择规格'
+	}
+	
+	// 检查规格是否被选中
+	const isSpecSelected = (specKey, specValue) => {
+		return selectedSpecs.value[specKey] === specValue
 	}
 
 	const closeModal = () => {
@@ -254,24 +405,64 @@
 	}
 
 	const updateTempCount = (delta) => {
-		const newCount = currentTempCount.value + delta
+		console.log("已选择规格",selectedSpecs.value);
+		// 检查是否已选择规格（如果有SKU的话）
+		if (skuList.value.length > 0 && !selectedSku.value) {
+			uni.showToast({
+				title: '请先选择规格',
+				icon: 'none'
+			})
+			return
+		}
+		
+		// 构建包含SKU信息的商品对象
+		const productWithSku = {
+			...currentProduct.value,
+			selectedSku: selectedSku.value,
+			selectedSpecs: { ...selectedSpecs.value },
+			// 使用SKU的价格，如果没有SKU则使用商品基础价格
+			price: selectedSku.value ? selectedSku.value.price : currentProduct.value.price
+		}
+		
+		// 查找购物车中是否已存在该商品（相同规格）
+		const cartItem = cartStore.findCartItem(productWithSku)
+		const currentCartCount = cartItem ? cartItem.quantity : 0
+		
+		const newCount = currentCartCount + delta
 		if (newCount < 0) return
+		
+		// 更新临时计数（用于UI显示）
 		currentTempCount.value = newCount
-
-		// 同步到 Store
+		
+		// 同步到购物车 Store
 		if (delta > 0) {
-			cartStore.addToCart(currentProduct.value)
+			// 增加数量
+			cartStore.addToCart(productWithSku, 1).then(() => {
+				// 显示成功提示
+				uni.showToast({
+					title: '已加入购物车',
+					icon: 'success',
+					duration: 1000
+				})
+			}).catch(error => {
+				console.error('加入购物车失败', error)
+				// 回滚数量
+				currentTempCount.value = currentCartCount
+			})
 		} else {
-			// 这里简单处理，实际 store 应该有减少方法
-			// 暂时先调用 add(-1) 的逻辑需要 store 支持
-			// 这里仅仅是演示 UI
-			cartStore.addToCart(currentProduct.value) // ⚠️ Mock: 实际应该减少
+			// 减少数量
+			const cartKey = cartStore.getCartItemKey(productWithSku)
+			cartStore.updateQuantity(cartKey, -1).catch(error => {
+				console.error('更新购物车失败', error)
+				// 回滚数量
+				currentTempCount.value = currentCartCount
+			})
 		}
 	}
 
+	// 获取商品在购物车中的总数量（所有规格的总和）
 	const getCartCountById = (pid) => {
-		const item = cartStore.items.find(i => i.id === pid)
-		return item ? item.quantity : 0
+		return cartStore.getProductTotalCount(pid)
 	}
 
 	const handleCartClick = () => {
@@ -293,8 +484,62 @@
 		})
 	}
 
-	onMounted(() => {
+	// 加载菜单数据（提取为独立函数，方便刷新时调用）
+	const loadMenuData = async () => {
+		try {
+			const menuData = await getMenuVO()
+			console.log("后端返回的菜单数据", menuData)
+			
+			// 直接使用后端返回的数据，无需转换
+			if (menuData && menuData.categories && menuData.products) {
+				// 分类列表直接使用
+				categories.value = menuData.categories
+				
+				// 商品列表需要映射字段名，确保与模板一致
+				products.value = menuData.products.map(product => ({
+					...product,
+					// 字段名映射：后端 picUrl -> 前端 image
+					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
+					// 字段名映射：后端 description -> 前端 desc
+					desc: product.description || product.desc || '',
+					// 确保有评分字段
+					rating: product.rating || 4.5,
+					// categoryId 已经是 Long 类型，直接使用
+					categoryId: product.categoryId
+				}))
+			}
+			
+			console.log("分类列表", categories.value)
+			console.log("商品列表", products.value)
+			return true
+		} catch (error) {
+			console.error("获取菜单数据失败", error)
+			uni.showToast({
+				title: '加载菜单失败',
+				icon: 'none'
+			})
+			return false
+		}
+	}
+
+	// 下拉刷新处理
+	const onRefresh = async () => {
+		refreshing.value = true
+		await loadMenuData()
+		// 延迟一下，让用户看到刷新效果
+		setTimeout(() => {
+			refreshing.value = false
+		}, 300)
+	}
+
+	// 刷新恢复处理
+	const onRefreshRestore = () => {
+		refreshing.value = false
+	}
+
+	onMounted(async () => {
 		statusBarHeight.value = getStatusBarHeight()
+		await loadMenuData()
 	})
 </script>
 
@@ -476,6 +721,7 @@
 	.product-item {
 		display: flex;
 		margin-bottom: 40rpx;
+		min-height: 180rpx;
 	}
 
 	.prod-img {
@@ -493,6 +739,14 @@
 		flex-direction: column;
 		justify-content: space-between;
 		padding-bottom: 8rpx;
+		min-width: 0; /* 防止 flex 子元素溢出 */
+	}
+
+	.prod-header {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0; /* 防止文字溢出 */
 	}
 
 	.prod-name {
@@ -500,21 +754,31 @@
 		font-weight: bold;
 		color: #333;
 		margin-bottom: 8rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		line-height: 1.4;
 	}
 
 	.prod-desc {
 		font-size: 22rpx;
 		color: #999;
+		line-height: 1.5;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: 300rpx;
+		display: -webkit-box;
+		-webkit-line-clamp: 2; /* 限制显示2行 */
+		line-clamp: 2; /* 标准属性，兼容性更好 */
+		-webkit-box-orient: vertical;
+		word-break: break-all; /* 允许在单词内换行 */
+		margin-bottom: 8rpx;
 	}
 
 	.prod-tags {
 		display: flex;
 		gap: 8rpx;
 		margin-top: 8rpx;
+		flex-wrap: wrap; /* 允许标签换行 */
 	}
 
 	.tag {
@@ -523,12 +787,16 @@
 		background: rgba(111, 78, 55, 0.1);
 		padding: 2rpx 8rpx;
 		border-radius: 6rpx;
+		white-space: nowrap; /* 标签文字不换行 */
+		flex-shrink: 0; /* 标签不收缩 */
 	}
 
 	.prod-footer {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-end;
+		margin-top: 12rpx;
+		flex-shrink: 0; /* 底部区域不收缩 */
 	}
 
 	.price {
@@ -543,6 +811,7 @@
 
 	.add-btn-wrapper {
 		position: relative;
+		flex-shrink: 0; /* 按钮不收缩 */
 	}
 
 	.spec-btn {
@@ -552,6 +821,7 @@
 		padding: 10rpx 24rpx;
 		border-radius: 24rpx;
 		font-weight: bold;
+		white-space: nowrap; /* 按钮文字不换行 */
 	}
 
 	.badge {
@@ -756,6 +1026,13 @@
 		color: $primary;
 		border-color: $primary;
 		font-weight: bold;
+	}
+
+	.no-spec-tip {
+		text-align: center;
+		padding: 40rpx;
+		color: #999;
+		font-size: 24rpx;
 	}
 
 	.modal-footer {

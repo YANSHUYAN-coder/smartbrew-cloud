@@ -65,7 +65,8 @@
 	} from 'vue'
 	import {
 		onLoad,
-		onShow
+		onShow,
+		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 	import {
 		getStatusBarHeight
@@ -167,8 +168,24 @@
 		}
 	}
 
+	// 加载个人中心数据
+	const loadProfileData = async () => {
+		// 这里可以添加加载用户信息、订单统计等数据的逻辑
+		// 例如：获取用户信息、积分、优惠券数量等
+		// 目前使用模拟数据，所以暂时不需要
+		return true
+	}
+
+	// 下拉刷新
+	onPullDownRefresh(async () => {
+		await loadProfileData()
+		// 停止下拉刷新动画
+		uni.stopPullDownRefresh()
+	})
+
 	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
+		loadProfileData()
 	})
 
 	onLoad(() => {

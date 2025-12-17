@@ -81,21 +81,23 @@
 <script setup>
 	import {
 		ref,
-		onMounted
+		onMounted,
+		computed
 	} from 'vue'
 	import {
 		onShow,
 		onPullDownRefresh
 	} from '@dcloudio/uni-app'
+	import { useUserStore } from '@/store/user.js'
 
 	const cacheSize = ref('0KB')
-	const hasLogin = ref(false)
+	const userStore = useUserStore()
 
-	// 页面显示时检查登录状态
+	// 是否已登录：由 userStore 统一管理
+	const hasLogin = computed(() => userStore.isLogin)
+
+	// 页面显示时仅处理与缓存相关逻辑，登录态依赖 userStore
 	onShow(() => {
-		const token = uni.getStorageSync('token')
-		hasLogin.value = !!token
-
 		// 模拟计算缓存大小
 		calculateCache()
 	})
@@ -162,11 +164,8 @@
 			confirmColor: '#ff4d4f',
 			success: (res) => {
 				if (res.confirm) {
-					// 1. 清除关键用户信息
-					uni.removeStorageSync('token')
-					uni.removeStorageSync('userInfo')
-
-					hasLogin.value = false
+					// 1. 通过 userStore 清除关键用户信息（状态 + 本地存储）
+					userStore.clearUser()
 
 					uni.showToast({
 						title: '已退出',
@@ -188,9 +187,7 @@
 	const loadSettingsData = async () => {
 		// 重新计算缓存大小
 		calculateCache()
-		// 检查登录状态
-		const token = uni.getStorageSync('token')
-		hasLogin.value = !!token
+		// 登录状态由 userStore 管理，这里不再重复从本地读取
 		return true
 	}
 

@@ -405,7 +405,6 @@
 	}
 
 	const updateTempCount = (delta) => {
-		console.log("已选择规格",selectedSpecs.value);
 		// 检查是否已选择规格（如果有SKU的话）
 		if (skuList.value.length > 0 && !selectedSku.value) {
 			uni.showToast({

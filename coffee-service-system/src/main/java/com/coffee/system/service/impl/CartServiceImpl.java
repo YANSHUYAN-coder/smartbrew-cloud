@@ -21,6 +21,11 @@ import java.util.stream.Collectors;
 @Service
 public class CartServiceImpl extends ServiceImpl<OmsCartItemMapper, OmsCartItem> implements CartService {
 
+    /**
+     * 默认单次加入购物车的数量
+     */
+    private static final int DEFAULT_QUANTITY = 1;
+
     @Override
     public List<CartVO> listCurrent() {
         Long userId = UserContext.getUserId();
@@ -67,14 +72,15 @@ public class CartServiceImpl extends ServiceImpl<OmsCartItemMapper, OmsCartItem>
         OmsCartItem existItem = this.getOne(queryWrapper);
 
         if (existItem != null) {
-            // 如果已存在，增加数量
-            existItem.setQuantity(existItem.getQuantity() + (cartItem.getQuantity() != null ? cartItem.getQuantity() : 1));
+            // 如果已存在，增加数量（前端传了数量就累加，否则按默认值 1 处理）
+            int increment = cartItem.getQuantity() != null ? cartItem.getQuantity() : DEFAULT_QUANTITY;
+            existItem.setQuantity(existItem.getQuantity() + increment);
             boolean flag = this.updateById(existItem);
             return flag ? Result.success("已更新购物车") : Result.failed("更新失败");
         } else {
-            // 如果不存在，新增
+            // 如果不存在，新增：未传数量或数量非法时使用默认值 1
             if (cartItem.getQuantity() == null || cartItem.getQuantity() <= 0) {
-                cartItem.setQuantity(1);
+                cartItem.setQuantity(DEFAULT_QUANTITY);
             }
             boolean flag = this.save(cartItem);
             return flag ? Result.success("已加入购物车") : Result.failed("加入失败");

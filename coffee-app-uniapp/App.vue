@@ -6,9 +6,12 @@
 
 <script setup>
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
+import { useUserStore } from '@/store/user.js'
 
 onLaunch(() => {
-  console.log('App Launch')
+  // App 启动时兜底从本地恢复一次用户信息（state 初始化已读取，这里可用于后续扩展）
+  const userStore = useUserStore()
+  userStore.loadFromStorage()
 })
 
 onShow(() => {

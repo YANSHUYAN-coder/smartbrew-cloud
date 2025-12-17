@@ -68,6 +68,7 @@
 
 <script>
 import { post } from '@/utils/request.js'
+import { useUserStore } from '@/store/user.js'
 
 export default {
   data() {
@@ -116,6 +117,7 @@ export default {
 
     // 调用 /auth/login
     async handleLogin() {
+      const userStore = useUserStore()
       try {
         uni.showLoading({ title: '登录中...' });
         // 后端使用 phone + password 登录，这里把用户名字段当作手机号传递
@@ -127,9 +129,8 @@ export default {
         // 根据 request.js 的拦截器，这里的 res 已经是 data.data，包含 { token, user }
         uni.hideLoading();
 
-        // 持久化 token 和用户信息
-        uni.setStorageSync('token', res.token);
-        uni.setStorageSync('userInfo', res.user);
+        // 通过 userStore 统一管理并持久化 token 和用户信息
+        userStore.setUser(res.token, res.user);
 
         uni.showToast({ title: '登录成功', icon: 'success' });
 

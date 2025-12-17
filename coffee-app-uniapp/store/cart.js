@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { getCartList, addToCart as addToCartApi, updateCartQuantity, deleteCartItem } from '@/services/cart.js'
 
+// 规格文案顺序常量，避免在解析时出现“魔法字符串”
+const SPEC_TEXT_KEYS = ['容量', '温度', '糖度']
+
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: [],
@@ -65,13 +68,12 @@ export const useCartStore = defineStore('cart', {
     parseSpecText(specText) {
       if (!specText) return {}
       const specs = specText.split(',').map(s => s.trim())
-      // 这里简化处理，实际应该根据业务规则解析
+      // 这里简化处理：按预设顺序（容量、温度、糖度）依次映射
       const result = {}
       specs.forEach((spec, index) => {
-        // 简化：假设顺序是 容量、温度、糖度
-        const keys = ['容量', '温度', '糖度']
-        if (keys[index]) {
-          result[keys[index]] = spec
+        const key = SPEC_TEXT_KEYS[index]
+        if (key) {
+          result[key] = spec
         }
       })
       return result

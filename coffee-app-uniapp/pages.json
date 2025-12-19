@@ -67,6 +67,14 @@
 			"style": {
 				"navigationBarTitleText": "登录注册"
 			}
+		},
+		{
+			"path": "pages/order/confirm",
+			"style": {
+				"navigationBarTitleText": "确认订单",
+				"navigationStyle": "custom",
+				"backgroundColor": "#f5f5f5"
+			}
 		}
 	],
 	"globalStyle": {

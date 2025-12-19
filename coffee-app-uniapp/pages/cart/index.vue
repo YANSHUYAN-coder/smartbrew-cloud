@@ -152,11 +152,10 @@
 
 	// --- 方法 ---
 
-	// 切换单选
+	// 切换单选（委托给 cartStore 的 action）
 	const toggleCheck = (item) => {
-		// 实际应该调用 store 的 mutation 来修改状态
-		// 这里直接修改仅作演示，Vue3 的响应式支持这样写，但规范建议用 store action
-		item.checked = !item.checked
+		const cartKey = item.cartKey || cartStore.getCartItemKey(item)
+		cartStore.toggleItemCheck(cartKey)
 	}
 
 	// 全选/反选

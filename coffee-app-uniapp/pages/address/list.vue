@@ -58,6 +58,7 @@ import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 
 const addressList = ref([])
 const refreshing = ref(false) // 下拉刷新状态
+const isSelectMode = ref(false) // 是否为选择模式
 
 // 获取地址列表
 const fetchList = async () => {
@@ -66,7 +67,7 @@ const fetchList = async () => {
       url: '/app/address/list',
       method: 'GET'
     })
-    addressList.value = res.data
+    addressList.value = res.data || res
   } catch (e) {
     console.error(e)
   }
@@ -87,9 +88,14 @@ const editAddress = (item) => {
 
 // 选择地址 (如果是从确认订单页跳过来的)
 const selectAddress = (item) => {
-  // 如果是选择模式
-  // uni.$emit('addressSelected', item)
-  // uni.navigateBack()
+  if (isSelectMode.value) {
+    // 选择模式：保存选中的地址并返回
+    uni.setStorageSync('selectedAddress', item)
+    uni.navigateBack()
+  } else {
+    // 非选择模式：可以编辑或查看详情
+    editAddress(item)
+  }
 }
 
 // 下拉刷新
@@ -115,6 +121,17 @@ onPullDownRefresh(async () => {
 // 每次页面显示时刷新列表
 onShow(() => {
   fetchList()
+})
+
+// 页面加载时检查是否为选择模式
+onMounted(() => {
+  // 检查 URL 参数
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  if (options.select === 'true') {
+    isSelectMode.value = true
+  }
 })
 </script>
 

@@ -44,18 +44,33 @@ export const useCartStore = defineStore('cart', {
       try {
         this.syncing = true
         const cartList = await getCartList()
-        // 将后端数据转换为前端格式
-        this.items = cartList.map(item => ({
-          id: item.productId,
-          cartItemId: item.id, // 保存后端购物车项ID
-          productSkuId: item.productSkuId,
-          image: item.productPic,
-          name: item.productName,
-          price: item.price,
-          quantity: item.quantity,
-          selectedSpecs: item.productSubTitle ? this.parseSpecText(item.productSubTitle) : {},
-          cartKey: item.productSkuId ? `${item.productId}_${item.productSkuId}` : `${item.productId}_default`
-        }))
+        
+        // 保存当前选中状态（以 cartKey 为键）
+        const checkedMap = new Map()
+        this.items.forEach(item => {
+          const key = item.cartKey || this.getCartItemKey(item)
+          checkedMap.set(key, item.checked === true)
+        })
+        
+        // 将后端数据转换为前端格式，并恢复选中状态
+        this.items = cartList.map(item => {
+          const cartKey = item.productSkuId ? `${item.productId}_${item.productSkuId}` : `${item.productId}_default`
+          // 如果之前有选中状态，恢复它；否则默认选中
+          const checked = checkedMap.has(cartKey) ? checkedMap.get(cartKey) : true
+          
+          return {
+            id: item.productId,
+            cartItemId: item.id, // 保存后端购物车项ID
+            productSkuId: item.productSkuId,
+            image: item.productPic,
+            name: item.productName,
+            price: item.price,
+            quantity: item.quantity,
+            selectedSpecs: item.productSubTitle ? this.parseSpecText(item.productSubTitle) : {},
+            cartKey: cartKey,
+            checked: checked // 恢复之前的选中状态，新商品默认选中
+          }
+        })
       } catch (error) {
         console.error('同步购物车失败', error)
         // 如果同步失败，不影响本地使用
@@ -112,7 +127,8 @@ export const useCartStore = defineStore('cart', {
           this.items.push({
             ...product,
             quantity: quantity,
-            cartKey: cartKey
+            cartKey: cartKey,
+            checked: true // 默认选中
           })
           // 立即同步一次以获取 cartItemId
           this.syncCart()
@@ -120,6 +136,17 @@ export const useCartStore = defineStore('cart', {
       } catch (error) {
         console.error('加入购物车失败', error)
         throw error
+      }
+    },
+
+    // 切换单个购物车项的选中状态
+    toggleItemCheck(cartKey) {
+      const item = this.items.find(item => {
+        const itemKey = item.cartKey || this.getCartItemKey(item)
+        return itemKey === cartKey
+      })
+      if (item) {
+        item.checked = !item.checked
       }
     },
     

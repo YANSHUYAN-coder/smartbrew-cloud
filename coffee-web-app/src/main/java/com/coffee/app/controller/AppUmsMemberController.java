@@ -27,7 +27,7 @@ public class AppUmsMemberController {
      * 用于 APP "我的" 页面展示
      */
     @GetMapping("/info")
-    @PreAuthorize("hasAuthority('ums:member:info')")
+    @PreAuthorize("hasAuthority('app:member:info')")
     @Operation(summary = "获取当前登录用户信息", description = "用于“我的”页面展示用户头像、昵称、等级等基础信息")
     public Result<UmsMember> info() {
         UmsMember userInfo = memberService.getUserInfo();

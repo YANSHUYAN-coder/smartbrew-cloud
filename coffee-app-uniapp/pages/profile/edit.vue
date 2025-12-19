@@ -122,9 +122,11 @@
 import { ref, reactive, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {request} from '@/utils/request.js'
+import { useUserStore } from '@/store/user.js'
 
 const loading = ref(false)
 const endDate = new Date().toISOString().split('T')[0]
+const userStore = useUserStore()
 
 // 表单数据 (对应后端 UmsMemberUpdateDTO)
 const form = reactive({
@@ -194,10 +196,18 @@ const handleSave = async () => {
       data: form
     })
     
-    uni.showToast({ title: '保存成功', icon: 'success' })
+    // 保存成功后，重新获取用户信息并更新到 store
+    const res = await request({
+      url: '/app/member/info',
+      method: 'GET'
+    })
     
-    // 更新本地缓存的用户信息 (如果有的话)
-    // uni.setStorageSync('userInfo', { ... })
+    if (res.data) {
+      // 更新 userStore 中的用户信息
+      userStore.setUser(userStore.token, res.data)
+    }
+    
+    uni.showToast({ title: '保存成功', icon: 'success' })
     
     setTimeout(() => {
       uni.navigateBack()

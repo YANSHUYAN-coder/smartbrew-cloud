@@ -32,9 +32,9 @@ public interface OrderService extends IService<OmsOrder> {
     /*用户端业务*/
 
     /**
-     * 用户端获取用户自己的订单列表
+     * 用户端获取用户自己的订单列表（包含商品明细）
      */
-    Page<OmsOrder> listCurrent(PageParam pageParam, Integer status);
+    Page<OrderVO> listCurrent(PageParam pageParam, Integer status);
 
     /**
      * C 端创建订单

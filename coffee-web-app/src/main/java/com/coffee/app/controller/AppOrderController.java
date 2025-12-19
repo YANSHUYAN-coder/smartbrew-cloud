@@ -43,11 +43,11 @@ public class AppOrderController {
      */
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('app:order:list')")
-    @Operation(summary = "获取当前用户订单列表", description = "按创建时间倒序分页返回当前登录用户的订单列表")
-    public Result<Page<OmsOrder>> list(
+    @Operation(summary = "获取当前用户订单列表", description = "按创建时间倒序分页返回当前登录用户的订单列表（包含商品明细）")
+    public Result<Page<OrderVO>> list(
             @ModelAttribute PageParam pageParam,
             @Parameter(description = "订单状态，可选") @RequestParam(required = false) Integer status) {
-        Page<OmsOrder> page = orderService.listCurrent(pageParam, status);
+        Page<OrderVO> page = orderService.listCurrent(pageParam, status);
         return Result.success(page);
     }
 

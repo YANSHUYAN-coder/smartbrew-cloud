@@ -31,7 +31,7 @@
 
 		<!-- 订单卡片 -->
 		<view class="order-card">
-			<view class="card-header">
+			<view class="card-header" @click="goToOrderList">
 				<text class="card-title">我的订单</text>
 				<text class="card-more">全部 ›</text>
 			</view>
@@ -125,9 +125,22 @@
 	]
 
 	const handleOrderTypeClick = (order) => {
-		uni.showToast({
-			title: order.label,
-			icon: 'none'
+		// 根据订单类型跳转到订单列表页，并筛选对应状态
+		const statusMap = {
+			'待付款': 0,
+			'制作中': 2,
+			'待取餐': 3,
+			'已完成': 4
+		}
+		const status = statusMap[order.label]
+		uni.navigateTo({
+			url: `/pages/order/list?status=${status !== undefined ? status : ''}`
+		})
+	}
+
+	const goToOrderList = () => {
+		uni.navigateTo({
+			url: '/pages/order/list'
 		})
 	}
 
@@ -340,11 +353,13 @@
 	}
 
 	.order-type-item {
-		display: flex;
+		display: inline-flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 16rpx;
+		min-width: 120rpx;
 		transition: transform 0.2s;
+		flex-shrink: 0;
 	}
 
 	.order-type-item:active {

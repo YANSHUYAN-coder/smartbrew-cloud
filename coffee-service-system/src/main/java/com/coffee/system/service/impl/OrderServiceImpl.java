@@ -79,7 +79,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     }
 
     @Override
-    public Page<OmsOrder> listCurrent(PageParam pageParam, Integer status) {
+    public Page<OrderVO> listCurrent(PageParam pageParam, Integer status) {
         Long userId = UserContext.getUserId();
         Page<OmsOrder> orderPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
         LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
@@ -88,7 +88,29 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             wrapper.eq(OmsOrder::getStatus, status);
         }
         wrapper.orderByDesc(OmsOrder::getCreateTime);
-        return orderMapper.selectPage(orderPage, wrapper);
+        Page<OmsOrder> page = orderMapper.selectPage(orderPage, wrapper);
+
+        // 转换为 OrderVO 并补充商品明细
+        Page<OrderVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        if (page.getRecords() != null && !page.getRecords().isEmpty()) {
+            List<OrderVO> voList = new java.util.ArrayList<>();
+            for (OmsOrder order : page.getRecords()) {
+                OrderVO orderVO = new OrderVO();
+                BeanUtils.copyProperties(order, orderVO);
+                
+                // 查询订单商品明细
+                List<OmsOrderItem> items = orderItemMapper.selectList(
+                        new LambdaQueryWrapper<OmsOrderItem>()
+                                .eq(OmsOrderItem::getOrderId, order.getId())
+                );
+                orderVO.setOrderItemList(items);
+                
+                voList.add(orderVO);
+            }
+            voPage.setRecords(voList);
+        }
+
+        return voPage;
     }
 
     @Override

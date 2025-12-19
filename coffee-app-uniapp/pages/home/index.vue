@@ -1,6 +1,6 @@
 <template>
 	<view class="home-page">
-		<!-- 顶部定位与搜索（包含状态栏占位） -->
+		<!-- 顶部定位（包含状态栏占位） -->
 		<view class="header-container" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<view class="header-bar">
 				<view class="header-top">
@@ -10,14 +10,6 @@
 					</view>
 					<uni-icons custom-prefix="iconfont" type="icon-message"
 					color="#000" size="24"></uni-icons>
-				</view>
-
-				<!-- 搜索框：这里不再是普通的 input，而是一个点击区域 -->
-				<view class="search-box" @click="handleSearchClick">
-					<!-- 用 AI 图标替代放大镜，强调智能 -->
-					<text class="search-icon">✨</text>
-					<view class="search-placeholder-text">问 AI：今天适合喝什么？</view>
-					<text class="search-btn-text">提问</text>
 				</view>
 			</view>
 		</view>
@@ -35,6 +27,20 @@
 					<text class="banner-desc">金桂飘香，一口入秋</text>
 					<button class="banner-btn" @click="handleBannerClick">立即尝鲜</button>
 				</view>
+			</view>
+		</view>
+
+		<!-- AI 智能助手卡片 -->
+		<view class="ai-assistant-card" @click="handleSearchClick">
+			<view class="ai-card-content">
+				<view class="ai-icon-box">
+					<text class="ai-icon">🤖</text>
+				</view>
+				<view class="ai-text-box">
+					<text class="ai-title">AI 智能推荐</text>
+					<text class="ai-desc">今天适合喝什么？</text>
+				</view>
+				<uni-icons type="right" size="20" color="#999"></uni-icons>
 			</view>
 		</view>
 
@@ -269,16 +275,14 @@
 	}
 
 	.header-bar {
-		padding: 24rpx 40rpx 20rpx;
-		min-height: 120rpx;
+		padding: 24rpx 40rpx 24rpx;
+		min-height: 80rpx;
 	}
 
 	.header-top {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 24rpx;
-		/* 增加一点间距 */
 	}
 
 	/* ... (location-info, bell-icon 样式保持不变) ... */
@@ -300,43 +304,62 @@
 	}
 
 
-	/* 优化后的搜索框样式 */
-	.search-box {
-		position: relative;
+	/* AI 智能助手卡片样式 - 简洁优雅版 */
+	.ai-assistant-card {
+		padding: 0 40rpx;
+		margin-top: 24rpx;
+		margin-bottom: 24rpx;
+	}
+
+	.ai-card-content {
+		background-color: white;
+		border-radius: 24rpx;
+		padding: 32rpx;
 		display: flex;
 		align-items: center;
-		background-color: #f0f4f8;
-		/* 更清新的背景色 */
-		border-radius: 50rpx;
-		padding: 20rpx 32rpx;
-		/* 增加点击感 */
+		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 		transition: all 0.2s;
+		border: 1rpx solid #f0f0f0;
 	}
 
-	.search-box:active {
+	.ai-card-content:active {
 		transform: scale(0.98);
-		background-color: #e8eef3;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+		background-color: #fafafa;
 	}
 
-	.search-icon {
-		font-size: 36rpx;
-		margin-right: 16rpx;
+	.ai-icon-box {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 20rpx;
+		background: linear-gradient(135deg, #f5f1eb 0%, #e8ddd4 100%);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-right: 24rpx;
+		flex-shrink: 0;
 	}
 
-	.search-placeholder-text {
+	.ai-icon {
+		font-size: 44rpx;
+	}
+
+	.ai-text-box {
 		flex: 1;
-		font-size: 28rpx;
-		color: #666;
-		/* 深一点的颜色，像文案而非placeholder */
+		display: flex;
+		flex-direction: column;
+		gap: 8rpx;
 	}
 
-	.search-btn-text {
-		font-size: 24rpx;
-		color: white;
-		background-color: #6f4e37;
-		padding: 8rpx 24rpx;
-		border-radius: 30rpx;
+	.ai-title {
+		font-size: 30rpx;
 		font-weight: bold;
+		color: #333;
+	}
+
+	.ai-desc {
+		font-size: 24rpx;
+		color: #999;
 	}
 
 	/* ... (后续样式保持不变) ... */

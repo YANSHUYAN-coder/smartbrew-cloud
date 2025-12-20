@@ -6,6 +6,8 @@ server:
 spring:
   application:
     name: coffee-app
+  profiles:
+    include: ai
 
   # AI 配置 (通义千问)
   ai:

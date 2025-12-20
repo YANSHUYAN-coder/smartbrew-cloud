@@ -12,18 +12,34 @@
     <artifactId>coffee-service-ai</artifactId>
 
     <dependencies>
-        <!-- 引用 Common 模块 -->
+        <!-- Spring AI Redis 向量存储支持 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-redis</artifactId>
+        </dependency>
+
+        <!-- 大模型支持 (阿里云通义千问) -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+        </dependency>
+
+        <!-- service 模块-->
         <dependency>
             <groupId>com.coffee</groupId>
-            <artifactId>coffee-common</artifactId>
+            <artifactId>coffee-service-system</artifactId>
         </dependency>
-
-        <!-- Spring Boot Web -->
+        <!--csv-->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.10.0</version>
         </dependency>
-
-
+        <!--RAG-->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-rag</artifactId>
+        </dependency>
     </dependencies>
+
 </project>

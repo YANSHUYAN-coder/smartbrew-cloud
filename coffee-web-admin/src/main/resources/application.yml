@@ -6,6 +6,8 @@ server:
 spring:
   application:
     name: coffee-admin
+  profiles:
+    include: ai
 
   # 数据库配置 (需修改为你本地的 MySQL)
   datasource:

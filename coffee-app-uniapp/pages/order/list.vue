@@ -60,7 +60,7 @@
 							:key="index"
 							class="goods-item"
 						>
-							<image :src="item.productPic" mode="aspectFill" class="goods-img" />
+							<image :src="item.productPic" mode="aspectFill" class="goods-img" lazy-load />
 							<view class="goods-info">
 								<text class="goods-name">{{ item.productName }}</text>
 								<view class="goods-spec" v-if="item.productAttr">

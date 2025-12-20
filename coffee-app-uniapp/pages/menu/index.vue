@@ -56,7 +56,8 @@
 				:refresher-enabled="true"
 				:refresher-triggered="refreshing"
 				@refresherrefresh="onRefresh"
-				@refresherrestore="onRefreshRestore">
+				@refresherrestore="onRefreshRestore"
+				@scrolltolower="loadMoreProducts">
 				<view class="product-wrapper">
 					<view v-for="(cat, cIndex) in categories" :key="cat.id" :id="'cat-right-' + cIndex"
 						class="category-section">
@@ -66,9 +67,9 @@
 						<!-- 商品卡片 -->
 						<!-- 逻辑：如果是 'new' 分类，展示所有新品(模拟前2个)；否则展示对应分类商品 -->
 						<view
-							v-for="prod in (cat.id === 7 ? products.slice(0,2) : products.filter(p => p.categoryId === cat.id))"
+							v-for="prod in getDisplayProducts(cat)"
 							:key="prod.id" class="product-item" @click="openSkuModal(prod)">
-							<image :src="prod.image" mode="aspectFill" class="prod-img" />
+							<image :src="prod.image" mode="aspectFill" class="prod-img" lazy-load />
 							<view class="prod-info">
 								<view class="prod-header">
 									<text class="prod-name">{{ prod.name }}</text>
@@ -94,6 +95,13 @@
 								</view>
 							</view>
 						</view>
+					</view>
+					<!-- 加载更多提示 -->
+					<view class="load-more" v-if="hasMoreProducts">
+						<text class="load-text">加载中...</text>
+					</view>
+					<view class="load-more" v-else-if="allProducts.length > displayedProductCount">
+						<text class="load-text">没有更多了</text>
 					</view>
 					<!-- 底部垫高，防止被购物车遮挡 -->
 					<view style="height: 180rpx;"></view>
@@ -217,12 +225,50 @@
 	// 数据别名
 	// 【新增】在最前面添加新品分类
 	const categories = ref([])
-	const products = ref([])
+	const allProducts = ref([]) // 所有商品数据
+	const displayedProductCount = ref(10) // 当前显示的商品数量（每个分类的前N个）
+	const hasMoreProducts = ref(false) // 是否还有更多商品
+	const loadingMore = ref(false) // 是否正在加载更多
+	const productPerPage = ref(10) // 每次加载的商品数量
 	
 	// --- 左右联动逻辑 ---
 	const handleCategoryClick = (index) => {
 		activeCategoryIndex.value = index
 		rightScrollId.value = 'cat-right-' + index
+	}
+
+	// 获取要显示的商品列表（支持分页）
+	const getDisplayProducts = (cat) => {
+		const categoryProducts = allProducts.value.filter(p => p.categoryId === cat.id)
+		// 如果是新品分类（id === 7），显示前2个；否则显示已加载的商品数量
+		if (cat.id === 7) {
+			return categoryProducts.slice(0, 2)
+		}
+		// 每个分类显示最多 displayedProductCount 个商品
+		return categoryProducts.slice(0, displayedProductCount.value)
+	}
+
+	// 加载更多商品
+	const loadMoreProducts = () => {
+		if (loadingMore.value || !hasMoreProducts.value) return
+		
+		loadingMore.value = true
+		// 模拟加载延迟，让用户看到加载效果
+		setTimeout(() => {
+			const newCount = displayedProductCount.value + productPerPage.value
+			// 计算所有分类中商品最多的分类的商品数量
+			const maxProductsPerCategory = Math.max(
+				...categories.value.map(cat => {
+					if (cat.id === 7) return 2 // 新品分类固定2个
+					return allProducts.value.filter(p => p.categoryId === cat.id).length
+				}),
+				0
+			)
+			
+			displayedProductCount.value = Math.min(newCount, maxProductsPerCategory)
+			hasMoreProducts.value = displayedProductCount.value < maxProductsPerCategory
+			loadingMore.value = false
+		}, 300)
 	}
 
 	// 模拟右侧滚动监听 (UniApp中精确监听需要 boundingClientRect)
@@ -495,7 +541,7 @@
 				categories.value = menuData.categories
 				
 				// 商品列表需要映射字段名，确保与模板一致
-				products.value = menuData.products.map(product => ({
+				const mappedProducts = menuData.products.map(product => ({
 					...product,
 					// 字段名映射：后端 picUrl -> 前端 image
 					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
@@ -506,10 +552,25 @@
 					// categoryId 已经是 Long 类型，直接使用
 					categoryId: product.categoryId
 				}))
+				
+				// 存储所有商品数据
+				allProducts.value = mappedProducts
+				
+				// 重置显示数量
+				displayedProductCount.value = productPerPage.value
+				// 判断是否还有更多商品（计算所有分类中商品最多的分类的商品数量）
+				const maxProductsPerCategory = Math.max(
+					...categories.value.map(cat => {
+						if (cat.id === 7) return 2 // 新品分类固定2个
+						return mappedProducts.filter(p => p.categoryId === cat.id).length
+					}),
+					0
+				)
+				hasMoreProducts.value = maxProductsPerCategory > productPerPage.value
 			}
 			
 			console.log("分类列表", categories.value)
-			console.log("商品列表", products.value)
+			console.log("商品列表", allProducts.value)
 			return true
 		} catch (error) {
 			console.error("获取菜单数据失败", error)
@@ -1084,6 +1145,17 @@
 		display: flex;
 		align-items: center;
 		gap: 20rpx;
+	}
+
+	/* 加载更多 */
+	.load-more {
+		padding: 40rpx 0;
+		text-align: center;
+	}
+
+	.load-text {
+		font-size: 24rpx;
+		color: #999;
 	}
 
 	.step-btn {

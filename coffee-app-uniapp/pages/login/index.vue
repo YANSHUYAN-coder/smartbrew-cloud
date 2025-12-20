@@ -67,7 +67,7 @@
 </template>
 
 <script>
-import { post } from '@/utils/request.js'
+import { post, request } from '@/utils/request.js'
 import { useUserStore } from '@/store/user.js'
 
 export default {
@@ -127,11 +127,25 @@ export default {
         });
 
         // 根据 request.js 的拦截器，这里的 res 已经是 data.data，包含 { token, user }
-        uni.hideLoading();
-
-        // 通过 userStore 统一管理并持久化 token 和用户信息
+        // 先保存 token（需要用于后续请求）
         userStore.setUser(res.token, res.user);
 
+        // 登录成功后，立即获取完整的用户信息并更新 store
+        // 这样可以确保 store 中的数据是最新且完整的，统一数据来源
+        try {
+          const userInfoRes = await request({
+            url: '/app/member/info',
+            method: 'GET'
+          })
+          if (userInfoRes.data) {
+            userStore.setUser(res.token, userInfoRes.data)
+          }
+        } catch (e) {
+          console.warn('获取用户详细信息失败，使用登录接口返回的数据', e)
+          // 如果获取详细信息失败，使用登录接口返回的基础信息也是可以的
+        }
+
+        uni.hideLoading();
         uni.showToast({ title: '登录成功', icon: 'success' });
 
         // 短暂停留后跳转到首页或个人中心

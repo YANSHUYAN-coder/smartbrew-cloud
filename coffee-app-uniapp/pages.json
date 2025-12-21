@@ -92,6 +92,14 @@
 				"navigationStyle": "custom",
 				"backgroundColor": "#f5f5f5"
 			}
+		},
+		{
+			"path": "pages/ai/chat",
+			"style": {
+				"navigationBarTitleText": "AI 智能对话页面",
+				"navigationStyle": "custom",
+				"backgroundColor": "#f5f5f5"
+			}
 		}
 	],
 	"globalStyle": {

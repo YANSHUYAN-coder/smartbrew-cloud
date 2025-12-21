@@ -164,13 +164,19 @@
 		})
 	}
 
-	// 修改为点击跳转到 AI 页面
+	// AI 助手点击事件
 	const handleSearchClick = () => {
-		uni.showToast({
-			title: '即将跳转 AI 助手...',
-			icon: 'none'
-		})
-		// uni.navigateTo({ url: '/pages/ai/chat' }) 
+	  // 检查是否登录（可选）
+	  const token = uni.getStorageSync('token')
+	  if (!token) {
+	    uni.navigateTo({ url: '/pages/login/index' })
+	    return
+	  }
+	  
+	  // 跳转到 AI 聊天页
+	  uni.navigateTo({
+	    url: '/pages/ai/chat'
+	  })
 	}
 
 	const handleBannerClick = () => {
@@ -276,7 +282,6 @@
 
 	.header-bar {
 		padding: 24rpx 40rpx 24rpx;
-		min-height: 80rpx;
 	}
 
 	.header-top {

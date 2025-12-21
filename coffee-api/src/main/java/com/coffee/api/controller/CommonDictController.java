@@ -7,6 +7,8 @@ import cn.hutool.json.JSONUtil;
 import com.coffee.common.dict.GenderStatus;
 import com.coffee.common.dict.OrderStatus;
 import com.coffee.common.result.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/common/dict")
+@Tag(name = "通用字典接口", description = "提供静态枚举字典、动态数据库字典")
 public class CommonDictController {
 
     // 注入高德地图 Key (默认使用你提供的值)
@@ -44,6 +47,7 @@ public class CommonDictController {
      * @param type 字典类型: orderStatus, gender
      */
     @GetMapping("/enum/{type}")
+    @Operation(summary = "获取枚举字典", description = "获取枚举字典")
     public Result<List<Map<String, Object>>> getEnumDict(@PathVariable("type") String type) {
         List<Map<String, Object>> list = new ArrayList<>();
 
@@ -74,6 +78,7 @@ public class CommonDictController {
      * 结构：省 -> 市 -> 区
      */
     @GetMapping("/regions")
+    @Operation(summary = "获取全国省市区列表", description = "获取全国省市区列表")
     public Result<List<Map<String, Object>>> getRegions() {
         // 1. 检查缓存，如果有数据直接返回，不调 API
         if (REGION_CACHE != null && !REGION_CACHE.isEmpty()) {

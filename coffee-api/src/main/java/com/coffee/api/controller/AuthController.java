@@ -4,6 +4,8 @@ import com.coffee.common.result.Result;
 import com.coffee.common.util.JwtUtil;
 import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.service.UmsMemberService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "认证接口", description = "提供用户注册、登录、退出登录能力")
 public class AuthController {
     @Autowired
     private UmsMemberService umsMemberService;
@@ -31,6 +34,7 @@ public class AuthController {
      * 用户注册
      */
     @PostMapping("/register")
+    @Operation(summary = "用户注册", description = "用户注册接口，返回用户信息及 JWT Token")
     public Result<Map<String, Object>> register(@RequestBody UmsMember member) {
         // 检查手机号是否已存在
         UmsMember existingMember = umsMemberService.getByPhone(member.getPhone());
@@ -62,6 +66,7 @@ public class AuthController {
      * 用户登录
      */
     @PostMapping("/login")
+    @Operation(summary = "用户登录", description = "用户登录接口，返回用户信息及 JWT Token")
     public Result<Map<String, Object>> login(@RequestBody UmsMember loginRequest) {
         try {
             // 使用手机号和密码进行认证
@@ -95,6 +100,7 @@ public class AuthController {
      * 可以在此处将 Token 加入 Redis 的黑名单中，并在 JwtAuthenticationTokenFilter 中校验。
      */
     @PostMapping("/logout")
+    @Operation(summary = "退出登录", description = "用户退出登录接口")
     public Result<String> logout() {
         // 清除当前线程的认证信息
         SecurityContextHolder.clearContext();

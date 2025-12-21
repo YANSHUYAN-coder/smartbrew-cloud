@@ -44,6 +44,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // 禁用 CSRF (对支付宝回调必须禁用，你这里已经禁用了，很好)
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -52,11 +53,18 @@ public class SecurityConfig {
                         // 1. 放行登录注册
                         .requestMatchers("/auth/**").permitAll()
 
-                        // 2. 放行错误页面 (防止过滤器异常后报401看不到真凶)
+                        // 2. 放行错误页面
                         .requestMatchers("/error").permitAll()
 
-                        // 3. 【关键修改】放行完整的 Knife4j / Swagger 静态资源
-                        // 如果只放行 /doc.html，css/js/api-docs 都会被拦截，导致页面空白
+                        // ================== 【核心修改】 ==================
+                        // 3. 放行支付宝回调接口
+                        // 原因：支付宝服务器发送的回调请求不包含 JWT Token，
+                        // 如果不放行，会被 Security 拦截并返回 401/403，导致回调失败。
+                        // 路径要和你 Controller 里的完全一致：/app/pay + /notify
+                        .requestMatchers("/app/pay/notify").permitAll()
+                        // ================================================
+
+                        // 4. 放行 Knife4j / Swagger 静态资源
                         .requestMatchers(
                                 "/doc.html",
                                 "/webjars/**",
@@ -65,7 +73,7 @@ public class SecurityConfig {
                                 "/favicon.ico"
                         ).permitAll()
 
-                        // 4. 其他接口需要认证
+                        // 5. 其他接口需要认证
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
@@ -78,6 +86,4 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults());
         return http.build();
     }
-
-
 }

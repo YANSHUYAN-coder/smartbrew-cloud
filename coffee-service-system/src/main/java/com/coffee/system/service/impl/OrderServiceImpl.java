@@ -1,5 +1,6 @@
 package com.coffee.system.service.impl;
 
+import com.alipay.api.AlipayClient;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -20,12 +21,14 @@ import com.coffee.system.domain.entity.OmsCartItem;
 import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,6 +44,18 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Autowired
     private UmsMemberReceiveAddressService addressService;
 
+    @Autowired
+    private AlipayClient alipayClient;
+
+    @Value("${alipay.notify-url}")
+    private String notifyUrl;
+
+    /**
+     * 获取所有订单列表
+     * @param pageParam
+     * @param status
+     * @return
+     */
     @Override
     public Page<OmsOrder> getAllList(PageParam pageParam, Integer status) {
         Page<OmsOrder> orderPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
@@ -53,10 +68,14 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     }
 
 
+    /**
+     * 获取订单详情
+     * @param id
+     * @return
+     */
     @Override
     public OrderVO getDetail(Long id) {
         OmsOrder omsOrder = this.getById(id);
-        // TODO: 查询 OmsOrderItem
         List<OmsOrderItem> omsOrderItems = orderItemMapper.selectList(
                 new LambdaQueryWrapper<OmsOrderItem>()
                         .eq(OmsOrderItem::getOrderId, id));
@@ -66,6 +85,11 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         return orderVO;
     }
 
+    /**
+     * 更新订单状态
+     * @param params
+     * @return
+     */
     @Override
     public boolean updateStatus(Map<String, Object> params) {
         Long id = Long.valueOf(params.get("id").toString());
@@ -78,9 +102,18 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 .set(OmsOrder::getStatus, status));
     }
 
+    /**
+     * 获取当前用户的订单列表
+     * @param pageParam
+     * @param status
+     * @return
+     */
     @Override
     public Page<OrderVO> listCurrent(PageParam pageParam, Integer status) {
         Long userId = UserContext.getUserId();
+        if (userId == null){
+            throw new RuntimeException("用户未登录");
+        }
         Page<OmsOrder> orderPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
         LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(OmsOrder::getMemberId, userId);
@@ -93,7 +126,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         // 转换为 OrderVO 并补充商品明细
         Page<OrderVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         if (page.getRecords() != null && !page.getRecords().isEmpty()) {
-            List<OrderVO> voList = new java.util.ArrayList<>();
+            List<OrderVO> voList = new ArrayList<>();
             for (OmsOrder order : page.getRecords()) {
                 OrderVO orderVO = new OrderVO();
                 BeanUtils.copyProperties(order, orderVO);
@@ -113,6 +146,11 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         return voPage;
     }
 
+    /**
+     *  创建订单
+     * @param request
+     * @return
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OmsOrder createOrder(CreateOrderRequest request) {

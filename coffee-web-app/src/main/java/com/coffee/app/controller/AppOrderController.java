@@ -1,6 +1,7 @@
 package com.coffee.app.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.coffee.common.dict.OrderStatus;
 import com.coffee.common.dto.CreateOrderRequest;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * C 端订单接口
@@ -72,7 +75,7 @@ public class AppOrderController {
             @Parameter(description = "订单ID") @PathVariable("id") Long id) {
         // 这里为了简单直接复用 updateStatus 逻辑，也可以单独在 Service 中封装 cancelOrder 方法
         return orderService.updateStatus(
-                java.util.Map.of("id", id, "status", com.coffee.common.dict.OrderStatus.CLOSED.getCode()))
+                Map.of("id", id, "status", OrderStatus.CLOSED.getCode()))
                 ? Result.success("取消成功")
                 : Result.failed("取消失败");
     }

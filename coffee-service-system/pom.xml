@@ -30,6 +30,13 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- 支付宝 SDK (显式引入以解决依赖传递问题) -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>4.40.560.ALL</version>
+        </dependency>
+
         <!-- 数据库相关 -->
         <dependency>
             <groupId>com.mysql</groupId>

@@ -136,6 +136,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getOrderList, cancelOrder as cancelOrderApi } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { alipay} from '@/services/pay.js'
 
 const statusBarHeight = ref(0)
 const currentStatus = ref(null) // null 表示全部
@@ -318,12 +319,48 @@ const cancelOrder = (order) => {
 }
 
 // 支付订单
-const payOrder = (order) => {
-	uni.showToast({
-		title: '支付功能开发中',
-		icon: 'none'
-	})
-	// TODO: 实现支付逻辑
+const payOrder = async(order) => {
+	try {
+	  uni.showLoading({ title: '正在发起支付...' });
+		console.log("开发环境：",process.env.NODE_ENV);
+		// 只在开发环境下开启沙箱
+		if (process.env.NODE_ENV === 'development') {
+		    var EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils");
+		    if (EnvUtils) {
+		        EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX);
+		    }
+		}
+	
+	  // 1. 获取后端签名的 orderStr (您之前那步已经成功了)
+	  // 注意：这里 res 应该就是那个长字符串
+	  const orderStr = await alipay(order.id);
+	  
+	  console.log("支付宝签名串:", orderStr);
+	
+	  uni.hideLoading();
+	
+	  // 2. 调起支付宝 APP (关键步骤)
+	  uni.requestPayment({
+	    provider: 'alipay', // 指定支付商为支付宝
+	    orderInfo: orderStr, // 填入后端返回的签名字符串
+	    success: function (res) {
+	      console.log('支付成功:', res);
+	      uni.showToast({ title: '支付成功' });
+	      // 刷新订单详情
+	      loadOrderDetail(); 
+	    },
+	    fail: function (err) {
+	      console.error('支付失败:', err);
+	      // 用户取消支付也会走这里
+	      uni.showToast({ title: '支付未完成', icon: 'none' });
+	    }
+	  });
+	
+	} catch (error) {
+	  uni.hideLoading();
+	  console.error(error);
+	  uni.showToast({ title: '发起支付失败', icon: 'none' });
+	}
 }
 
 // 确认收货

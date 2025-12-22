@@ -1,18 +1,23 @@
 <template>
   <view class="address-edit-page">
     <view class="form-container">
+      <!-- 顶部状态栏占位 -->
+      <view class="status-placeholder"></view>
+
       <view class="form-item">
         <text class="label">联系人</text>
         <input class="input" type="text" v-model="form.name" placeholder="请输入姓名" placeholder-class="placeholder" />
       </view>
       <view class="form-item">
         <text class="label">手机号</text>
-        <input class="input" type="number" v-model="form.phone" maxlength="11" placeholder="请输入手机号" placeholder-class="placeholder" />
+        <input class="input" type="number" v-model="form.phone" maxlength="11" placeholder="请输入手机号"
+          placeholder-class="placeholder" />
       </view>
       <view class="form-item">
         <text class="label">所在地区</text>
         <!-- 这里简化处理，实际可以使用 uni-data-picker -->
-        <input class="input" type="text" v-model="regionStr" placeholder="省市区 (如: 广东省 深圳市 南山区)" placeholder-class="placeholder" />
+        <input class="input" type="text" v-model="regionStr" placeholder="省市区 (如: 广东省 深圳市 南山区)"
+          placeholder-class="placeholder" />
         <!-- <uni-icons type="forward" size="16" color="#ccc"></uni-icons> -->
       </view>
       <view class="form-item align-top">
@@ -24,10 +29,11 @@
     <view class="form-container" style="margin-top: 24rpx;">
       <view class="form-item switch-item">
         <text class="label">设为默认地址</text>
-        <switch :checked="form.defaultStatus === 1" color="#6f4e37" @change="handleDefaultChange" style="transform: scale(0.8)" />
+        <switch :checked="form.defaultStatus === 1" color="#6f4e37" @change="handleDefaultChange"
+          style="transform: scale(0.8)" />
       </view>
     </view>
-    
+
     <view class="delete-btn" v-if="isEdit" @click="handleDelete">删除收货地址</view>
 
     <view class="footer-btn">
@@ -39,7 +45,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import {request} from '@/utils/request.js'
+import { request } from '@/utils/request.js'
 
 const isEdit = ref(false)
 const regionStr = ref('') // 简单的省市区输入，后续优化为选择器
@@ -93,10 +99,10 @@ const handleSave = async () => {
       method: 'POST',
       data: form
     })
-    
+
     uni.showToast({ title: '保存成功', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1000)
-    
+
   } catch (e) {
     uni.showToast({ title: e.message || '保存失败', icon: 'none' })
   }
@@ -129,6 +135,12 @@ const handleDelete = () => {
   min-height: 100vh;
   background-color: #f5f5f5;
   padding-top: 20rpx;
+}
+
+/* 顶部状态栏占位 */
+.status-placeholder {
+  height: var(--status-bar-height);
+  width: 100%;
 }
 
 .form-container {
@@ -202,5 +214,8 @@ const handleDelete = () => {
   height: 88rpx;
   line-height: 88rpx;
 }
-.save-btn:active { opacity: 0.9; }
+
+.save-btn:active {
+  opacity: 0.9;
+}
 </style>

@@ -207,6 +207,12 @@
 		padding: 20rpx 30rpx;
 	}
 
+	/* 顶部状态栏占位 */
+	.status-placeholder {
+		height: var(--status-bar-height);
+		width: 100%;
+	}
+
 	/* 分组卡片样式 */
 	.section-group {
 		background-color: #ffffff;

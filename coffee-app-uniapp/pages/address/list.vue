@@ -1,5 +1,8 @@
 <template>
   <view class="address-list-page">
+    <!-- 顶部状态栏占位 -->
+    <view class="status-placeholder"></view>
+    
     <!-- 列表区域 -->
     <scroll-view 
       scroll-y 
@@ -141,6 +144,12 @@ onMounted(() => {
   background-color: #f5f5f5;
   display: flex;
   flex-direction: column;
+}
+
+/* 顶部状态栏占位 */
+.status-placeholder {
+  height: var(--status-bar-height);
+  width: 100%;
 }
 
 .list-scroll {

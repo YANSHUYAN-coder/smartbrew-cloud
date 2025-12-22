@@ -189,7 +189,9 @@
 	import {
 		ref,
 		computed,
-		onMounted
+		onMounted,
+		nextTick,
+		watch
 	} from 'vue'
 	import {
 		getStatusBarHeight
@@ -222,6 +224,10 @@
 	const selectedSku = ref(null) // 当前选中的SKU
 	const refreshing = ref(false) // 下拉刷新状态
 
+	// --- 左右联动相关变量 ---
+	const categoryTops = ref([]) // 存储右侧每个分类 section 的 top 值
+	let isClickScroll = false // 标记是否由点击左侧触发的滚动，防止冲突
+
 	// 数据别名
 	// 【新增】在最前面添加新品分类
 	const categories = ref([])
@@ -233,8 +239,29 @@
 	
 	// --- 左右联动逻辑 ---
 	const handleCategoryClick = (index) => {
+		isClickScroll = true
 		activeCategoryIndex.value = index
 		rightScrollId.value = 'cat-right-' + index
+		
+		// 动画结束后重置标识位
+		setTimeout(() => {
+			isClickScroll = false
+		}, 500)
+	}
+
+	// 计算右侧各分类的高度区间
+	const calcCategoryTops = () => {
+		nextTick(() => {
+			const query = uni.createSelectorQuery()
+			query.selectAll('.category-section').boundingClientRect(data => {
+				if (data && data.length > 0) {
+					// 记录相对于第一个 section 的位置
+					const baseTop = data[0].top
+					categoryTops.value = data.map(item => item.top - baseTop)
+					console.log('各分类位置', categoryTops.value)
+				}
+			}).exec()
+		})
 	}
 
 	// 获取要显示的商品列表（支持分页）
@@ -244,7 +271,8 @@
 		if (cat.id === 7) {
 			return categoryProducts.slice(0, 2)
 		}
-		// 每个分类显示最多 displayedProductCount 个商品
+		// 计算当前分类应该显示的商品数量
+		// 简化处理：每个分类显示最多 displayedProductCount 个商品
 		return categoryProducts.slice(0, displayedProductCount.value)
 	}
 
@@ -268,14 +296,34 @@
 			displayedProductCount.value = Math.min(newCount, maxProductsPerCategory)
 			hasMoreProducts.value = displayedProductCount.value < maxProductsPerCategory
 			loadingMore.value = false
+			
+			// 高度变化，重新计算位置
+			calcCategoryTops()
 		}, 300)
 	}
 
-	// 模拟右侧滚动监听 (UniApp中精确监听需要 boundingClientRect)
-	// 这里简化处理：暂时不做滚动右侧自动高亮左侧的复杂计算，
-	// 实际开发中可以使用 uni.createIntersectionObserver
+	// 监听右侧滚动
 	const onRightScroll = (e) => {
-		// 留给后续优化
+		if (isClickScroll) return 
+
+		const scrollTop = e.detail.scrollTop
+		// 增加一个小偏移量，提升体验
+		const threshold = 20 
+		
+		let index = 0
+		for (let i = 0; i < categoryTops.value.length; i++) {
+			if (scrollTop >= categoryTops.value[i] - threshold) {
+				index = i
+			} else {
+				break
+			}
+		}
+		
+		if (activeCategoryIndex.value !== index) {
+			activeCategoryIndex.value = index
+			// 同步左侧滚动
+			leftScrollId.value = 'cat-left-' + index
+		}
 	}
 
 	// --- 弹窗逻辑 ---
@@ -567,6 +615,9 @@
 					0
 				)
 				hasMoreProducts.value = maxProductsPerCategory > productPerPage.value
+
+				// 数据加载后，计算各分类位置以实现左右联动
+				calcCategoryTops()
 			}
 			
 			console.log("分类列表", categories.value)

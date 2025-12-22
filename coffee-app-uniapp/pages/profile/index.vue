@@ -7,12 +7,12 @@
 			</view>
 			<view class="header-content">
 				<view class="user-info">
-					<image
+					<image @click="navTo('/pages/profile/edit')"
 						src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop"
 						class="avatar" mode="aspectFill" />
 					<view class="user-details">
 						<view class="user-name-row">
-							<text class="user-name">User_9527</text>
+							<text class="user-name">{{userInfo.nickname}}</text>
 							<view class="level-badge">LV.3</view>
 						</view>
 						<text class="user-desc">再消费 2 杯升级为黑金会员</text>
@@ -61,7 +61,8 @@
 <script setup>
 	import {
 		ref,
-		onMounted
+		onMounted,
+		computed
 	} from 'vue'
 	import {
 		onLoad,
@@ -71,8 +72,11 @@
 	import {
 		getStatusBarHeight
 	} from '@/utils/system.js'
+	import {useUserStore} from '@/store/user.js'
 
 	const statusBarHeight = ref(0)
+	const userStore=new useUserStore()
+	const userInfo =ref({})
 
 	const stats = [{
 			label: '积分',
@@ -186,7 +190,25 @@
 		// 这里可以添加加载用户信息、订单统计等数据的逻辑
 		// 例如：获取用户信息、积分、优惠券数量等
 		// 目前使用模拟数据，所以暂时不需要
+		userInfo.value=userStore.userInfo
+		console.log("userInfo",userInfo.value);
 		return true
+	}
+	
+	// 是否已登录：由 userStore 统一管理
+	const hasLogin = computed(() => userStore.isLogin)
+	
+	// 通用跳转函数
+	const navTo = (url) => {
+		if (!hasLogin.value && url.includes('profile')) {
+			uni.navigateTo({
+				url: '/pages/login/index'
+			})
+			return
+		}
+		uni.navigateTo({
+			url
+		})
 	}
 
 	// 下拉刷新

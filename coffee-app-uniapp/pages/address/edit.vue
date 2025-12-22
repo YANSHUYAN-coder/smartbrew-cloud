@@ -15,10 +15,20 @@
       </view>
       <view class="form-item">
         <text class="label">所在地区</text>
-        <!-- 这里简化处理，实际可以使用 uni-data-picker -->
-        <input class="input" type="text" v-model="regionStr" placeholder="省市区 (如: 广东省 深圳市 南山区)"
-          placeholder-class="placeholder" />
-        <!-- <uni-icons type="forward" size="16" color="#ccc"></uni-icons> -->
+        <picker 
+          mode="multiSelector" 
+          :range="multiArray" 
+          range-key="label"
+          :value="multiIndex"
+          @change="handleRegionChange"
+          @columnchange="handleColumnChange"
+          class="picker-box"
+        >
+          <view class="picker-value" :class="{ empty: !regionStr }">
+            {{ regionStr || '请选择省市区' }}
+            <uni-icons type="right" size="14" color="#ccc" class="arrow-icon"></uni-icons>
+          </view>
+        </picker>
       </view>
       <view class="form-item align-top">
         <text class="label">详细地址</text>
@@ -46,9 +56,14 @@
 import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { request } from '@/utils/request.js'
+import { getRegions } from '@/services/common.js'
 
 const isEdit = ref(false)
-const regionStr = ref('') // 简单的省市区输入，后续优化为选择器
+const regionStr = ref('')
+const regionData = ref([])
+const multiArray = ref([[], [], []])
+const multiIndex = ref([0, 0, 0])
+
 const form = reactive({
   id: null,
   name: '',
@@ -60,7 +75,67 @@ const form = reactive({
   defaultStatus: 0
 })
 
+// 加载地区数据
+const loadRegionsData = async () => {
+  try {
+    const res = await getRegions()
+    if (res && res.length > 0) {
+      regionData.value = res
+      // 初始化三级联动数据
+      updateMultiArray(0, 0, 0)
+    }
+  } catch (e) {
+    console.error('获取地区数据失败', e)
+  }
+}
+
+// 更新多列选择器数据
+const updateMultiArray = (pIdx, cIdx, dIdx) => {
+  const provinces = regionData.value
+  const cities = provinces[pIdx]?.children || []
+  const districts = cities[cIdx]?.children || []
+  
+  multiArray.value = [
+    provinces,
+    cities,
+    districts
+  ]
+}
+
+// 列变化触发
+const handleColumnChange = (e) => {
+  const { column, value } = e.detail
+  multiIndex.value[column] = value
+  
+  if (column === 0) {
+    // 省份变化，重置市、区为 0
+    multiIndex.value[1] = 0
+    multiIndex.value[2] = 0
+    updateMultiArray(value, 0, 0)
+  } else if (column === 1) {
+    // 城市变化，重置区为 0
+    multiIndex.value[2] = 0
+    updateMultiArray(multiIndex.value[0], value, 0)
+  }
+}
+
+// confirm 选择
+const handleRegionChange = (e) => {
+  const indices = e.detail.value
+  const p = multiArray.value[0][indices[0]]
+  const c = multiArray.value[1][indices[1]]
+  const d = multiArray.value[2][indices[2]]
+  
+  if (p && c) {
+    form.province = p.label
+    form.city = c.label
+    form.region = d ? d.label : ''
+    regionStr.value = `${form.province} ${form.city} ${form.region}`.trim()
+  }
+}
+
 onLoad((options) => {
+  loadRegionsData()
   if (options.type === 'edit') {
     isEdit.value = true
     const data = uni.getStorageSync('editAddress')
@@ -75,22 +150,12 @@ const handleDefaultChange = (e) => {
   form.defaultStatus = e.detail.value ? 1 : 0
 }
 
-const parseRegion = () => {
-  // 简单的空格分割解析，实际应使用选择器
-  const parts = regionStr.value.split(' ')
-  if (parts.length >= 1) form.province = parts[0]
-  if (parts.length >= 2) form.city = parts[1]
-  if (parts.length >= 3) form.region = parts[2]
-}
-
 const handleSave = async () => {
   // 1. 校验
   if (!form.name) return uni.showToast({ title: '请输入姓名', icon: 'none' })
   if (!form.phone || form.phone.length !== 11) return uni.showToast({ title: '请输入正确手机号', icon: 'none' })
   if (!regionStr.value) return uni.showToast({ title: '请输入省市区', icon: 'none' })
   if (!form.detailAddress) return uni.showToast({ title: '请输入详细地址', icon: 'none' })
-
-  parseRegion()
 
   try {
     const url = isEdit.value ? '/app/address/update' : '/app/address/add'
@@ -178,6 +243,29 @@ const handleDelete = () => {
   flex: 1;
   font-size: 28rpx;
   color: #333;
+}
+
+.picker-box {
+  flex: 1;
+  cursor: pointer;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 28rpx;
+  color: #333;
+  transition: color 0.2s;
+
+  &.empty {
+    color: #ccc;
+  }
+}
+
+.arrow-icon {
+  margin-left: 12rpx;
+  transition: transform 0.2s;
 }
 
 .textarea {

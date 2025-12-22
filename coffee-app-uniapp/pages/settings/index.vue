@@ -44,7 +44,7 @@
 				</view>
 			</view>
 
-			<view class="cell-item" hover-class="cell-hover">
+			<view class="cell-item" hover-class="cell-hover" @click="navTo('/pages/about/privacy')">
 				<view class="cell-left">
 					<uni-icons type="eye-filled" size="22" color="#8a8a8a" class="cell-icon"></uni-icons>
 					<text class="cell-title">隐私政策</text>
@@ -118,10 +118,7 @@
 	// 模拟安全设置
 	const handleSecurity = () => {
 		if (!hasLogin.value) return navTo('/pages/login/index')
-		uni.showToast({
-			title: '修改密码功能开发中',
-			icon: 'none'
-		})
+		navTo('/pages/profile/security')
 	}
 
 	// 计算缓存（模拟）

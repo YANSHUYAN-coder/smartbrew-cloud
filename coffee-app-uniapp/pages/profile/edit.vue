@@ -88,13 +88,20 @@
       <!-- 城市 -->
       <view class="form-item">
         <text class="label">所在城市</text>
-        <input 
-          class="input" 
-          type="text" 
-          v-model="form.city" 
-          placeholder="请输入城市" 
-          placeholder-class="placeholder"
-        />
+        <picker 
+          mode="multiSelector" 
+          :range="multiArray" 
+          range-key="label"
+          :value="multiIndex"
+          @change="handleRegionChange"
+          @columnchange="handleColumnChange"
+          class="picker-box"
+        >
+          <view class="picker-value" :class="{ empty: !form.city }">
+            {{ form.city || '请选择城市' }}
+            <uni-icons type="right" size="14" color="#ccc" class="arrow-icon"></uni-icons>
+          </view>
+        </picker>
       </view>
     </view>
 
@@ -136,10 +143,14 @@ import { ref, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { request } from '@/utils/request.js'
 import { useUserStore } from '@/store/user.js'
+import { getRegions } from '@/services/common.js'
 
 const loading = ref(false)
 const endDate = new Date().toISOString().split('T')[0]
 const userStore = useUserStore()
+const regionData = ref([])
+const multiArray = ref([[], [], []])
+const multiIndex = ref([0, 0, 0])
 
 // 表单数据
 const form = reactive({
@@ -150,6 +161,62 @@ const form = reactive({
   city: '',
   signature: ''
 })
+
+// 加载地区数据
+const loadRegionsData = async () => {
+  try {
+    const res = await getRegions()
+    if (res && res.length > 0) {
+      regionData.value = res
+      // 初始化三级联动数据
+      updateMultiArray(0, 0, 0)
+    }
+  } catch (e) {
+    console.error('获取地区数据失败', e)
+  }
+}
+
+// 更新多列选择器数据
+const updateMultiArray = (pIdx, cIdx, dIdx) => {
+  const provinces = regionData.value
+  const cities = provinces[pIdx]?.children || []
+  const districts = cities[cIdx]?.children || []
+  
+  multiArray.value = [
+    provinces,
+    cities,
+    districts
+  ]
+}
+
+// 列变化触发
+const handleColumnChange = (e) => {
+  const { column, value } = e.detail
+  multiIndex.value[column] = value
+  
+  if (column === 0) {
+    // 省份变化，重置市、区为 0
+    multiIndex.value[1] = 0
+    multiIndex.value[2] = 0
+    updateMultiArray(value, 0, 0)
+  } else if (column === 1) {
+    // 城市变化，重置区为 0
+    multiIndex.value[2] = 0
+    updateMultiArray(multiIndex.value[0], value, 0)
+  }
+}
+
+// 最终确认选择
+const handleRegionChange = (e) => {
+  const indices = e.detail.value
+  const p = multiArray.value[0][indices[0]]
+  const c = multiArray.value[1][indices[1]]
+  const d = multiArray.value[2][indices[2]]
+  
+  if (p && c) {
+    form.city = `${p.label} ${c.label} ${d ? d.label : ''}`.trim()
+  }
+}
 
 // 从 store 填充表单数据
 const fillFormFromStore = () => {
@@ -255,6 +322,7 @@ const handleSave = async () => {
 
 onLoad(() => {
   loadUserInfo()
+  loadRegionsData()
 })
 </script>
 

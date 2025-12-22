@@ -48,6 +48,7 @@
       <el-menu-item index="/system/role">角色管理</el-menu-item>
       <el-menu-item index="/system/menu">菜单管理</el-menu-item>
       <el-menu-item index="/system/member-level">会员等级管理</el-menu-item>
+      <el-menu-item index="/system/ai">AI 知识库</el-menu-item>
     </el-sub-menu>
 
   </el-menu>

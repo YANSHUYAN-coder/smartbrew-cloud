@@ -100,6 +100,12 @@ const router = createRouter({
               name: 'sysMemberLevel',
               component: () => import('@/views/system/memberLevel/index.vue'),
               meta: { title: '会员等级管理' }
+            },
+            {
+              path: 'ai',
+              name: 'sysAi',
+              component: () => import('@/views/system/ai/index.vue'),
+              meta: { title: 'AI 知识库', icon: 'Cpu' }
             }
           ]
         }

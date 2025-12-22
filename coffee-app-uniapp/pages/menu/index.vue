@@ -5,8 +5,8 @@
 			<!-- 搜索与切换行 -->
 			<view class="header-content">
 				<view class="search-bar">
-					<uni-icons custom-prefix="iconfont" type="icon-search"
-					color="#000" size="24"></uni-icons>
+					<uni-icons custom-prefix="iconfont" type="icon-sousuo"
+					color="#000" size="16"></uni-icons>
 					<input class="search-input" type="text" placeholder="搜拿铁/美式/甜点" disabled @click="handleSearch" />
 				</view>
 				<!-- 业务切换胶囊 -->
@@ -126,61 +126,8 @@
 			</view>
 		</view>
 
-		<!-- 4. 规格选择弹窗 (高级毛玻璃效果) -->
-		<view class="sku-modal-mask" v-if="showModal" @click="closeModal">
-			<view class="sku-modal" @click.stop>
-				<!-- 头部 -->
-				<view class="modal-header">
-					<image :src="currentProduct.image" class="modal-img" mode="aspectFill" />
-					<view class="modal-info">
-						<text class="modal-name">{{ currentProduct.name }}</text>
-						<text class="modal-desc">{{ currentProduct.desc }}</text>
-					</view>
-					<view class="close-btn" @click="closeModal">×</view>
-				</view>
-
-				<!-- 规格选项 -->
-				<scroll-view scroll-y class="modal-scroll">
-					<view v-for="group in specGroups" :key="group.key" class="spec-group">
-						<text class="spec-title">{{ group.key }}</text>
-						<view class="spec-options">
-							<view 
-								v-for="value in group.values" 
-								:key="value"
-								class="spec-opt" 
-								:class="{ active: isSpecSelected(group.key, value) }"
-								@click="selectSpec(group.key, value)">
-								{{ value }}
-							</view>
-						</view>
-					</view>
-					<!-- 如果没有规格，显示提示 -->
-					<view v-if="specGroups.length === 0" class="no-spec-tip">
-						<text>该商品暂无规格选项</text>
-					</view>
-				</scroll-view>
-
-				<!-- 底部操作 -->
-				<view class="modal-footer">
-					<view class="price-box">
-						<text class="symbol">¥</text>
-						<text class="num">{{ selectedSku ? selectedSku.price : currentProduct.price }}</text>
-						<text class="selected-spec">已选: {{ getSelectedSpecText() }}</text>
-					</view>
-					<view class="action-box">
-						<!-- 简单的加减器 -->
-						<view class="stepper" v-if="currentTempCount > 0">
-							<view class="step-btn minus" @click="updateTempCount(-1)">-</view>
-							<text class="step-num">{{ currentTempCount }}</text>
-							<view class="step-btn plus" @click="updateTempCount(1)">+</view>
-						</view>
-						<view class="add-cart-btn" v-else @click="updateTempCount(1)">
-							加入购物车
-						</view>
-					</view>
-				</view>
-			</view>
-		</view>
+		<!-- 4. 规格选择弹窗 -->
+		<SkuModal v-model:show="showModal" :product="currentProduct" />
 
 	</view>
 </template>
@@ -205,6 +152,7 @@
 	
 	import { getCategories } from '@/services/categories.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
+	import SkuModal from '@/components/SkuModal.vue'
 
 
 	const statusBarHeight = ref(0)
@@ -217,11 +165,6 @@
 	const rightScrollId = ref('')
 	const showModal = ref(false)
 	const currentProduct = ref({})
-	const currentTempCount = ref(0)
-	const skuList = ref([]) // SKU列表
-	const specGroups = ref([]) // 规格分组（按key分组）
-	const selectedSpecs = ref({}) // 选中的规格 {容量: '大杯', 温度: '冰', ...}
-	const selectedSku = ref(null) // 当前选中的SKU
 	const refreshing = ref(false) // 下拉刷新状态
 
 	// --- 左右联动相关变量 ---
@@ -327,230 +270,9 @@
 	}
 
 	// --- 弹窗逻辑 ---
-	const openSkuModal = async (product) => {
+	const openSkuModal = (product) => {
 		currentProduct.value = product
-		currentTempCount.value = 0
-		selectedSpecs.value = {}
-		selectedSku.value = null
-		
-		try {
-			// 获取商品详情（包含SKU列表）
-			const detail = await getProductDetail(product.id)
-			console.log('商品详情', detail)
-			
-			if (detail && detail.skuList && detail.skuList.length > 0) {
-				skuList.value = detail.skuList
-				// 解析规格并分组
-				parseSpecGroups(detail.skuList)
-				// 默认选中第一个SKU
-				selectSku(detail.skuList[0])
-			} else {
-				// 如果没有SKU，使用商品基础价格
-				skuList.value = []
-				specGroups.value = []
-				selectedSku.value = {
-					price: product.price,
-					stock: 999
-				}
-				// 没有SKU时，直接更新购物车数量显示
-				updateCartCountDisplay()
-			}
-			
-			showModal.value = true
-			
-			// 如果有SKU，在选择SKU后会自动更新购物车数量显示
-		} catch (error) {
-			console.error('获取商品详情失败', error)
-			uni.showToast({
-				title: '加载商品详情失败',
-				icon: 'none'
-			})
-		}
-	}
-	
-	// 解析规格分组
-	const parseSpecGroups = (skus) => {
-		const groupsMap = {}
-		
-		// 遍历所有SKU，提取规格
-		skus.forEach(sku => {
-			if (sku.spec) {
-				try {
-					const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
-					specs.forEach(spec => {
-						const key = spec.key
-						const value = spec.value
-						
-						if (!groupsMap[key]) {
-							groupsMap[key] = {
-								key: key,
-								values: new Set()
-							}
-						}
-						groupsMap[key].values.add(value)
-					})
-				} catch (e) {
-					console.error('解析规格失败', e)
-				}
-			}
-		})
-		
-		// 转换为数组格式
-		specGroups.value = Object.values(groupsMap).map(group => ({
-			key: group.key,
-			values: Array.from(group.values)
-		}))
-	}
-	
-	// 选择规格
-	const selectSpec = (specKey, specValue) => {
-		selectedSpecs.value[specKey] = specValue
-		// 根据选中的规格查找对应的SKU
-		findMatchingSku()
-		// 更新购物车数量显示（基于当前选中的规格）
-		updateCartCountDisplay()
-	}
-	
-	// 查找匹配的SKU
-	const findMatchingSku = () => {
-		const selectedKeys = Object.keys(selectedSpecs.value)
-		if (selectedKeys.length === 0) {
-			// 如果还没有选择任何规格，使用第一个SKU
-			if (skuList.value.length > 0) {
-				selectSku(skuList.value[0])
-			}
-			return
-		}
-		
-		// 查找匹配的SKU
-		const matchedSku = skuList.value.find(sku => {
-			if (!sku.spec) return false
-			
-			try {
-				const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
-				// 检查所有选中的规格是否都匹配
-				return selectedKeys.every(key => {
-					const selectedValue = selectedSpecs.value[key]
-					return specs.some(spec => spec.key === key && spec.value === selectedValue)
-				}) && specs.length === selectedKeys.length
-			} catch (e) {
-				return false
-			}
-		})
-		
-		if (matchedSku) {
-			selectSku(matchedSku)
-		}
-	}
-	
-	// 选择SKU
-	const selectSku = (sku) => {
-		selectedSku.value = sku
-		// 如果SKU有规格，自动设置选中的规格
-		if (sku.spec) {
-			try {
-				const specs = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
-				specs.forEach(spec => {
-					selectedSpecs.value[spec.key] = spec.value
-				})
-			} catch (e) {
-				console.error('解析SKU规格失败', e)
-			}
-		}
-		// 更新购物车数量显示
-		updateCartCountDisplay()
-	}
-	
-	// 更新购物车数量显示（基于当前选中的规格）
-	const updateCartCountDisplay = () => {
-		if (!currentProduct.value.id) return
-		
-		// 构建当前选中规格的商品对象
-		const productWithSku = {
-			...currentProduct.value,
-			selectedSku: selectedSku.value,
-			selectedSpecs: { ...selectedSpecs.value },
-			price: selectedSku.value ? selectedSku.value.price : currentProduct.value.price
-		}
-		
-		// 查找购物车中该规格的商品数量
-		const cartItem = cartStore.findCartItem(productWithSku)
-		currentTempCount.value = cartItem ? cartItem.quantity : 0
-	}
-	
-	// 获取已选规格文本
-	const getSelectedSpecText = () => {
-		const texts = []
-		specGroups.value.forEach(group => {
-			if (selectedSpecs.value[group.key]) {
-				texts.push(selectedSpecs.value[group.key])
-			}
-		})
-		return texts.length > 0 ? texts.join(', ') : '请选择规格'
-	}
-	
-	// 检查规格是否被选中
-	const isSpecSelected = (specKey, specValue) => {
-		return selectedSpecs.value[specKey] === specValue
-	}
-
-	const closeModal = () => {
-		showModal.value = false
-	}
-
-	const updateTempCount = (delta) => {
-		// 检查是否已选择规格（如果有SKU的话）
-		if (skuList.value.length > 0 && !selectedSku.value) {
-			uni.showToast({
-				title: '请先选择规格',
-				icon: 'none'
-			})
-			return
-		}
-		
-		// 构建包含SKU信息的商品对象
-		const productWithSku = {
-			...currentProduct.value,
-			selectedSku: selectedSku.value,
-			selectedSpecs: { ...selectedSpecs.value },
-			// 使用SKU的价格，如果没有SKU则使用商品基础价格
-			price: selectedSku.value ? selectedSku.value.price : currentProduct.value.price
-		}
-		
-		// 查找购物车中是否已存在该商品（相同规格）
-		const cartItem = cartStore.findCartItem(productWithSku)
-		const currentCartCount = cartItem ? cartItem.quantity : 0
-		
-		const newCount = currentCartCount + delta
-		if (newCount < 0) return
-		
-		// 更新临时计数（用于UI显示）
-		currentTempCount.value = newCount
-		
-		// 同步到购物车 Store
-		if (delta > 0) {
-			// 增加数量
-			cartStore.addToCart(productWithSku, 1).then(() => {
-				// 显示成功提示
-				uni.showToast({
-					title: '已加入购物车',
-					icon: 'success',
-					duration: 1000
-				})
-			}).catch(error => {
-				console.error('加入购物车失败', error)
-				// 回滚数量
-				currentTempCount.value = currentCartCount
-			})
-		} else {
-			// 减少数量
-			const cartKey = cartStore.getCartItemKey(productWithSku)
-			cartStore.updateQuantity(cartKey, -1).catch(error => {
-				console.error('更新购物车失败', error)
-				// 回滚数量
-				currentTempCount.value = currentCartCount
-			})
-		}
+		showModal.value = true
 	}
 
 	// 获取商品在购物车中的总数量（所有规格的总和）
@@ -1031,173 +753,6 @@
 		font-weight: bold;
 	}
 
-	/* --- 4. 规格弹窗 --- */
-	.sku-modal-mask {
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: rgba(0, 0, 0, 0.5);
-		z-index: 100;
-		display: flex;
-		align-items: flex-end;
-	}
-
-	.sku-modal {
-		width: 100%;
-		background-color: white;
-		border-radius: 32rpx 32rpx 0 0;
-		padding: 32rpx;
-		animation: slideUp 0.3s ease-out;
-	}
-
-	@keyframes slideUp {
-		from {
-			transform: translateY(100%);
-		}
-
-		to {
-			transform: translateY(0);
-		}
-	}
-
-	.modal-header {
-		display: flex;
-		margin-bottom: 30rpx;
-		position: relative;
-	}
-
-	.modal-img {
-		width: 160rpx;
-		height: 160rpx;
-		border-radius: 12rpx;
-		margin-right: 20rpx;
-	}
-
-	.modal-info {
-		flex: 1;
-	}
-
-	.modal-name {
-		font-size: 32rpx;
-		font-weight: bold;
-		display: block;
-		margin-bottom: 8rpx;
-	}
-
-	.modal-desc {
-		font-size: 24rpx;
-		color: #999;
-	}
-
-	.close-btn {
-		position: absolute;
-		top: 0;
-		right: 0;
-		padding: 10rpx;
-		font-size: 40rpx;
-		color: #999;
-		line-height: 1;
-	}
-
-	.modal-scroll {
-		max-height: 500rpx;
-		margin-bottom: 30rpx;
-	}
-
-	.spec-group {
-		margin-bottom: 30rpx;
-	}
-
-	.spec-title {
-		font-size: 26rpx;
-		color: #666;
-		margin-bottom: 16rpx;
-		display: block;
-	}
-
-	.spec-options {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 20rpx;
-	}
-
-	.spec-opt {
-		padding: 10rpx 30rpx;
-		background-color: #f5f5f5;
-		border-radius: 8rpx;
-		font-size: 24rpx;
-		color: #333;
-		border: 2rpx solid transparent;
-	}
-
-	.spec-opt.active {
-		background-color: rgba(111, 78, 55, 0.1);
-		color: $primary;
-		border-color: $primary;
-		font-weight: bold;
-	}
-
-	.no-spec-tip {
-		text-align: center;
-		padding: 40rpx;
-		color: #999;
-		font-size: 24rpx;
-	}
-
-	.modal-footer {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		border-top: 1rpx solid #eee;
-		padding-top: 20rpx;
-	}
-
-	.price-box {
-		display: flex;
-		align-items: baseline;
-		flex-direction: column;
-	}
-
-	.symbol {
-		font-size: 24rpx;
-		color: $primary;
-		font-weight: bold;
-	}
-
-	.num {
-		font-size: 40rpx;
-		color: $primary;
-		font-weight: bold;
-	}
-
-	.selected-spec {
-		font-size: 20rpx;
-		color: #999;
-		margin-top: 4rpx;
-	}
-
-	.action-box {
-		display: flex;
-		align-items: center;
-	}
-
-	.add-cart-btn {
-		background-color: $primary;
-		color: white;
-		padding: 16rpx 40rpx;
-		border-radius: 40rpx;
-		font-size: 28rpx;
-		font-weight: bold;
-	}
-
-	.stepper {
-		display: flex;
-		align-items: center;
-		gap: 20rpx;
-	}
-
 	/* 加载更多 */
 	.load-more {
 		padding: 40rpx 0;
@@ -1207,33 +762,5 @@
 	.load-text {
 		font-size: 24rpx;
 		color: #999;
-	}
-
-	.step-btn {
-		width: 50rpx;
-		height: 50rpx;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 32rpx;
-		font-weight: bold;
-	}
-
-	.step-btn.minus {
-		border: 2rpx solid #ddd;
-		color: #666;
-	}
-
-	.step-btn.plus {
-		background-color: $primary;
-		color: white;
-	}
-
-	.step-num {
-		font-size: 30rpx;
-		font-weight: bold;
-		min-width: 40rpx;
-		text-align: center;
 	}
 </style>

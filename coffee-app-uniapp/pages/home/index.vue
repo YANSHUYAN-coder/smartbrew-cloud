@@ -8,13 +8,11 @@
 						<text class="location-text">智咖·云</text>
 						<text class="chevron">›</text>
 					</view>
-					<uni-icons custom-prefix="iconfont" type="icon-message"
-					color="#000" size="24"></uni-icons>
+					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24"></uni-icons>
 				</view>
 			</view>
 		</view>
 
-		<!-- ... (Banner 和 其他部分保持不变) ... -->
 		<!-- 沉浸式 Banner -->
 		<view class="banner-container">
 			<view class="banner">
@@ -79,17 +77,20 @@
 			</scroll-view>
 		</view>
 
-		<!-- 推荐列表 -->
+		<!-- 推荐列表 (双列瀑布流布局) -->
 		<view class="recommend-section">
 			<view class="section-header">
 				<text class="section-title">猜你喜欢</text>
 				<text class="section-more" @click="handleViewAll">查看全部 ›</text>
 			</view>
-			<view class="product-grid">
+
+			<!-- 瀑布流容器 -->
+			<view class="product-waterfall">
 				<view v-for="product in recommendProducts" :key="product.id" class="product-card"
 					@click="handleProductClick(product)">
 					<view class="product-image-wrapper">
-						<image :src="product.image" class="product-image" mode="aspectFill" />
+						<!-- 关键点：使用 widthFix 模式，让图片高度随宽度自适应，形成错落感 -->
+						<image :src="product.image" class="product-image" mode="widthFix" />
 						<view class="product-rating">
 							<text class="star">⭐</text>
 							<text class="rating-text">{{ product.rating }}</text>
@@ -108,6 +109,9 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 规格选择弹窗 -->
+		<SkuModal v-model:show="showSkuModal" :product="selectedProduct" />
 	</view>
 </template>
 
@@ -122,20 +126,26 @@
 		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 	import {
-		PRODUCTS
-	} from '@/utils/data.js'
+		getMenuVO
+	} from '@/services/product.js'
 	import {
 		useCartStore
 	} from '@/store/cart.js'
 	import {
 		getStatusBarHeight
 	} from '@/utils/system.js'
+	import SkuModal from '@/components/SkuModal.vue'
 
 	const cartStore = useCartStore()
 	const statusBarHeight = ref(0)
 
-	// 模拟新品数据 (取最后3个商品作为新品)
-	const newProducts = computed(() => PRODUCTS.slice(-3))
+	// 商品数据
+	const recommendProducts = ref([])
+	const newProducts = ref([])
+
+	// 规格弹窗控制
+	const showSkuModal = ref(false)
+	const selectedProduct = ref({})
 
 	const functions = [{
 			icon: '☕',
@@ -155,8 +165,6 @@
 		},
 	]
 
-	const recommendProducts = computed(() => PRODUCTS.slice(0, 4))
-
 	const handleLocationClick = () => {
 		uni.showToast({
 			title: '选择门店',
@@ -164,19 +172,17 @@
 		})
 	}
 
-	// AI 助手点击事件
 	const handleSearchClick = () => {
-	  // 检查是否登录（可选）
-	  const token = uni.getStorageSync('token')
-	  if (!token) {
-	    uni.navigateTo({ url: '/pages/login/index' })
-	    return
-	  }
-	  
-	  // 跳转到 AI 聊天页
-	  uni.navigateTo({
-	    url: '/pages/ai/chat'
-	  })
+		const token = uni.getStorageSync('token')
+		if (!token) {
+			uni.navigateTo({
+				url: '/pages/login/index'
+			})
+			return
+		}
+		uni.navigateTo({
+			url: '/pages/ai/chat'
+		})
 	}
 
 	const handleBannerClick = () => {
@@ -188,31 +194,24 @@
 	const handleFunctionClick = (item) => {
 		switch (item.name) {
 			case '到店取':
-				// 跳转到点单页，通过全局状态或参数告知是自提
 				uni.setStorageSync('orderType', 'pickup');
 				uni.switchTab({
 					url: '/pages/menu/index'
 				});
 				break;
-
 			case '外卖':
-				// 跳转到点单页，告知是外卖
 				uni.setStorageSync('orderType', 'delivery');
 				uni.switchTab({
 					url: '/pages/menu/index'
 				});
 				break;
-
 			case '礼品卡':
 				uni.showToast({
 					title: '礼品卡功能开发中...',
 					icon: 'none'
 				});
-				// uni.navigateTo({ url: '/pages/gift-card/index' });
 				break;
-
 			case '会员':
-				// 跳转到“我的”页面
 				uni.switchTab({
 					url: '/pages/profile/index'
 				});
@@ -227,31 +226,43 @@
 	}
 
 	const handleProductClick = (product) => {
-		uni.switchTab({
-			url: '/pages/menu/index'
-		})
+		selectedProduct.value = product
+		showSkuModal.value = true
 	}
 
 	const handleAddToCart = (product) => {
-		cartStore.addToCart(product)
-		uni.showToast({
-			title: '已加入购物车',
-			icon: 'success'
-		})
+		selectedProduct.value = product
+		showSkuModal.value = true
 	}
 
-	// 加载首页数据
 	const loadHomeData = async () => {
-		// 这里可以添加加载首页数据的逻辑
-		// 例如：获取推荐商品、新品等
-		// 目前使用模拟数据，所以暂时不需要
-		return true
+		try {
+			const menuData = await getMenuVO()
+			if (menuData && menuData.products) {
+				// 商品列表映射字段名，确保与模板一致
+				const mappedProducts = menuData.products.map(product => ({
+					...product,
+					// 字段名映射：后端 picUrl -> 前端 image
+					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
+					// 字段名映射：后端 description -> 前端 desc
+					desc: product.description || product.desc || '',
+					// 确保有评分字段
+					rating: product.rating || 4.5,
+				}))
+
+				recommendProducts.value = mappedProducts
+				// 筛选分类为“人气新品”（ID为7）的数据
+				newProducts.value = mappedProducts.filter(p => p.categoryId === 7)
+			}
+			return true
+		} catch (error) {
+			console.error("获取首页数据失败", error)
+			return false
+		}
 	}
 
-	// 下拉刷新
 	onPullDownRefresh(async () => {
 		await loadHomeData()
-		// 停止下拉刷新动画
 		uni.stopPullDownRefresh()
 	})
 
@@ -262,7 +273,7 @@
 </script>
 
 <style lang="scss" scoped>
-	/* ... (保留之前的样式) ... */
+	/* ... (前置样式保持不变) ... */
 	.home-page {
 		min-height: 100vh;
 		background-color: #f5f5f5;
@@ -290,7 +301,6 @@
 		align-items: center;
 	}
 
-	/* ... (location-info, bell-icon 样式保持不变) ... */
 	.location-info {
 		display: flex;
 		align-items: center;
@@ -308,8 +318,6 @@
 		color: #999;
 	}
 
-
-	/* AI 智能助手卡片样式 - 简洁优雅版 */
 	.ai-assistant-card {
 		padding: 0 40rpx;
 		margin-top: 24rpx;
@@ -367,7 +375,6 @@
 		color: #999;
 	}
 
-	/* ... (后续样式保持不变) ... */
 	.banner-container {
 		padding: 32rpx 40rpx;
 	}
@@ -502,10 +509,12 @@
 		color: #999;
 	}
 
-	.product-grid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 32rpx;
+	/* --- 瀑布流布局核心样式 --- */
+	.product-waterfall {
+		/* 关键：设置列数为 2 */
+		column-count: 2;
+		/* 设置列之间的间距 */
+		column-gap: 32rpx;
 	}
 
 	.product-card {
@@ -514,6 +523,16 @@
 		overflow: hidden;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
 		transition: transform 0.2s, box-shadow 0.2s;
+
+		/* 关键：避免卡片在列之间被截断 */
+		break-inside: avoid;
+		/* 使用 margin-bottom 来控制垂直间距 */
+		margin-bottom: 32rpx;
+		
+		/* 性能优化：开启硬件加速，避免渲染闪烁 */
+		transform: translateZ(0);
+		/* 兼容性修复：强制显示为 inline-block 有时能解决对齐问题，但在 column 布局下 block 也可以 */
+		display: block; 
 	}
 
 	.product-card:active {
@@ -523,13 +542,19 @@
 
 	.product-image-wrapper {
 		position: relative;
-		height: 256rpx;
 		overflow: hidden;
+		/* 移除固定高度，允许高度自适应 */
 	}
 
 	.product-image {
 		width: 100%;
-		height: 100%;
+		/* 图片设为 block 消除底部空隙 */
+		display: block;
+		/* 高度自适应，实现错落的瀑布流效果 */
+		height: auto;
+		/* 设置一个最小高度，避免图片未加载时卡片完全塌陷 */
+		min-height: 200rpx;
+		background-color: #f0f0f0;
 	}
 
 	.product-rating {
@@ -618,7 +643,6 @@
 	/* 新品模块样式 */
 	.new-arrival-section {
 		padding: 0 40rpx;
-		/* 左边留白，右边不留白以便滑动 */
 		margin-top: 48rpx;
 	}
 
@@ -632,7 +656,6 @@
 		font-size: 20rpx;
 		color: white;
 		background-color: #ff4d4f;
-		/* 醒目的红色 */
 		padding: 4rpx 10rpx;
 		border-radius: 8rpx;
 		font-weight: bold;
@@ -649,7 +672,6 @@
 		display: flex;
 		gap: 24rpx;
 		padding-right: 40rpx;
-		/* 列表尾部留白 */
 	}
 
 	.new-product-card {

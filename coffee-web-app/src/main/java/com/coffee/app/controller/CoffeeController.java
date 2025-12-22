@@ -1,6 +1,7 @@
 package com.coffee.app.controller;
 
 import com.coffee.ai.service.CoffeeAiService;
+import com.coffee.common.context.UserContext;
 import com.coffee.common.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,8 +23,12 @@ public class CoffeeController {
      */
     @GetMapping("/rag")
     public Result<String> rag(@RequestParam("question") String question) {
+        Long userId = UserContext.getUserId();
+        if (userId == null){
+            return Result.failed("请先登录");
+        }
         // 调用 service 中配置好 RAG 的对话能力
-        String answer = coffeeAiService.chat("你是智咖云的服务员，你需要回答用户的问题。", question);
+        String answer = coffeeAiService.chat("你是智咖云的服务员，你需要回答用户的问题。", question,userId);
         return Result.success(answer);
     }
 }

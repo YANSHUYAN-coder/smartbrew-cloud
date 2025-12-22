@@ -5,7 +5,6 @@ import com.coffee.ai.service.CoffeeAiService;
 import com.coffee.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,9 +38,4 @@ public class AdminAiController {
         return Result.success(message);
     }
 
-    @Operation(summary = "测试搜索")
-    @PostMapping("/search")
-    public List<Document> search(@RequestParam String query) {
-        return coffeeAiService.search(query);
-    }
 }

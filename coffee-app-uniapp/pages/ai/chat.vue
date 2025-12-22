@@ -10,7 +10,9 @@
           <text class="page-title">智能咖啡师</text>
           <text class="status-text">{{ isTyping ? '对方正在输入...' : '在线' }}</text>
         </view>
-        <view class="right-placeholder"></view>
+        <view class="right-placeholder" @click="handleClearChat">
+          <uni-icons type="trash" size="20" color="#999"></uni-icons>
+        </view>
       </view>
     </view>
 
@@ -115,7 +117,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { getStatusBarHeight } from '@/utils/system.js'
-import { chatWithAi } from '@/services/ai.js'
+import { chatWithAi, getChatHistory, clearChatHistory } from '@/services/ai.js'
 
 // 状态管理
 const statusBarHeight = ref(0)
@@ -142,12 +144,31 @@ const quickTags = [
 // 消息列表
 const messageList = ref([])
 
+// 加载历史记录
+const loadHistory = async () => {
+  try {
+    const history = await getChatHistory()
+    if (history && history.length > 0) {
+      messageList.value = history.map(item => ({
+        role: item.role,
+        content: item.content
+      }))
+      scrollToBottom()
+    }
+  } catch (error) {
+    console.error('加载历史记录失败', error)
+  }
+}
+
 // 初始化
 onMounted(() => {
   statusBarHeight.value = getStatusBarHeight()
   // 计算内容区域高度 (屏幕高度 - 导航栏 - 底部输入区)
   const screenHeight = uni.getSystemInfoSync().windowHeight
   contentHeight.value = screenHeight - statusBarHeight.value - 44 - 100 // 粗略估算
+  
+  // 加载聊天历史
+  loadHistory()
 })
 
 // 返回
@@ -172,6 +193,25 @@ const handleTagClick = (text) => {
 const closeKeyboard = () => {
   uni.hideKeyboard()
   inputFocus.value = false
+}
+
+// 清除聊天记录
+const handleClearChat = () => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要清空聊天记录吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await clearChatHistory()
+          messageList.value = []
+          uni.showToast({ title: '记录已清空', icon: 'success' })
+        } catch (error) {
+          uni.showToast({ title: '清空失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 // 发送消息核心逻辑

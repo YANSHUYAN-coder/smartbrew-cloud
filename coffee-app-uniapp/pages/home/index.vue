@@ -250,7 +250,8 @@
 					rating: product.rating || 4.5,
 				}))
 
-				recommendProducts.value = mappedProducts
+				// 推荐商品：只取前 6 条展示
+				recommendProducts.value = mappedProducts.slice(0, 6)
 				// 筛选分类为“人气新品”（ID为7）的数据
 				newProducts.value = mappedProducts.filter(p => p.categoryId === 7)
 			}

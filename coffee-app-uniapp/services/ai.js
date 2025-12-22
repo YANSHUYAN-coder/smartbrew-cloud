@@ -1,4 +1,4 @@
-import { get } from '@/utils/request.js'
+import { get, post } from '@/utils/request.js'
 
 /**
  * 发送消息给 AI (RAG 增强)
@@ -6,4 +6,18 @@ import { get } from '@/utils/request.js'
  */
 export const chatWithAi = (question) => {
   return get(`/coffee/rag?question=${question}`)
+}
+
+/**
+ * 获取聊天历史记录
+ */
+export const getChatHistory = () => {
+  return get('/coffee/chat/history')
+}
+
+/**
+ * 清空聊天历史
+ */
+export const clearChatHistory = () => {
+  return post('/coffee/chat/clear')
 }

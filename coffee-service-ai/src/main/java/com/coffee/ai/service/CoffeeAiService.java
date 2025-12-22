@@ -10,6 +10,8 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,45 +40,54 @@ public class CoffeeAiService {
 
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
+    // 增加一个简单的 ChatClient，用于非 RAG 任务（如查询重写）
+    private final ChatClient simpleChatClient;
     private final ProductService productService;
     private final SkuStockService skuStockService;
+    private final ChatMemory chatMemory; // 保存引用以便手动访问
 
     // 文本切分器，用于将长文档切分成小块，提高 RAG 效果
     private final TokenTextSplitter textSplitter = new TokenTextSplitter();
 
-    public CoffeeAiService(VectorStore vectorStore, 
-                           ChatClient.Builder ChatClientBuilder,
+    public CoffeeAiService(VectorStore vectorStore,
+                           ChatClient.Builder chatClientBuilder,
                            ProductService productService,
-                           SkuStockService skuStockService) {
+                           SkuStockService skuStockService,
+                           ChatMemory chatMemory) {
         this.vectorStore = vectorStore;
         this.productService = productService;
         this.skuStockService = skuStockService;
-        
+        this.chatMemory = chatMemory;
+
+        // 1. 初始化简单的 ChatClient (用于查询重写)
+        this.simpleChatClient = chatClientBuilder.build();
+
+        // 2. 初始化 RAG ChatClient
         VectorStoreDocumentRetriever vectorStoreDocumentRetriever = VectorStoreDocumentRetriever
                 .builder()
                 .vectorStore(vectorStore)
                 .topK(3)
                 .similarityThreshold(0.5)
                 .build();
-        RetrievalAugmentationAdvisor retrievalAugmentationAdvisor = RetrievalAugmentationAdvisor
-                .builder()
-                .documentRetriever(vectorStoreDocumentRetriever)
-                .build();
-        this.chatClient = ChatClientBuilder
-                .defaultAdvisors(retrievalAugmentationAdvisor)
+        
+        // 注意：这里我们移除了 RetrievalAugmentationAdvisor 的默认配置，
+        // 改为在 chat 方法中动态构建，以便支持 rewrite 后的查询
+        this.chatClient = chatClientBuilder
+                .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 
 
     /**
      * 导入管理员上传的多种格式数据 (CSV, PDF, Word, Markdown) 到向量数据库
+     *
      * @param file 上传的文件
      * @return 结果消息
      */
     public String importData(MultipartFile file) {
         String fileName = file.getOriginalFilename();
         if (fileName == null) return "文件名不能为空";
-        
+
         String extension = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
         List<Document> documents = new ArrayList<>();
 
@@ -117,7 +129,7 @@ public class CoffeeAiService {
     }
 
     private List<Document> parseCsv(MultipartFile file) throws IOException {
-        java.io.InputStreamReader reader = new java.io.InputStreamReader(file.getInputStream(), "UTF-8");
+        InputStreamReader reader = new java.io.InputStreamReader(file.getInputStream(), "UTF-8");
         CSVParser csvParser = CSVFormat.DEFAULT.builder()
                 .setHeader().setSkipHeaderRecord(true).build().parse(reader);
 
@@ -151,6 +163,7 @@ public class CoffeeAiService {
 
     /**
      * 将数据库中的产品及规格信息自动同步到向量数据库
+     *
      * @return 同步结果
      */
     public String syncDatabaseToVectorStore() {
@@ -158,7 +171,7 @@ public class CoffeeAiService {
             // 1. 获取所有上架产品
             List<Product> productList = productService.list(new LambdaQueryWrapper<Product>()
                     .eq(Product::getStatus, 1));
-            
+
             if (productList.isEmpty()) {
                 return "数据库中没有上架商品";
             }
@@ -175,7 +188,7 @@ public class CoffeeAiService {
                 sb.append("商品名称: ").append(product.getName()).append("\n");
                 sb.append("基础价格: ￥").append(product.getPrice()).append("\n");
                 sb.append("商品描述: ").append(product.getDescription()).append("\n");
-                
+
                 if (!skus.isEmpty()) {
                     sb.append("可选规格与价格详情:\n");
                     for (SkuStock sku : skus) {
@@ -200,7 +213,7 @@ public class CoffeeAiService {
                 Document document = new Document("doc_prod_" + product.getId(), sb.toString(), new java.util.HashMap<>());
                 document.getMetadata().put("type", "product");
                 document.getMetadata().put("id", product.getId());
-                
+
                 documents.add(document);
             }
 
@@ -214,26 +227,71 @@ public class CoffeeAiService {
         }
     }
 
-    // 相似度搜索
-    public List<Document> search(String query) {
-        SearchRequest searchRequest = SearchRequest.builder()
-                // 返回前 2 条结果
-                .topK(2)
-                .query(query)
-                .build();
-        return vectorStore.similaritySearch(searchRequest);
-    }
-
     /**
      * 聊天
+     *
      * @param systemPrompt
      * @param userQuestion
      * @return
      */
-    public String chat(String systemPrompt, String userQuestion) {
+    public String chat(String systemPrompt, String userQuestion, Long chatId) {
+        String conversationId = String.valueOf(chatId);
+
+        String searchKey = userQuestion;
+
+        try {
+            // 修正：ChatMemory.get 只接受 conversationId
+            List<org.springframework.ai.chat.messages.Message> history = chatMemory.get(conversationId);
+            
+            if (history != null && !history.isEmpty() && userQuestion.length() < 10) {
+                StringBuilder historyText = new StringBuilder();
+                for (org.springframework.ai.chat.messages.Message msg : history) {
+                   historyText.append(msg.getMessageType()).append(": ").append(msg.toString()).append("\n");
+                }
+                
+                // 优化 Prompt，强制要求简洁
+                String rewritePrompt = "你是一个搜索查询优化助手。请根据以下历史对话，将用户的【最新问题】改写为一个指代明确、完整的搜索关键词，以便在商品知识库中检索。\n" +
+                        "规则：\n" +
+                        "1. 如果最新问题包含代词（如“它”、“这个”、“多少钱”），请根据历史对话还原指代对象（如“可颂多少钱”）。\n" +
+                        "2. 这是一个商品搜索场景，请确保关键词包含商品名称。\n" +
+                        "3. 直接返回改写后的句子，不要包含任何解释、标点符号或其他文字。\n\n" +
+                        "历史对话:\n" + historyText +
+                        "用户最新问题: " + userQuestion + "\n\n" +
+                        "改写结果:";
+                
+                String rewritten = simpleChatClient.prompt()
+                        .user(rewritePrompt)
+                        .call()
+                        .content();
+                
+                // 清理可能的多余字符
+                if (rewritten != null) {
+                    rewritten = rewritten.replace("改写结果:", "").trim();
+                    if (!rewritten.isEmpty()) {
+                        searchKey = rewritten;
+                        log.info("Query Rewrite Success: '{}' -> '{}'", userQuestion, searchKey);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Query rewrite failed: " + e.getMessage());
+        }
+
+        // 修正：SearchRequest 构建方式，使用 builder
+        List<Document> documents = vectorStore.similaritySearch(
+                SearchRequest.builder().query(searchKey).topK(3).build());
+
+        String context = documents.stream()
+                .map(doc -> doc.getText()) 
+                .reduce((a, b) -> a + "\n\n" + b)
+                .orElse("暂无相关信息");
+
+        String finalSystemPrompt = systemPrompt + "\n\n【参考资料】:\n" + context + "\n\n请根据参考资料和历史对话回答问题。";
+
         return chatClient.prompt()
-                .system(systemPrompt)
+                .system(finalSystemPrompt)
                 .user(userQuestion)
+                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();
     }

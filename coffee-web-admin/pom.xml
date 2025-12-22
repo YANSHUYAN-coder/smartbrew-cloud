@@ -48,6 +48,13 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
+
+        <!-- 支付宝 SDK (显式引入以解决依赖传递问题) -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>4.40.560.ALL</version>
+        </dependency>
     </dependencies>
 
     <build>

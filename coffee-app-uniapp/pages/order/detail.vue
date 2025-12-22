@@ -163,6 +163,7 @@ const getStatusText = (status) => {
 		4: '已完成',
 		5: '已取消'
 	}
+	if (status === 4) return '已关闭'
 	return statusMap[status] || '未知'
 }
 
@@ -176,6 +177,7 @@ const getStatusIcon = (status) => {
 		4: '✓',
 		5: '✗'
 	}
+	if (status === 4) return '✗'
 	return iconMap[status] || '📦'
 }
 
@@ -189,6 +191,7 @@ const getStatusDesc = (status) => {
 		4: '订单已完成',
 		5: '订单已取消'
 	}
+	if (status === 4) return '订单已关闭'
 	return descMap[status] || ''
 }
 
@@ -202,6 +205,7 @@ const getStatusClass = (status) => {
 		4: 'status-completed',
 		5: 'status-cancelled'
 	}
+	if (status === 4) return 'status-cancelled'
 	return classMap[status] || ''
 }
 
@@ -264,6 +268,8 @@ const cancelOrder = () => {
 			if (res.confirm) {
 				try {
 					await cancelOrderApi(orderId.value)
+					console.log("取消订单");
+					
 					uni.showToast({
 						title: '取消成功',
 						icon: 'success'

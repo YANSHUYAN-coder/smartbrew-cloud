@@ -154,8 +154,8 @@ const statusTabs = [
 	{ label: '待付款', status: 0 },
 	{ label: '待制作', status: 1 },
 	{ label: '制作中', status: 2 },
-	{ label: '待取餐', status: 3 },
-	{ label: '已完成', status: 4 }
+	{ label: '已完成', status: 3 },
+	{ label: '已取消', status: 4 }
 ]
 
 // 获取订单状态文本
@@ -164,9 +164,9 @@ const getStatusText = (status) => {
 		0: '待付款',
 		1: '待制作',
 		2: '制作中',
-		3: '待取餐',
-		4: '已完成',
-		5: '已取消'
+		3: '已完成',
+		4: '已关闭',
+		5: '无效订单'
 	}
 	return statusMap[status] || '未知'
 }
@@ -178,7 +178,7 @@ const getStatusClass = (status) => {
 		1: 'status-waiting',
 		2: 'status-making',
 		3: 'status-ready',
-		4: 'status-completed',
+		4: 'status-cancelled',
 		5: 'status-cancelled'
 	}
 	return classMap[status] || ''

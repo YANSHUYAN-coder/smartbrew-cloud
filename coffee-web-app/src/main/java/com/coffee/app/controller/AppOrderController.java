@@ -2,6 +2,7 @@ package com.coffee.app.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coffee.common.dict.OrderStatus;
+import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.CreateOrderRequest;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
@@ -69,11 +70,29 @@ public class AppOrderController {
      * 取消订单（简单将状态置为“已关闭”）
      */
     @PostMapping("/cancel/{id}")
-    @PreAuthorize("hasAuthority('app:order:cancel')")
     @Operation(summary = "取消订单", description = "仅允许取消属于当前登录用户且仍在进行中的订单")
     public Result<String> cancel(
             @Parameter(description = "订单ID") @PathVariable("id") Long id) {
-        // 这里为了简单直接复用 updateStatus 逻辑，也可以单独在 Service 中封装 cancelOrder 方法
+        
+        // 1. 获取当前登录用户ID
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            return Result.failed("请先登录");
+        }
+
+        // 2. 查询订单，校验所有权和状态
+        OmsOrder order = orderService.getById(id);
+        if (order == null) {
+            return Result.failed("订单不存在");
+        }
+        if (!order.getMemberId().equals(userId)) {
+            return Result.failed("非法操作：无权取消他人订单");
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode()) {
+            return Result.failed("当前状态不允许取消（仅待付款订单可手动取消）");
+        }
+
+        // 3. 执行取消逻辑
         return orderService.updateStatus(
                 Map.of("id", id, "status", OrderStatus.CLOSED.getCode()))
                 ? Result.success("取消成功")

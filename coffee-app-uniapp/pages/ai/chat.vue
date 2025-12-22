@@ -128,7 +128,7 @@ const inputFocus = ref(false)
 
 // 用户信息
 const userInfo = uni.getStorageSync('userInfo') || {}
-const userAvatar = userInfo.icon || '/static/default-avatar.png'
+const userAvatar = userInfo.avatar || '/static/default-avatar.png'
 
 // 快捷标签
 const quickTags = [
@@ -190,6 +190,7 @@ const sendMessage = async () => {
   try {
     // 2. 调用后端 API
     const responseText = await chatWithAi(text)
+	console.log("responseText",responseText);
     
     // 3. 模拟打字机效果显示 AI 回复
     isLoading.value = false

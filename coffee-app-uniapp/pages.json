@@ -17,6 +17,13 @@
 			}
 		},
 		{
+			"path": "pages/menu/search",
+			"style": {
+				"navigationBarTitleText": "搜索",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/cart/index",
 			"style": {
 				"navigationBarTitleText": "购物车",

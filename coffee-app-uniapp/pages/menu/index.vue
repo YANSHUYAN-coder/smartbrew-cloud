@@ -293,9 +293,8 @@
 	}
 
 	const handleSearch = () => {
-		uni.showToast({
-			title: '搜索功能',
-			icon: 'none'
+		uni.navigateTo({
+			url: '/pages/menu/search'
 		})
 	}
 

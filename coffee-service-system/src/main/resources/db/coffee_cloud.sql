@@ -237,6 +237,43 @@ INSERT INTO `pms_sku_stock` VALUES (12, 21, '', 25.00, 100, NULL, '[{\"key\": \"
 INSERT INTO `pms_sku_stock` VALUES (13, 11, '', 38.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-23 15:40:28', '2025-12-23 15:40:28');
 
 -- ----------------------------
+-- Table structure for gift_card
+-- ----------------------------
+DROP TABLE IF EXISTS `gift_card`;
+CREATE TABLE `gift_card`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `card_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡卡号',
+  `member_id` bigint NOT NULL COMMENT '当前持卡人用户ID',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡名称',
+  `original_amount` decimal(10, 2) NOT NULL COMMENT '初始面值金额',
+  `balance` decimal(10, 2) NOT NULL COMMENT '当前可用余额',
+  `status` int NOT NULL DEFAULT 1 COMMENT '状态：0->未激活；1->可用；2->已用完；3->已过期',
+  `expire_time` datetime NULL DEFAULT NULL COMMENT '到期时间',
+  `greeting` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '祝福语/备注',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_card_no`(`card_no` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡主表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for gift_card_txn
+-- ----------------------------
+DROP TABLE IF EXISTS `gift_card_txn`;
+CREATE TABLE `gift_card_txn`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `card_id` bigint NOT NULL COMMENT '礼品卡ID',
+  `member_id` bigint NOT NULL COMMENT '关联用户ID',
+  `type` int NOT NULL COMMENT '类型：0->充值/发卡；1->消费；2->退款；3->调整',
+  `amount` decimal(10, 2) NOT NULL COMMENT '变动金额（正数表示增加，负数表示扣减）',
+  `order_id` bigint NULL DEFAULT NULL COMMENT '关联订单ID（消费时）',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注说明',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡收支流水表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
 -- Table structure for ums_member
 -- ----------------------------
 DROP TABLE IF EXISTS `ums_member`;

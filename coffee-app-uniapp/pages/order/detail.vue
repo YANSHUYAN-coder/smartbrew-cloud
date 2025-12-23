@@ -135,7 +135,7 @@
 					class="action-btn confirm-btn"
 					@click="confirmReceive"
 				>
-					确认收货
+					取餐
 				</button>
 			</view>
 		</view>
@@ -145,12 +145,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrderDetail } from '@/services/order.js'
-import { alipay } from '@/services/pay.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 
-const { handleCancelOrder } = useOrderActions()
+const { handleCancelOrder, handleConfirmReceive } = useOrderActions()
 
 const statusBarHeight = ref(0)
 const orderDetail = ref({})
@@ -278,18 +276,8 @@ const payOrder = () => {
 
 // 确认收货
 const confirmReceive = () => {
-	uni.showModal({
-		title: '提示',
-		content: '确定已收到商品吗？',
-		success: async (res) => {
-			if (res.confirm) {
-				// TODO: 调用确认收货接口
-				uni.showToast({
-					title: '确认收货功能开发中',
-					icon: 'none'
-				})
-			}
-		}
+	handleConfirmReceive(orderId.value, () => {
+		loadOrderDetail()
 	})
 }
 

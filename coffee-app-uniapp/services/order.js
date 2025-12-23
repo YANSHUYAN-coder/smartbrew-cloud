@@ -23,3 +23,8 @@ export const cancelOrder = (id) => {
   return post(`/app/order/cancel/${id}`)
 }
 
+// 确认收货
+export const confirmReceiveOrder = (id) => {
+  return post(`/app/order/confirm/${id}`)
+}
+

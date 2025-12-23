@@ -13,34 +13,34 @@ public enum OrderStatus {
     PENDING_PAYMENT(0, "待付款"),
 
     /**
-     * 1 -> 待发货
+     * 1 -> 待制作
      * 用户已付款，等待商家/咖啡师制作
      */
-    PENDING_DELIVERY(1, "待发货"),
+    PENDING_MAKING(1, "待制作"),
 
     /**
-     * 2 -> 已发货 (制作完成/配送中)
-     * 咖啡师点击“制作完成”或外卖小哥已接单
+     * 2 -> 制作中
+     * 咖啡师正在制作中
      */
-    SHIPPED(2, "已发货"),
+    MAKING(2, "制作中"),
 
     /**
-     * 3 -> 已完成
-     * 用户确认收货或系统自动确认
+     * 3 -> 待取餐
+     * 制作完成，等待用户取餐
      */
-    COMPLETED(3, "已完成"),
+    PENDING_PICKUP(3, "待取餐"),
 
     /**
-     * 4 -> 已关闭
-     * 超时未支付被关闭，或由管理员手动关闭
+     * 4 -> 已完成
+     * 用户已取餐，订单完成
      */
-    CLOSED(4, "已关闭"),
+    COMPLETED(4, "已完成"),
 
     /**
-     * 5 -> 无效订单
-     * 恶意刷单或异常订单
+     * 5 -> 已取消
+     * 订单被取消（用户取消或超时未支付）
      */
-    INVALID(5, "无效订单");
+    CANCELLED(5, "已取消");
 
     private final Integer code;
     private final String desc;

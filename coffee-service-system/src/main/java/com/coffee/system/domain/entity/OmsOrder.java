@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @TableName("oms_order")
-public class OmsOrder implements Serializable {
+public class OmsOrder extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -98,11 +98,5 @@ public class OmsOrder implements Serializable {
 
     @TableField("receive_time")
     private LocalDateTime receiveTime;
-
-    @TableField("create_time")
-    private LocalDateTime createTime;
-
-    @TableField("update_time")
-    private LocalDateTime updateTime;
 
 }

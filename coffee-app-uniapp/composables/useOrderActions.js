@@ -1,4 +1,4 @@
-import { cancelOrder as cancelOrderApi } from '@/services/order.js'
+import { cancelOrder as cancelOrderApi, confirmReceiveOrder as confirmReceiveOrderApi } from '@/services/order.js'
 import { alipay } from '@/services/pay.js'
 
 /**
@@ -90,9 +90,49 @@ export function useOrderActions() {
     })
   }
 
+  /**
+   * 确认收货通用逻辑
+   * @param {Object} order 订单对象或订单ID
+   * @param {Function} onSuccess 成功后的回调函数
+   */
+  const handleConfirmReceive = (order, onSuccess) => {
+    const orderId = typeof order === 'object' ? order.id : order
+
+    uni.showModal({
+      title: '提示',
+      content: '确定已收到商品吗？',
+      confirmColor: '#6f4e37',
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            uni.showLoading({ title: '正在提交...' })
+            await confirmReceiveOrderApi(orderId)
+            uni.hideLoading()
+
+            uni.showToast({
+              title: '确认收货成功',
+              icon: 'success'
+            })
+
+            if (onSuccess && typeof onSuccess === 'function') {
+              onSuccess()
+            }
+          } catch (error) {
+            uni.hideLoading()
+            uni.showToast({
+              title: error.message || '确认收货失败',
+              icon: 'none'
+            })
+          }
+        }
+      }
+    })
+  }
+
   return {
     handleCancelOrder,
-    handlePayOrder
+    handlePayOrder,
+    handleConfirmReceive
   }
 }
 

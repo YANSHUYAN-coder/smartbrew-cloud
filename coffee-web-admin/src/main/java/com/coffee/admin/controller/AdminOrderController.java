@@ -3,7 +3,6 @@ package com.coffee.admin.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
-import com.coffee.system.domain.entity.OmsOrder;
 import com.coffee.system.domain.vo.OrderVO;
 import com.coffee.system.service.OrderService;
 import lombok.AllArgsConstructor;
@@ -21,9 +20,9 @@ public class AdminOrderController {
 
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('oms:order:list')")
-    public Result<Page<OmsOrder>> list(@ModelAttribute PageParam pageParam,
+    public Result<Page<OrderVO>> list(@ModelAttribute PageParam pageParam,
                                        @RequestParam(required = false) Integer status) {
-        Page<OmsOrder> orderList = orderService.getAllList(pageParam, status);
+        Page<OrderVO> orderList = orderService.getAllList(pageParam, status);
         return Result.success(orderList);
     }
 

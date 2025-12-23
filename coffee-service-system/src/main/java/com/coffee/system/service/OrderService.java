@@ -13,9 +13,9 @@ public interface OrderService extends IService<OmsOrder> {
     /*管理端业务*/
 
     /**
-     * 管理端获取订单列表
+     * 管理端获取订单列表（包含商品明细）
      */
-    Page<OmsOrder> getAllList(PageParam pageParam, Integer status);
+    Page<OrderVO> getAllList(PageParam pageParam, Integer status);
 
 
     /**

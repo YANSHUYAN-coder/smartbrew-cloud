@@ -1,8 +1,9 @@
 import request from '@/utils/request'
 
+// 获取商品列表（使用公共搜索接口，支持筛选）
 export function getProductList(params: any) {
   return request({
-    url: '/admin/product/list',
+    url: '/api/product/search',
     method: 'get',
     params
   })

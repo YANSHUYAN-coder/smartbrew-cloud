@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
 
 /**
  * 图片代理接口
@@ -76,8 +78,8 @@ public class AppImageController {
             headers.setCacheControl("public, max-age=31536000"); // 缓存一年
             // 添加 CORS 响应头（虽然已经有全局配置，但这里明确设置更安全）
             headers.setAccessControlAllowOrigin("*");
-            headers.setAccessControlAllowMethods(java.util.Arrays.asList("GET", "HEAD", "OPTIONS"));
-            headers.setAccessControlAllowHeaders(java.util.Arrays.asList("*"));
+            headers.setAccessControlAllowMethods(Arrays.asList(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS));
+            headers.setAccessControlAllowHeaders(Arrays.asList("*"));
             
             return ResponseEntity.ok()
                     .headers(headers)

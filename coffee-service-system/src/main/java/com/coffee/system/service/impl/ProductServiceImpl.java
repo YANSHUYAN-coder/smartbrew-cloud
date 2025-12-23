@@ -36,8 +36,33 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Override
     public Page<Product> getList(PageParam pageParam) {
+        // 如果 pageParam 是 ProductSearchParam 类型，支持筛选
+        ProductSearchParam searchParam = null;
+        if (pageParam instanceof ProductSearchParam) {
+            searchParam = (ProductSearchParam) pageParam;
+        }
+        
         Page<Product> productPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        
+        // 关键词搜索（商品名称或描述）
+        if (searchParam != null && searchParam.getKeyword() != null && !searchParam.getKeyword().trim().isEmpty()) {
+            String keyword = searchParam.getKeyword().trim();
+            wrapper.and(w -> w.like(Product::getName, keyword)
+                    .or()
+                    .like(Product::getDescription, keyword));
+        }
+        
+        // 状态筛选
+        if (searchParam != null && searchParam.getStatus() != null) {
+            wrapper.eq(Product::getStatus, searchParam.getStatus());
+        }
+        
+        // 分类筛选
+        if (searchParam != null && searchParam.getCategoryId() != null) {
+            wrapper.eq(Product::getCategoryId, searchParam.getCategoryId());
+        }
+        
         wrapper.orderByDesc(Product::getCreateTime);
         Page<Product> result = this.page(productPage, wrapper);
         
@@ -85,7 +110,24 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         // 排序：按创建时间倒序
         wrapper.orderByDesc(Product::getCreateTime);
         
-        return this.page(productPage, wrapper);
+        Page<Product> result = this.page(productPage, wrapper);
+        
+        // 填充分类名称（管理端和C端都需要）
+        if (result != null && CollUtil.isNotEmpty(result.getRecords())) {
+            // 查询所有分类（包括禁用的），构建 ID -> 名称的映射
+            List<Category> categories = categoryService.list();
+            Map<Long, String> categoryMap = categories.stream()
+                    .collect(Collectors.toMap(Category::getId, Category::getName));
+            
+            // 为每个商品填充分类名称
+            result.getRecords().forEach(product -> {
+                if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
+                    product.setCategory(categoryMap.get(product.getCategoryId()));
+                }
+            });
+        }
+        
+        return result;
     }
 
     @Override

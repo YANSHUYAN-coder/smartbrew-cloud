@@ -1,7 +1,7 @@
 package com.coffee.admin.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.coffee.common.dto.PageParam;
+import com.coffee.common.dto.ProductSearchParam;
 import com.coffee.common.result.Result;
 import com.coffee.common.util.MinioUtil;
 import com.coffee.system.domain.entity.Product;
@@ -20,11 +20,15 @@ public class AdminProductController {
     private final ProductService productService;
     private final MinioUtil minioUtil;
 
-    // 1. 获取商品列表 (基础信息，包括下架商品) - 分页查询
+    // 1. 获取商品列表 (基础信息，包括下架商品) - 分页查询，支持筛选
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('pms:product:list')")
-    public Result<Page<Product>> list(@ModelAttribute PageParam pageParam) {
-        Page<Product> page = productService.getList(pageParam);
+    public Result<Page<Product>> list(@ModelAttribute ProductSearchParam searchParam) {
+        // 如果参数为空，创建默认的 PageParam
+        if (searchParam == null) {
+            searchParam = new ProductSearchParam();
+        }
+        Page<Product> page = productService.getList(searchParam);
         return Result.success(page);
     }
 

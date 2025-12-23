@@ -10,6 +10,60 @@
         </div>
       </template>
 
+      <!-- 筛选区域 -->
+      <div class="filter-container" style="margin-bottom: 20px; padding: 15px; background: #f5f7fa; border-radius: 4px;">
+        <el-form :inline="true" :model="filterForm" class="filter-form">
+          <el-form-item label="关键词">
+            <el-input 
+              v-model="filterForm.keyword" 
+              placeholder="商品名称/描述" 
+              clearable
+              style="width: 200px;"
+              @clear="handleFilter"
+              @keyup.enter="handleFilter">
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-select 
+              v-model="filterForm.categoryId" 
+              placeholder="全部分类" 
+              clearable
+              filterable
+              style="width: 150px;"
+              @change="handleFilter">
+              <el-option 
+                v-for="cat in categoryOptions" 
+                :key="cat.id" 
+                :label="cat.name" 
+                :value="cat.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select 
+              v-model="filterForm.status" 
+              placeholder="全部状态" 
+              clearable
+              style="width: 120px;"
+              @change="handleFilter">
+              <el-option label="上架" :value="1"></el-option>
+              <el-option label="下架" :value="0"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleFilter">
+              <el-icon style="margin-right: 5px;"><Search /></el-icon>搜索
+            </el-button>
+            <el-button @click="handleReset">
+              <el-icon style="margin-right: 5px;"><Refresh /></el-icon>重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <!-- 商品表格 -->
       <el-table :data="safeTableData" border style="width: 100%" v-loading="loading">
         <el-table-column prop="name" label="商品名称" width="200"></el-table-column>
@@ -219,7 +273,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Upload, Delete } from '@element-plus/icons-vue'
+import { Plus, Upload, Delete, Search, Refresh } from '@element-plus/icons-vue'
 import { getProductList, updateProductStatus, createProduct, updateProduct, deleteProduct, uploadProductImage } from '@/api/product'
 import { getCategoryList } from '@/api/category'
 
@@ -268,6 +322,13 @@ const pageParam = ref({
   pageSize: 10
 })
 
+// 筛选表单
+const filterForm = reactive({
+  keyword: '',
+  categoryId: null as number | null,
+  status: null as number | null
+})
+
 // 确保表格数据始终是数组
 const safeTableData = computed(() => {
   return Array.isArray(tableData.value) ? tableData.value : []
@@ -288,10 +349,23 @@ const form = reactive<Product>({
 
 const getList = () => {
   loading.value = true
-  getProductList({
+  // 构建查询参数，包含筛选条件
+  const params: any = {
     page: pageParam.value.page,
     pageSize: pageParam.value.pageSize
-  }).then((res: any) => {
+  }
+  // 添加筛选条件（只传有值的）
+  if (filterForm.keyword && filterForm.keyword.trim()) {
+    params.keyword = filterForm.keyword.trim()
+  }
+  if (filterForm.categoryId) {
+    params.categoryId = filterForm.categoryId
+  }
+  if (filterForm.status !== null && filterForm.status !== undefined) {
+    params.status = filterForm.status
+  }
+  
+  getProductList(params).then((res: any) => {
     if (res && res.records && Array.isArray(res.records)) {
       tableData.value = res.records
       total.value = res.total || 0
@@ -322,6 +396,21 @@ const handleSizeChange = (size: number) => {
 
 const handleCurrentChange = (page: number) => {
   pageParam.value.page = page
+  getList()
+}
+
+// 筛选处理
+const handleFilter = () => {
+  pageParam.value.page = 1 // 重置到第一页
+  getList()
+}
+
+// 重置筛选
+const handleReset = () => {
+  filterForm.keyword = ''
+  filterForm.categoryId = null
+  filterForm.status = null
+  pageParam.value.page = 1
   getList()
 }
 

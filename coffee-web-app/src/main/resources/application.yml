@@ -8,6 +8,9 @@ spring:
     name: coffee-app
   profiles:
     include: ai
+  config:
+    import:
+      - optional:classpath:common-config.yml  # 导入通用配置
 
   # AI 配置 (通义千问)
   ai:

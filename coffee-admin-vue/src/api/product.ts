@@ -39,3 +39,14 @@ export function deleteProduct(id: number) {
   })
 }
 
+export function uploadProductImage(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/admin/product/upload/image',
+    method: 'post',
+    data: formData
+    // 注意：不要手动设置 Content-Type，让浏览器自动设置，这样会包含 boundary
+  })
+}
+

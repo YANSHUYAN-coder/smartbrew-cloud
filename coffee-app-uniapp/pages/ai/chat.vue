@@ -54,7 +54,7 @@
 
           <!-- 用户头像 (右侧) -->
           <view class="avatar-box" v-if="msg.role === 'user'">
-            <image :src="userAvatar" class="user-avatar" mode="aspectFill"></image>
+            <image :src="userAvatar.value" class="user-avatar" mode="aspectFill"></image>
           </view>
         </view>
 
@@ -128,9 +128,14 @@ const isLoading = ref(false)
 const isTyping = ref(false)
 const inputFocus = ref(false)
 
+// 导入图片转换工具
+import { convertImageUrl } from '@/utils/image.js'
+
 // 用户信息
 const userInfo = uni.getStorageSync('userInfo') || {}
-const userAvatar = userInfo.avatar || '/static/default-avatar.png'
+const userAvatar = computed(() => {
+  return convertImageUrl(userInfo.avatar) || '/static/default-avatar.png'
+})
 
 // 快捷标签
 const quickTags = [

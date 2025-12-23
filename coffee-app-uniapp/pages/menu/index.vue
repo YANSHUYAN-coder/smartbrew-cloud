@@ -144,11 +144,9 @@
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import {
-		PRODUCTS
-	} from '@/utils/data.js'
-	import {
 		useCartStore
 	} from '@/store/cart.js'
+	import { convertImageUrl } from '@/utils/image.js'
 	
 	import { getCategories } from '@/services/categories.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
@@ -312,8 +310,8 @@
 				// 商品列表需要映射字段名，确保与模板一致
 				const mappedProducts = menuData.products.map(product => ({
 					...product,
-					// 字段名映射：后端 picUrl -> 前端 image
-					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
+					// 字段名映射：后端 picUrl -> 前端 image，并转换为代理 URL
+					image: convertImageUrl(product.picUrl || product.image) || 'https://via.placeholder.com/180',
 					// 字段名映射：后端 description -> 前端 desc
 					desc: product.description || product.desc || '',
 					// 确保有评分字段

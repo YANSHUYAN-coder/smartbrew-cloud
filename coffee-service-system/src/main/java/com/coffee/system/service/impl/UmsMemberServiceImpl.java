@@ -12,6 +12,7 @@ import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.MemberStatusDTO;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.dto.UpdatePasswordDTO;
+import com.coffee.common.util.MinioUtil;
 import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.domain.entity.UmsMemberLevel;
 import com.coffee.system.domain.entity.UmsRole;
@@ -26,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Objects;
@@ -35,12 +37,15 @@ import java.util.stream.Collectors;
 public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember> implements UmsMemberService {
     @Autowired
     private PasswordEncoder passwordEncoder;
-    
+
     @Autowired
     private UmsUserRoleMapper userRoleMapper;
-    
+
     @Autowired
     private UmsMemberLevelMapper memberLevelMapper;
+
+    @Autowired
+    private MinioUtil minioUtil;
 
     @Override
     public Page<UmsMember> getList(PageParam pageParam, String phone) {
@@ -57,7 +62,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
     public Page<MemberVO> getListWithRoles(PageParam pageParam, String phone) {
         // 1. 先查询会员列表
         Page<UmsMember> memberPage = getList(pageParam, phone);
-        
+
         // 2. 转换为 MemberVO 并填充角色信息
         Page<MemberVO> voPage = new Page<>(memberPage.getCurrent(), memberPage.getSize(), memberPage.getTotal());
         List<MemberVO> voList = memberPage.getRecords().stream().map(member -> {
@@ -73,7 +78,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             }
             return vo;
         }).collect(Collectors.toList());
-        
+
         voPage.setRecords(voList);
         return voPage;
     }
@@ -139,10 +144,10 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         if (Objects.isNull(member)) {
             throw new RuntimeException("用户不存在");
         }
-        if(StrUtil.isBlank(param.getOldPassword())){
+        if (StrUtil.isBlank(param.getOldPassword())) {
             throw new RuntimeException("旧密码为空");
         }
-        if (Objects.equals(member.getPassword(), param.getOldPassword())){
+        if (Objects.equals(member.getPassword(), param.getOldPassword())) {
             throw new RuntimeException("新旧密码一致");
         }
         //1.校验：检查旧密码是否正确 (passwordEncoder.matches)。
@@ -188,5 +193,29 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             }
         }
         return true;
+    }
+
+    /**
+     * 上传头像
+     *
+     * @param file
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void uploadAvatar(MultipartFile file) {
+        Long userId = UserContext.getUserId();
+        if (Objects.isNull(userId)) {
+            throw new RuntimeException("用户未登录");
+        }
+
+        // 1. 查出数据库里的原始数据
+        UmsMember exist = this.getById(userId);
+        if (exist == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        String url = minioUtil.uploadAvatar(file);
+        this.update(new LambdaUpdateWrapper<UmsMember>()
+                .eq(UmsMember::getId, userId)
+                .set(UmsMember::getAvatar, url));
     }
 }

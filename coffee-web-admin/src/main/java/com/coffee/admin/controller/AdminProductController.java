@@ -3,12 +3,14 @@ package com.coffee.admin.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
+import com.coffee.common.util.MinioUtil;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.dto.ProductDTO;
 import com.coffee.system.service.ProductService;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/admin/product")
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminProductController {
 
     private final ProductService productService;
+    private final MinioUtil minioUtil;
 
     // 1. 获取商品列表 (基础信息，包括下架商品) - 分页查询
     @GetMapping("/list")
@@ -65,6 +68,21 @@ public class AdminProductController {
         // 逻辑删除商品，通常也应该级联删除 SKU，这里简化处理
         boolean success = productService.removeById(id);
         return success ? Result.success("删除成功") : Result.failed("删除失败");
+    }
+
+    // 7. 上传商品图片
+    @PostMapping("/upload/image")
+    // @PreAuthorize("hasAnyAuthority('pms:product:add', 'pms:product:update')")
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return Result.failed("请选择要上传的文件");
+        }
+        try {
+            String imageUrl = minioUtil.uploadProductImage(file);
+            return Result.success(imageUrl);
+        } catch (Exception e) {
+            return Result.failed("图片上传失败: " + e.getMessage());
+        }
     }
     
     // 搜索接口已移至 coffee-api 模块的 ProductController，路径：/api/product/search

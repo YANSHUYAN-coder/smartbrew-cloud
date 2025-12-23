@@ -7,7 +7,7 @@
     <view class="avatar-section" @click="handleAvatarClick">
       <view class="avatar-wrapper" hover-class="avatar-hover">
         <image 
-          :src="form.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" 
+          :src="avatarUrl" 
           class="avatar-img" 
           mode="aspectFill" 
         />
@@ -139,11 +139,12 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { request } from '@/utils/request.js'
+import { updateUserInfo, getUserInfo, uploadAvatar } from '@/services/user.js'
 import { useUserStore } from '@/store/user.js'
 import { getRegions } from '@/services/common.js'
+import { convertImageUrl } from '@/utils/image.js'
 
 const loading = ref(false)
 const endDate = new Date().toISOString().split('T')[0]
@@ -160,6 +161,11 @@ const form = reactive({
   birthday: '',
   city: '',
   signature: ''
+})
+
+// 计算属性：转换后的头像 URL
+const avatarUrl = computed(() => {
+  return convertImageUrl(form.avatar) || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 })
 
 // 加载地区数据
@@ -235,10 +241,7 @@ const fillFormFromStore = () => {
 // 从接口获取最新用户信息并更新 store（可选，用于刷新数据）
 const refreshUserInfo = async () => {
   try {
-    const res = await request({
-      url: '/app/member/info',
-      method: 'GET'
-    })
+    const res = await getUserInfo()
 	console.log("res:",res);
     if (res) {
       // 同步更新 store
@@ -271,16 +274,35 @@ const loadUserInfo = () => {
   // refreshUserInfo()
 }
 
-// 模拟头像上传
+// 头像上传
 const handleAvatarClick = () => {
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
-    success: (res) => {
+    success: async (res) => {
       const tempFilePath = res.tempFilePaths[0]
-      // 真实开发请先 uni.uploadFile 上传到服务器拿到 url
-      form.avatar = tempFilePath 
-      uni.showToast({ title: '头像已选中', icon: 'none' })
+      
+      // 显示上传中提示
+      uni.showLoading({ title: '上传中...', mask: true })
+      
+      try {
+        // 上传头像到服务器
+        await uploadAvatar(tempFilePath)
+        
+        // 上传成功后，刷新用户信息以获取最新的头像URL
+        await refreshUserInfo()
+        
+        uni.hideLoading()
+        uni.showToast({ title: '头像上传成功', icon: 'success' })
+      } catch (error) {
+        uni.hideLoading()
+        console.error('头像上传失败', error)
+        // 错误提示已在 uploadAvatar 中处理
+      }
+    },
+    fail: (error) => {
+      console.error('选择图片失败', error)
+      uni.showToast({ title: '选择图片失败', icon: 'none' })
     }
   })
 }
@@ -298,11 +320,7 @@ const handleSave = async () => {
   loading.value = true
   try {
     // 提交更新
-    await request({
-      url: '/app/member/update',
-      method: 'POST',
-      data: form
-    })
+    await updateUserInfo(form)
     
     // 保存成功后，重新获取用户信息并更新 store
     // 这样可以确保 store 中的数据是最新的

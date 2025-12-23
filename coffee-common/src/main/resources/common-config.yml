@@ -1,0 +1,10 @@
+# 通用配置文件 - 被多个模块共享
+# 该文件中的配置会被 coffee-web-admin 和 coffee-web-app 导入
+
+# MinIO 配置
+minio:
+  endpoint: http://192.168.248.128:9000  # MinIO 服务地址
+  access-key: admin
+  secret-key: 12345678
+  bucket-name: coffee-bucket
+

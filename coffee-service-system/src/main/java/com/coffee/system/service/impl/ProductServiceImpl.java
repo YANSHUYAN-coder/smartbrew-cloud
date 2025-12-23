@@ -39,7 +39,24 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         Page<Product> productPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(Product::getCreateTime);
-        return this.page(productPage, wrapper);
+        Page<Product> result = this.page(productPage, wrapper);
+        
+        // 填充分类名称
+        if (result != null && CollUtil.isNotEmpty(result.getRecords())) {
+            // 查询所有分类（包括禁用的），构建 ID -> 名称的映射
+            List<Category> categories = categoryService.list();
+            Map<Long, String> categoryMap = categories.stream()
+                    .collect(Collectors.toMap(Category::getId, Category::getName));
+            
+            // 为每个商品填充分类名称
+            result.getRecords().forEach(product -> {
+                if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
+                    product.setCategory(categoryMap.get(product.getCategoryId()));
+                }
+            });
+        }
+        
+        return result;
     }
     
     @Override

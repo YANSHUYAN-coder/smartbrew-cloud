@@ -21,7 +21,6 @@ coffee-app-uniapp/
 ├── store/             # 状态管理
 │   └── cart.js        # 购物车状态
 ├── utils/             # 工具函数
-│   └── data.js        # 模拟数据
 ├── static/            # 静态资源
 ├── App.vue            # 应用入口
 ├── main.js            # 主入口文件

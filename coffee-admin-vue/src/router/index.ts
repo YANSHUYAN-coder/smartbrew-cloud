@@ -40,6 +40,19 @@ const router = createRouter({
           ]
         },
         {
+          path: 'category',
+          name: 'category',
+          meta: { title: '分类管理', icon: 'Grid' },
+          children: [
+            {
+              path: 'list',
+              name: 'categoryList',
+              component: () => import('@/views/category/list.vue'),
+              meta: { title: '分类列表' }
+            }
+          ]
+        },
+        {
           path: 'order',
           name: 'order',
           meta: { title: '订单管理', icon: 'List' },

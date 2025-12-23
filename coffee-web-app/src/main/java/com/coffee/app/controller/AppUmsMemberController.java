@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * C端用户个人中心接口
@@ -63,5 +64,19 @@ public class AppUmsMemberController {
     public Result<String> logoff() {
         boolean flag = memberService.logoff();
         return flag ? Result.success("账号已注销，江湖再见") : Result.failed("操作失败");
+    }
+
+    /**
+     * 5. 上传头像
+     */
+    @PostMapping("/upload/avatar")
+    // @PreAuthorize("hasAuthority('app:member:upload')")
+    @Operation(summary = "上传头像", description = "上传用户头像图片，支持JPG、PNG等格式")
+    public Result<?> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return Result.failed("请选择要上传的文件");
+        }
+        memberService.uploadAvatar(file);
+        return Result.success("上传头像成功");
     }
 }

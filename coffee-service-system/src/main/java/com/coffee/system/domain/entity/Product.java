@@ -1,5 +1,6 @@
 package com.coffee.system.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -25,6 +26,12 @@ public class Product extends BaseEntity {
      * 分类ID (关联 pms_category 表)
      */
     private Long categoryId;
+
+    /**
+     * 分类名称 (不映射到数据库，用于返回给前端)
+     */
+    @TableField(exist = false)
+    private String category;
 
     /**
      * 描述

@@ -8,6 +8,7 @@ import com.coffee.common.dto.UpdatePasswordDTO;
 import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.domain.vo.MemberVO;
 import com.coffee.common.dto.UmsMemberUpdateDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -72,4 +73,10 @@ public interface UmsMemberService extends IService<UmsMember> {
      * @return 是否成功
      */
     boolean allocRoles(Long userId, List<Long> roleIds);
+
+    /**
+     * 上传头像
+     * @param file
+     */
+    void uploadAvatar(MultipartFile file);
 }

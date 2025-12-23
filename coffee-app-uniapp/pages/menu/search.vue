@@ -92,6 +92,7 @@
 		useCartStore
 	} from '@/store/cart.js'
 	import SkuModal from '@/components/SkuModal.vue'
+	import { convertImageUrl } from '@/utils/image.js'
 
 	const statusBarHeight = ref(0)
 	const searchKeyword = ref('')
@@ -170,7 +171,8 @@
 			if (result && result.records) {
 				const products = result.records.map(product => ({
 					...product,
-					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
+					// 字段名映射：后端 picUrl -> 前端 image，并转换为代理 URL
+					image: convertImageUrl(product.picUrl || product.image) || 'https://via.placeholder.com/180',
 					desc: product.description || product.desc || '',
 					rating: product.rating || 4.5
 				}))

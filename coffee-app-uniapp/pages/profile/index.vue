@@ -8,7 +8,7 @@
 			<view class="header-content">
 				<view class="user-info">
 					<image @click="navTo('/pages/profile/edit')"
-						src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop"
+						:src="avatarUrl"
 						class="avatar" mode="aspectFill" />
 					<view class="user-details">
 						<view class="user-name-row">
@@ -73,10 +73,16 @@
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import {useUserStore} from '@/store/user.js'
+	import { convertImageUrl } from '@/utils/image.js'
 
 	const statusBarHeight = ref(0)
 	const userStore=new useUserStore()
 	const userInfo =ref({})
+	
+	// 计算属性：转换后的头像 URL
+	const avatarUrl = computed(() => {
+		return convertImageUrl(userInfo.value?.avatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop'
+	})
 
 	const stats = [{
 			label: '积分',

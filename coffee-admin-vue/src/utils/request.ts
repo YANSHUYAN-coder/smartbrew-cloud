@@ -19,6 +19,10 @@ service.interceptors.request.use(
         // 且登录接口返回的 token 只是 raw token 字符串，所以前端必须手动拼接 Bearer
         config.headers['Authorization'] = 'Bearer ' + token
       }
+    // 如果是 FormData，让浏览器自动设置 Content-Type（包含 boundary）
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
     return config
   },
   error => {

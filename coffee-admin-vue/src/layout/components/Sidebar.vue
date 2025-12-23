@@ -21,6 +21,11 @@
       <span>商品管理</span>
     </el-menu-item>
 
+    <el-menu-item index="/category/list">
+      <el-icon><Grid /></el-icon>
+      <span>分类管理</span>
+    </el-menu-item>
+
     <el-menu-item index="/order/list">
       <el-icon><List /></el-icon>
       <span>订单管理</span>

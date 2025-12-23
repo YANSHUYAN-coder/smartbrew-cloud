@@ -27,6 +27,12 @@ public class OmsOrder extends BaseEntity implements Serializable {
     @TableField("order_sn")
     private String orderSn;
 
+    /**
+     * 取餐码 (新增字段)
+     */
+    @TableField("pickup_code")
+    private String pickupCode;
+
     @TableField("member_id")
     private Long memberId;
 

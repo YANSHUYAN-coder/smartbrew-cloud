@@ -143,6 +143,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { getOrderList } from '@/services/order.js'
+import { getStatusBarHeight } from '@/utils/system.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 
 const { handleCancelOrder, handleConfirmReceive } = useOrderActions()

@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 16/12/2025 17:52:37
+ Date: 23/12/2025 17:38:59
 */
 
 SET NAMES utf8mb4;
@@ -53,7 +53,7 @@ CREATE TABLE `oms_cart_item`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_cart_item
@@ -66,6 +66,7 @@ DROP TABLE IF EXISTS `oms_order`;
 CREATE TABLE `oms_order`  (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `order_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '订单编号',
+  `pickup_code` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '取餐码 (例如 A101)',
   `member_id` bigint NOT NULL COMMENT '用户ID',
   `coupon_id` bigint NULL DEFAULT NULL COMMENT '优惠券ID',
   `total_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '订单总金额',
@@ -73,7 +74,7 @@ CREATE TABLE `oms_order`  (
   `coupon_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '优惠券抵扣金额',
   `pay_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '应付金额（实际支付金额）',
   `pay_type` int NULL DEFAULT 1 COMMENT '支付方式：0->未支付；1->支付宝；2->微信',
-  `status` int NULL DEFAULT 1 COMMENT '订单状态：0->待付款；1->待发货；2->已发货；3->已完成；4->已关闭；5->无效订单',
+  `status` int NULL DEFAULT 1 COMMENT '订单状态：0->待付款；1->待制作；2->制作中；3->待取餐；4->已完成；5->已取消',
   `delivery_company` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '物流公司(配送方式)',
   `delivery_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '物流单号',
   `receiver_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '收货人姓名',
@@ -92,11 +93,15 @@ CREATE TABLE `oms_order`  (
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_sn`(`order_sn` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order
 -- ----------------------------
+INSERT INTO `oms_order` VALUES (1, '2025121917153016b5c89', NULL, 1, NULL, 20.00, 0.00, 0.00, 20.00, 1, 3, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '少冰', 0, NULL, NULL, NULL, '2025-12-19 17:15:31', '2025-12-23 16:48:50');
+INSERT INTO `oms_order` VALUES (2, '202512221352321470791', NULL, 1, NULL, 20.00, 0.00, 0.00, 20.00, 0, 5, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-22 13:52:33', '2025-12-23 16:14:38');
+INSERT INTO `oms_order` VALUES (3, '202512231724491f96382', '101', 1, NULL, 42.00, 0.00, 0.00, 42.00, 0, 0, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:24:49', '2025-12-23 17:24:49');
+INSERT INTO `oms_order` VALUES (4, '2025122317281316eb1f4', '102', 1, NULL, 25.00, 0.00, 0.00, 25.00, 1, 1, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:28:14', '2025-12-23 17:28:59');
 
 -- ----------------------------
 -- Table structure for oms_order_item
@@ -117,11 +122,16 @@ CREATE TABLE `oms_order_item`  (
   `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_order_item
 -- ----------------------------
+INSERT INTO `oms_order_item` VALUES (1, 1, '2025121917153016b5c89', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 2, NULL, '大杯,冰,半糖', '2025-12-19 17:15:31');
+INSERT INTO `oms_order_item` VALUES (2, 2, '202512221352321470791', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-22 13:52:33');
+INSERT INTO `oms_order_item` VALUES (3, 3, '202512231724491f96382', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-23 17:24:49');
+INSERT INTO `oms_order_item` VALUES (4, 3, '202512231724491f96382', 21, 'http://192.168.110.110:8081/api/app/image/proxy?url=http%3A%2F%2F192.168.248.128%3A9000%2Fcoffee-bucket%2Fproduct%2Fa147c5273d844ae0ad287d30fce5b1fb.png', '香草拿铁', NULL, 22.00, 1, 11, NULL, '中杯,热,标准', '2025-12-23 17:24:49');
+INSERT INTO `oms_order_item` VALUES (5, 4, '2025122317281316eb1f4', 21, 'http://192.168.110.110:8081/api/app/image/proxy?url=http%3A%2F%2F192.168.248.128%3A9000%2Fcoffee-bucket%2Fproduct%2Fa147c5273d844ae0ad287d30fce5b1fb.png', '香草拿铁', NULL, 25.00, 1, 12, NULL, '大杯,热,标准', '2025-12-23 17:28:14');
 
 -- ----------------------------
 -- Table structure for pms_category
@@ -136,7 +146,7 @@ CREATE TABLE `pms_category`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品分类表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品分类表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_category
@@ -147,6 +157,7 @@ INSERT INTO `pms_category` VALUES (3, '甜点', 'https://cdn-icons-png.flaticon.
 INSERT INTO `pms_category` VALUES (4, '烘焙', 'https://cdn-icons-png.flaticon.com/512/992/992747.png', 70, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
 INSERT INTO `pms_category` VALUES (5, '轻食', 'https://cdn-icons-png.flaticon.com/512/2515/2515127.png', 60, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
 INSERT INTO `pms_category` VALUES (6, '周边', 'https://cdn-icons-png.flaticon.com/512/862/862856.png', 50, 1, '2025-12-16 15:13:35', '2025-12-16 15:13:35');
+INSERT INTO `pms_category` VALUES (7, '人气新品', 'https://cdn-icons-png.flaticon.com/512/785/785116.png', 200, 1, '2025-12-17 10:00:47', '2025-12-17 10:00:47');
 
 -- ----------------------------
 -- Table structure for pms_product
@@ -164,12 +175,12 @@ CREATE TABLE `pms_product`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 22 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_product
 -- ----------------------------
-INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, 1, 'YYDS的生椰拿铁，清爽好喝', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
+INSERT INTO `pms_product` VALUES (1, '生椰拿铁', 18.00, 7, 'YYDS的生椰拿铁，清爽好喝', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', 2000, 1, '2025-12-05 23:23:00', '2025-12-22 13:10:56');
 INSERT INTO `pms_product` VALUES (2, '美式咖啡', 12.00, 1, '提神醒脑，打工人必备', 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
 INSERT INTO `pms_product` VALUES (3, '提拉米苏', 22.00, 1, '入口即化，甜蜜享受', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', 0, 1, '2025-12-05 23:23:00', '2025-12-16 14:53:00');
 INSERT INTO `pms_product` VALUES (4, '焦糖玛奇朵', 32.00, 1, '精选深度烘焙的阿拉比卡咖啡豆，融合丝滑蒸奶与绵密奶泡，顶部淋上香甜浓郁的手工熬制焦糖酱。层次分明，入口先是焦糖的甜香，随后是咖啡的醇厚，甜蜜中带有微苦的复杂口感，适合喜欢丰富层次感的您。', 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=600&auto=format&fit=crop', 120, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
@@ -179,7 +190,7 @@ INSERT INTO `pms_product` VALUES (7, '宇治抹茶千层', 36.00, 1, '严选日�
 INSERT INTO `pms_product` VALUES (8, '海盐芝士拿铁', 34.00, 1, '创新风味拿铁，在浓缩咖啡与鲜奶的基础上，覆盖一层厚实的喜马拉雅粉红海盐芝士奶盖。咸甜交织的奇妙口感，极大地提升了咖啡的香气，口感顺滑细腻，独特的咸味更能衬托出牛奶的香甜。', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=600&auto=format&fit=crop', 98, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
 INSERT INTO `pms_product` VALUES (9, '伯爵红茶司康', 18.00, 1, '传统英式下午茶必备点心，面团中揉入上等伯爵红茶碎与糖渍橙皮丁。外层烘烤至酥松，内里保持湿润松软，散发出佛手柑的独特清香。建议加热后搭配凝结奶油（Clotted Cream）或草莓果酱食用，风味更佳。', 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=600&auto=format&fit=crop', 340, 1, '2025-12-16 14:47:20', '2025-12-16 14:53:00');
 INSERT INTO `pms_product` VALUES (10, '焦糖玛奇朵', 32.00, 1, '精选深度烘焙的阿拉比卡咖啡豆，融合丝滑蒸奶与绵密奶泡，顶部淋上香甜浓郁的手工熬制焦糖酱。层次分明，入口先是焦糖的甜香，随后是咖啡的醇厚，甜蜜中带有微苦的复杂口感。', 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?q=80&w=600&auto=format&fit=crop', 120, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
-INSERT INTO `pms_product` VALUES (11, '冷萃耶加雪菲', 38.00, 1, '选用埃塞俄比亚耶加雪菲G1级咖啡豆，经过12小时低温慢速萃取。有效降低了咖啡的酸涩感，最大限度保留了豆子本身的花香与柑橘风味。口感干净清爽，带有明亮的果酸和回甘。', 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?q=80&w=600&auto=format&fit=crop', 210, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (11, '冷萃耶加雪菲', 38.00, 1, '选用埃塞俄比亚耶加雪菲G1级咖啡豆，经过12小时低温慢速萃取。有效降低了咖啡的酸涩感，最大限度保留了豆子本身的花香与柑橘风味。口感干净清爽，带有明亮的果酸和回甘。', 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?q=80&w=600&auto=format&fit=crop', 210, 1, '2025-12-16 14:53:31', '2025-12-23 15:40:28');
 INSERT INTO `pms_product` VALUES (12, '海盐芝士拿铁', 34.00, 1, '创新风味拿铁，在浓缩咖啡与鲜奶的基础上，覆盖一层厚实的喜马拉雅粉红海盐芝士奶盖。咸甜交织的奇妙口感，极大地提升了咖啡的香气，口感顺滑细腻，独特的咸味更能衬托出牛奶的香甜。', 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=600&auto=format&fit=crop', 98, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
 INSERT INTO `pms_product` VALUES (13, '满杯红柚', 28.00, 2, '严选南非红宝石西柚，果肉饱满多汁。搭配清雅茉莉绿茶底，茶香与果香完美融合。每一口都能吸到爆汁的西柚果粒，酸甜解腻，维C满满，是夏日里的一抹清凉。', 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=600&auto=format&fit=crop', 350, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
 INSERT INTO `pms_product` VALUES (14, '芝士白桃乌龙', 26.00, 2, '选用高山白桃乌龙茶作为茶底，香气高扬持久。顶部覆盖3cm厚打发咸芝士奶盖，撒上少许抹茶粉点缀。建议45度角大口饮用，同时品尝到奶盖的绵密与茶汤的清冽。', 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=600&auto=format&fit=crop', 280, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
@@ -189,6 +200,7 @@ INSERT INTO `pms_product` VALUES (17, '经典黄油可颂', 18.00, 4, '使用法
 INSERT INTO `pms_product` VALUES (18, '蓝莓乳酪贝果', 22.00, 4, '低糖低油的健康贝果，面团经过水煮工艺，口感扎实有嚼劲。内馅包裹着大颗蓝莓果肉与顺滑奶油奶酪，经过烘烤后爆浆流心，酸甜适口，越嚼越香。', 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?q=80&w=600&auto=format&fit=crop', 190, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
 INSERT INTO `pms_product` VALUES (19, '烟熏鸡胸肉三明治', 38.00, 5, '精选全麦吐司，夹入低温慢煮的烟熏鸡胸肉，肉质鲜嫩不柴。搭配新鲜生菜、番茄片、黄瓜与特制低脂蜂蜜芥末酱。营养均衡，饱腹感强，是健身人士的首选。', 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?q=80&w=600&auto=format&fit=crop', 160, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
 INSERT INTO `pms_product` VALUES (20, '品牌纪念马克杯', 88.00, 6, '独家定制的品牌纪念马克杯，采用优质骨瓷烧制，质地轻盈透光。极简设计风格，杯身印有经典Logo。宽口设计适合拉花，为您居家品尝咖啡增添一份仪式感。', 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?q=80&w=600&auto=format&fit=crop', 50, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31');
+INSERT INTO `pms_product` VALUES (21, '香草拿铁', 25.00, 1, '精选阿拉比卡咖啡豆，融合香草糖浆与丝滑蒸奶，顶部覆盖绵密奶泡。口感层次丰富，香草的甜美与咖啡的醇厚完美融合，带来温暖舒适的味觉体验。', 'http://192.168.248.128:9000/coffee-bucket/product/a147c5273d844ae0ad287d30fce5b1fb.png', 0, 1, '2025-12-23 14:52:45', '2025-12-23 15:48:29');
 
 -- ----------------------------
 -- Table structure for pms_sku_stock
@@ -205,7 +217,7 @@ CREATE TABLE `pms_sku_stock`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_sku_stock
@@ -220,6 +232,9 @@ INSERT INTO `pms_sku_stock` VALUES (7, 2, '2024020102', 14.00, 200, 20, '[{\"key
 INSERT INTO `pms_sku_stock` VALUES (8, 2, '2024020103', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (9, 2, '2024020104', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (10, 3, '2024030101', 22.00, 50, 5, '[{\"key\": \"规格\", \"value\": \"标准份\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (11, 21, '', 22.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"标准\"}]', '2025-12-23 14:52:45', '2025-12-23 14:52:45');
+INSERT INTO `pms_sku_stock` VALUES (12, 21, '', 25.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"标准\"}]', '2025-12-23 14:52:45', '2025-12-23 14:52:45');
+INSERT INTO `pms_sku_stock` VALUES (13, 11, '', 38.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-23 15:40:28', '2025-12-23 15:40:28');
 
 -- ----------------------------
 -- Table structure for ums_member
@@ -251,7 +266,7 @@ CREATE TABLE `ums_member`  (
 -- ----------------------------
 -- Records of ums_member
 -- ----------------------------
-INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$67icrSr09JZPjVMT5BuCKOav6TnA1TU.ZpFBbxBmMAdLP7xCisGHi', 'test_user', NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 16:54:33');
+INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$qER.iOY2WSDk/8vRUXv9BeLrKgfAxVXpezwHTdXB6NxtwZWlQmMQ2', '自信阿德勒', 'http://192.168.248.128:9000/coffee-bucket/avatar/07b8af66566f4e67836b52f9fafed6d6.jpg', 2, 1, '1999-12-22', '广东省 汕尾市 城区', NULL, '', 0, 0, 1, '2025-12-07 18:23:53', '2025-12-23 15:13:00');
 INSERT INTO `ums_member` VALUES (8, 'admin', '1380013802', '$2a$10$2asM8m6GCZYchML7cKQdaurUDLEA8Ulrv5tkTiTZKsVv6MCDuaYva', 'admin', NULL, 1, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 17:04:19');
 INSERT INTO `ums_member` VALUES (9, 'test_user2', '13800138001', '.ZpFBbxBmMAdLP7xCisGHi', 'test_user2', NULL, 2, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 16:54:33');
 
@@ -304,8 +319,8 @@ CREATE TABLE `ums_member_receive_address`  (
 -- ----------------------------
 -- Records of ums_member_receive_address
 -- ----------------------------
-INSERT INTO `ums_member_receive_address` VALUES (1, 1, '张三', '13800138000', 1, '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
-INSERT INTO `ums_member_receive_address` VALUES (2, 1, '张三(公司)', '13800138000', 0, '518057', '广东省', '深圳市', '福田区', '福田街道平安金融中心108层', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
+INSERT INTO `ums_member_receive_address` VALUES (1, 1, '张三', '13800138000', 1, '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '2025-12-10 15:53:18', '2025-12-22 15:33:23');
+INSERT INTO `ums_member_receive_address` VALUES (2, 1, '张三(公司)', '13800138000', 0, '518057', '广东省', '深圳市', '福田区', '福田街道平安金融中心108层', '2025-12-10 15:53:18', '2025-12-22 15:33:23');
 INSERT INTO `ums_member_receive_address` VALUES (3, 8, '李四', '13900139000', 1, '100000', '北京市', '北京市', '朝阳区', '建国门外街道国贸三期55层', '2025-12-10 15:53:18', '2025-12-10 15:53:18');
 
 -- ----------------------------

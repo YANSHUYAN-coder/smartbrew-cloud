@@ -16,6 +16,10 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class OrderVO extends OmsOrder {
+    private String orderSn;
+
+    // 新增：前端展示用的取餐码
+    private String pickupCode;
 
     /**
      * 订单内的商品明细列表

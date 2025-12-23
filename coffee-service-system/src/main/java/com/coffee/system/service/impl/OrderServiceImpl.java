@@ -22,19 +22,24 @@ import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> implements OrderService {
+    @Autowired
+    private StringRedisTemplate redisTemplate; // 注入 Redis
     @Autowired
     private OmsOrderMapper orderMapper;
     @Autowired
@@ -73,14 +78,14 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             for (OmsOrder order : page.getRecords()) {
                 OrderVO orderVO = new OrderVO();
                 BeanUtils.copyProperties(order, orderVO);
-                
+
                 // 查询订单商品明细
                 List<OmsOrderItem> items = orderItemMapper.selectList(
                         new LambdaQueryWrapper<OmsOrderItem>()
                                 .eq(OmsOrderItem::getOrderId, order.getId())
                 );
                 orderVO.setOrderItemList(items);
-                
+
                 voList.add(orderVO);
             }
             voPage.setRecords(voList);
@@ -152,14 +157,14 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             for (OmsOrder order : page.getRecords()) {
                 OrderVO orderVO = new OrderVO();
                 BeanUtils.copyProperties(order, orderVO);
-                
+
                 // 查询订单商品明细
                 List<OmsOrderItem> items = orderItemMapper.selectList(
                         new LambdaQueryWrapper<OmsOrderItem>()
                                 .eq(OmsOrderItem::getOrderId, order.getId())
                 );
                 orderVO.setOrderItemList(items);
-                
+
                 voList.add(orderVO);
             }
             voPage.setRecords(voList);
@@ -176,6 +181,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OmsOrder createOrder(CreateOrderRequest request) {
+        // 1. 生成取餐码 (每日重置)
+        String pickupCode = generatePickupCode();
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new RuntimeException("用户未登录");
@@ -226,6 +233,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         OmsOrder order = new OmsOrder();
         order.setMemberId(userId);
         order.setOrderSn(generateOrderSn(userId));
+        order.setPickupCode(pickupCode);
         order.setTotalAmount(totalAmount);
         order.setPromotionAmount(promotionAmount);
         order.setCouponAmount(couponAmount);
@@ -276,6 +284,32 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
         return order;
     }
+
+    /**
+     * 生成取餐码逻辑
+     * 规则：日期 + 自增数字，例如 A101 (为了简单，这里直接用数字 101, 102...)
+     * Redis Key: coffee:order:pickup:20231223
+     */
+    private String generatePickupCode() {
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String key = "coffee:order:pickup:" + dateStr;
+
+        // Redis 原子递增
+        Long increment = redisTemplate.opsForValue().increment(key);
+
+        // 如果是今天第一个单，设置过期时间为 24 小时 (避免 Redis 堆积垃圾数据)
+        if (increment != null && increment == 1) {
+            redisTemplate.expire(key, 24, TimeUnit.HOURS);
+        }
+
+        // 格式化：从 100 开始，显得单子多一点，或者从 1 开始
+        // 这里演示：直接从 101 开始 (1 + 100)
+        return String.valueOf(100 + increment);
+
+        // 如果想要 "A101" 这种格式：
+        // return "A" + (100 + increment);
+    }
+
 
     /**
      * 生成订单编号：时间戳 + 用户ID + 随机串

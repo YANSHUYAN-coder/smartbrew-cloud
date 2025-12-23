@@ -207,10 +207,18 @@
 				});
 				break;
 			case '礼品卡':
-				uni.showToast({
-					title: '礼品卡功能开发中...',
-					icon: 'none'
-				});
+				{
+					const token = uni.getStorageSync('token')
+					if (!token) {
+						uni.navigateTo({
+							url: '/pages/login/index'
+						})
+						return
+					}
+					uni.navigateTo({
+						url: '/pages/giftcard/index'
+					})
+				}
 				break;
 			case '会员':
 				uni.switchTab({

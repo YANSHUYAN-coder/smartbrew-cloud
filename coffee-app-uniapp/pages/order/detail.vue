@@ -9,16 +9,40 @@
 			<view style="width: 48rpx;"></view>
 		</view>
 
-		<scroll-view scroll-y class="content-scroll" :style="{ height: `calc(100vh - ${statusBarHeight + 44 + 120}px)` }">
+		<scroll-view scroll-y class="content-scroll">
 			<!-- 订单状态卡片 -->
-			<view class="status-card">
-				<view class="status-icon" :class="getStatusClass(orderDetail.status)">
-					<text class="icon-text">{{ getStatusIcon(orderDetail.status) }}</text>
+			<view class="status-card-new">
+				<!-- 上半部分：状态文字与图标 -->
+				<view class="status-header">
+					<view class="status-info">
+						<text class="status-title">{{ getStatusText(orderDetail.status) }}</text>
+						<text class="status-desc-text">{{ getStatusDesc(orderDetail.status) }}</text>
+						
+						<!-- 取餐码 (仅在制作中/待取餐时显示) -->
+						<view class="pickup-code-box" v-if="[1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
+							<text class="code-label">取餐码</text>
+							<text class="code-value">{{ orderDetail.pickupCode }}</text>
+						</view>
+					</view>
 				</view>
-				<text class="status-text">{{ getStatusText(orderDetail.status) }}</text>
-				<text class="status-desc" v-if="getStatusDesc(orderDetail.status)">
-					{{ getStatusDesc(orderDetail.status) }}
-				</text>
+
+				<!-- 下半部分：进度条 (仅进行中订单显示) -->
+				<view class="status-steps" v-if="[0, 1, 2, 3].includes(orderDetail.status)">
+					<view class="step-item" :class="{ active: orderDetail.status >= 0 }">
+						<view class="step-circle"><uni-icons v-if="orderDetail.status >= 0" type="checkmarkempty" size="12" color="#fff" /></view>
+						<text class="step-label">已下单</text>
+					</view>
+					<view class="step-line" :class="{ active: orderDetail.status >= 1 }"></view>
+					<view class="step-item" :class="{ active: orderDetail.status >= 1 }">
+						<view class="step-circle"><uni-icons v-if="orderDetail.status >= 1" type="checkmarkempty" size="12" color="#fff" /></view>
+						<text class="step-label">制作中</text>
+					</view>
+					<view class="step-line" :class="{ active: orderDetail.status >= 3 }"></view>
+					<view class="step-item" :class="{ active: orderDetail.status >= 3 }">
+						<view class="step-circle"><uni-icons v-if="orderDetail.status >= 3" type="checkmarkempty" size="12" color="#fff" /></view>
+						<text class="step-label">待取餐</text>
+					</view>
+				</view>
 			</view>
 
 			<!-- 收货地址 -->
@@ -110,7 +134,8 @@
 				<text class="remark-text">{{ orderDetail.note }}</text>
 			</view>
 
-			<view style="height: 40rpx;"></view>
+			<!-- 预留底部安全距离，避免被底部操作栏遮挡 -->
+			<view style="height: 200rpx;"></view>
 		</scroll-view>
 
 		<!-- 底部操作栏 -->
@@ -145,10 +170,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getOrderDetail } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 
-const { handleCancelOrder, handleConfirmReceive } = useOrderActions()
+const { handleCancelOrder, handleConfirmReceive, handlePayOrder } = useOrderActions()
 
 const statusBarHeight = ref(0)
 const orderDetail = ref({})
@@ -334,45 +360,139 @@ $bg-color: #f7f8fa;
 /* 内容区域 */
 .content-scroll {
 	flex: 1;
+	/* 预留与底部操作栏等高的内边距，避免被遮挡 */
+	padding-bottom: 200rpx;
+	box-sizing: border-box;
 }
 
 /* 订单状态卡片 */
-.status-card {
-	background: linear-gradient(135deg, $primary 0%, #8b6f4f 100%);
+.status-card-new {
+	background-color: white;
 	margin: 24rpx 32rpx;
-	padding: 48rpx 32rpx;
+	padding: 40rpx 32rpx;
 	border-radius: 24rpx;
+	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+	overflow: hidden;
+	position: relative;
+}
+
+.status-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 40rpx;
+	position: relative;
+	z-index: 1;
+}
+
+.status-info {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	color: white;
-	box-shadow: 0 8rpx 24rpx rgba(111, 78, 55, 0.3);
 }
 
-.status-icon {
-	width: 120rpx;
-	height: 120rpx;
-	border-radius: 50%;
-	background-color: rgba(255, 255, 255, 0.2);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	margin-bottom: 24rpx;
-}
-
-.icon-text {
-	font-size: 64rpx;
-}
-
-.status-text {
-	font-size: 36rpx;
-	font-weight: bold;
+.status-title {
+	font-size: 44rpx;
+	font-weight: 600;
+	color: #333;
 	margin-bottom: 12rpx;
 }
 
-.status-desc {
+.status-desc-text {
+	font-size: 26rpx;
+	color: #999;
+	margin-bottom: 24rpx;
+}
+
+.pickup-code-box {
+	background-color: #f7f8fa;
+	padding: 12rpx 24rpx;
+	border-radius: 12rpx;
+	display: inline-flex;
+	align-items: baseline;
+	align-self: flex-start;
+}
+
+.code-label {
 	font-size: 24rpx;
-	opacity: 0.9;
+	color: #666;
+	margin-right: 12rpx;
+}
+
+.code-value {
+	font-size: 40rpx;
+	font-weight: bold;
+	color: $primary;
+	font-family: monospace;
+}
+
+.status-icon-bg {
+	width: 120rpx;
+	height: 120rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.8;
+	transform: rotate(10deg);
+}
+
+.icon-emoji {
+	font-size: 100rpx;
+}
+
+/* 步骤条 */
+.status-steps {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 16rpx;
+}
+
+.step-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	z-index: 2;
+}
+
+.step-circle {
+	width: 36rpx;
+	height: 36rpx;
+	border-radius: 50%;
+	background-color: #e0e0e0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 12rpx;
+	transition: all 0.3s;
+}
+
+.step-item.active .step-circle {
+	background-color: $primary;
+	box-shadow: 0 2rpx 8rpx rgba(111, 78, 55, 0.3);
+}
+
+.step-label {
+	font-size: 22rpx;
+	color: #999;
+}
+
+.step-item.active .step-label {
+	color: $primary;
+	font-weight: bold;
+}
+
+.step-line {
+	flex: 1;
+	height: 4rpx;
+	background-color: #f0f0f0;
+	margin: 0 12rpx;
+	margin-bottom: 30rpx; /* 对齐圆圈中心 */
+	border-radius: 2rpx;
+}
+
+.step-line.active {
+	background-color: $primary;
 }
 
 /* 通用区块 */

@@ -53,9 +53,19 @@
 				</view>
 
 				<!-- 无结果提示 -->
-				<view class="no-result" v-else>
+				<view class="no-result" v-else-if="!loading">
 					<image src="/static/empty.png" mode="aspectFit" class="empty-img" />
 					<text class="empty-text">未找到相关商品</text>
+				</view>
+				
+				<!-- 加载中提示 -->
+				<view class="loading-tip" v-if="loading">
+					<text class="load-text">搜索中...</text>
+				</view>
+				
+				<!-- 加载更多 -->
+				<view class="load-more" v-if="hasMore && !loading && filteredProducts.length > 0" @click="loadMore">
+					<text class="load-text">加载更多</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -75,7 +85,8 @@
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import {
-		getMenuVO
+		getMenuVO,
+		searchProducts
 	} from '@/services/product.js'
 	import {
 		useCartStore
@@ -84,42 +95,22 @@
 
 	const statusBarHeight = ref(0)
 	const searchKeyword = ref('')
-	const allProducts = ref([])
+	const filteredProducts = ref([])
 	const historyList = ref([])
 	const showModal = ref(false)
 	const currentProduct = ref({})
 	const cartStore = useCartStore()
+	
+	// 分页相关
+	const currentPage = ref(1)
+	const pageSize = ref(20)
+	const hasMore = ref(true)
+	const loading = ref(false)
 
-	const filteredProducts = computed(() => {
-		if (!searchKeyword.value.trim()) return []
-		const keyword = searchKeyword.value.toLowerCase().trim()
-		return allProducts.value.filter(p =>
-			p.name.toLowerCase().includes(keyword) ||
-			(p.desc && p.desc.toLowerCase().includes(keyword))
-		)
-	})
-
-	onMounted(async () => {
+	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
 		loadHistory()
-		await loadProducts()
 	})
-
-	const loadProducts = async () => {
-		try {
-			const menuData = await getMenuVO()
-			if (menuData && menuData.products) {
-				allProducts.value = menuData.products.map(product => ({
-					...product,
-					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
-					desc: product.description || product.desc || '',
-					rating: product.rating || 4.5
-				}))
-			}
-		} catch (error) {
-			console.error("加载商品数据失败", error)
-		}
-	}
 
 	const loadHistory = () => {
 		const history = uni.getStorageSync('search_history')
@@ -150,12 +141,71 @@
 	}
 
 	const handleInput = (e) => {
-		// 实时搜索，无需额外操作，computed 会自动更新
+		// 实时搜索：输入时触发搜索
+		if (searchKeyword.value.trim()) {
+			currentPage.value = 1
+			hasMore.value = true
+			performSearch()
+		} else {
+			filteredProducts.value = []
+		}
 	}
 
 	const handleSearch = () => {
 		if (searchKeyword.value.trim()) {
 			saveHistory(searchKeyword.value.trim())
+			currentPage.value = 1
+			hasMore.value = true
+			performSearch()
+		}
+	}
+	
+	// 执行搜索
+	const performSearch = async () => {
+		if (!searchKeyword.value.trim() || loading.value) return
+		
+		loading.value = true
+		try {
+			const result = await searchProducts(searchKeyword.value.trim(), currentPage.value, pageSize.value)
+			if (result && result.records) {
+				const products = result.records.map(product => ({
+					...product,
+					image: product.picUrl || product.image || 'https://via.placeholder.com/180',
+					desc: product.description || product.desc || '',
+					rating: product.rating || 4.5
+				}))
+				
+				if (currentPage.value === 1) {
+					filteredProducts.value = products
+				} else {
+					filteredProducts.value = [...filteredProducts.value, ...products]
+				}
+				
+				// 判断是否还有更多数据
+				hasMore.value = result.records.length >= pageSize.value && 
+				                (currentPage.value * pageSize.value) < (result.total || 0)
+			} else {
+				if (currentPage.value === 1) {
+					filteredProducts.value = []
+				}
+				hasMore.value = false
+			}
+		} catch (error) {
+			console.error("搜索商品失败", error)
+			uni.showToast({
+				title: '搜索失败',
+				icon: 'none'
+			})
+		} finally {
+			loading.value = false
+		}
+	}
+	
+	// 加载更多
+	const loadMore = () => {
+		if (hasMore.value && !loading.value && searchKeyword.value.trim()) {
+			currentPage.value++
+			performSearch()
 		}
 	}
 
@@ -169,6 +219,8 @@
 	}
 
 	const goBack = () => {
+        console.log("11");
+        
 		uni.navigateBack()
 	}
 
@@ -385,5 +437,20 @@
 			font-size: 28rpx;
 			color: #999;
 		}
+	}
+	
+	.loading-tip {
+		padding: 40rpx 0;
+		text-align: center;
+	}
+	
+	.load-more {
+		padding: 40rpx 0;
+		text-align: center;
+	}
+	
+	.load-text {
+		font-size: 24rpx;
+		color: #999;
 	}
 </style>

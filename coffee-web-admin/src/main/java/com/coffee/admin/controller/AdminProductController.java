@@ -66,4 +66,6 @@ public class AdminProductController {
         boolean success = productService.removeById(id);
         return success ? Result.success("删除成功") : Result.failed("删除失败");
     }
+    
+    // 搜索接口已移至 coffee-api 模块的 ProductController，路径：/api/product/search
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coffee.common.dto.PageParam;
+import com.coffee.common.dto.ProductSearchParam;
 import com.coffee.common.vo.MenuVO;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Category;
@@ -38,6 +39,35 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         Page<Product> productPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(Product::getCreateTime);
+        return this.page(productPage, wrapper);
+    }
+    
+    @Override
+    public Page<Product> search(ProductSearchParam searchParam) {
+        Page<Product> productPage = new Page<>(searchParam.getPage(), searchParam.getPageSize());
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        
+        // 关键词搜索（商品名称或描述）
+        if (searchParam.getKeyword() != null && !searchParam.getKeyword().trim().isEmpty()) {
+            String keyword = searchParam.getKeyword().trim();
+            wrapper.and(w -> w.like(Product::getName, keyword)
+                    .or()
+                    .like(Product::getDescription, keyword));
+        }
+        
+        // 状态筛选（管理端使用，C端不传此参数）
+        if (searchParam.getStatus() != null) {
+            wrapper.eq(Product::getStatus, searchParam.getStatus());
+        }
+        
+        // 分类筛选（可选）
+        if (searchParam.getCategoryId() != null) {
+            wrapper.eq(Product::getCategoryId, searchParam.getCategoryId());
+        }
+        
+        // 排序：按创建时间倒序
+        wrapper.orderByDesc(Product::getCreateTime);
+        
         return this.page(productPage, wrapper);
     }
 

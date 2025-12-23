@@ -18,8 +18,8 @@ export const getProductDetail = (id) => {
   return get(`/app/product/detail/${id}`)
 }
 
-// 搜索商品
-export const searchProducts = (keyword) => {
-  return get('/api/product/search', { keyword })
+// 搜索商品（公共接口，C端和管理端共用）
+export const searchProducts = (keyword, page = 1, pageSize = 20) => {
+  return get('/api/product/search', { keyword, page, pageSize })
 }
 

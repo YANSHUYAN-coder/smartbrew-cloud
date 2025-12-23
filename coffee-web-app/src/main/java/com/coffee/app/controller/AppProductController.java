@@ -63,4 +63,6 @@ public class AppProductController {
         }
         return Result.success(vo);
     }
+    
+    // 搜索接口已移至 coffee-api 模块的 ProductController，路径：/api/product/search
 }

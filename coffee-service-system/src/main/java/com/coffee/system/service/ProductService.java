@@ -3,6 +3,7 @@ package com.coffee.system.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.PageParam;
+import com.coffee.common.dto.ProductSearchParam;
 import com.coffee.common.vo.MenuVO;
 import com.coffee.common.vo.ProductDetailVO;
 import com.coffee.system.domain.entity.Product;
@@ -33,6 +34,13 @@ public interface ProductService extends IService<Product> {
      * 获取商品详情（包含SKU）- 用于后台编辑回显
      */
     ProductDTO getDetail(Long id);
+    
+    /**
+     * 搜索商品（通用方法，支持关键词、状态、分类筛选）
+     * @param searchParam 搜索参数
+     * @return 分页结果
+     */
+    Page<Product> search(ProductSearchParam searchParam);
 
     /* 用户端*/
 

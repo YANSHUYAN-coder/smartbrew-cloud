@@ -12,9 +12,10 @@ import org.apache.commons.csv.CSVRecord;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
-import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
@@ -28,7 +29,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * AI 服务类：负责与向量数据库交互
@@ -40,7 +44,7 @@ public class CoffeeAiService {
 
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
-    // 增加一个简单的 ChatClient，用于非 RAG 任务（如查询重写）
+    // 增加一个简单的 ChatClient，用于非 RAG 任务（如查询重写），且不带记忆功能
     private final ChatClient simpleChatClient;
     private final ProductService productService;
     private final SkuStockService skuStockService;
@@ -53,25 +57,18 @@ public class CoffeeAiService {
                            ChatClient.Builder chatClientBuilder,
                            ProductService productService,
                            SkuStockService skuStockService,
-                           ChatMemory chatMemory) {
+                           ChatMemory chatMemory,
+                           ChatModel chatModel) { // 注入底层 ChatModel
         this.vectorStore = vectorStore;
         this.productService = productService;
         this.skuStockService = skuStockService;
         this.chatMemory = chatMemory;
 
-        // 1. 初始化简单的 ChatClient (用于查询重写)
-        this.simpleChatClient = chatClientBuilder.build();
+        // 1. 初始化无记忆的简单 ChatClient (用于查询重写)
+        // 使用 ChatClient.create(chatModel) 创建的客户端是"干净"的，不会自动挂载 Advisor
+        this.simpleChatClient = ChatClient.create(chatModel);
 
-        // 2. 初始化 RAG ChatClient
-        VectorStoreDocumentRetriever vectorStoreDocumentRetriever = VectorStoreDocumentRetriever
-                .builder()
-                .vectorStore(vectorStore)
-                .topK(3)
-                .similarityThreshold(0.5)
-                .build();
-        
-        // 注意：这里我们移除了 RetrievalAugmentationAdvisor 的默认配置，
-        // 改为在 chat 方法中动态构建，以便支持 rewrite 后的查询
+        // 2. 初始化主对话 RAG ChatClient (带记忆功能)
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
@@ -230,26 +227,33 @@ public class CoffeeAiService {
     /**
      * 聊天
      *
-     * @param systemPrompt
-     * @param userQuestion
-     * @return
+     * @param systemPrompt 系统提示词
+     * @param userQuestion 用户问题
+     * @param chatId 会话ID
+     * @return AI 回答
+     * 原始的 RAG 确实和 Memory 有冲突，所以必须引入“查询重写（Query Rewriting）”来调和。
+     * 查询重写（Query Rewriting）就是连接 Memory 和 RAG 的桥梁。
+     * 第一步（利用 Memory）： 先让一个轻量级 AI 看一眼历史记录（Memory）和当前问题（“多少钱”）。 AI 说：“哦，根据上文，他其实想问的是‘可颂多少钱’。” -> 这就是重写。
+     * 第二步（服务 RAG）： 拿着这个补全后的完美句子“可颂多少钱”，去检索器里搜。 这时候检索器就能精准捞出“可颂”的文档了。
      */
     public String chat(String systemPrompt, String userQuestion, Long chatId) {
         String conversationId = String.valueOf(chatId);
 
         String searchKey = userQuestion;
 
+        // 1. 查询重写：尝试结合历史上下文优化搜索关键词
         try {
-            // 修正：ChatMemory.get 只接受 conversationId
-            List<org.springframework.ai.chat.messages.Message> history = chatMemory.get(conversationId);
-            
+            List<Message> history = chatMemory.get(conversationId);
+
             if (history != null && !history.isEmpty() && userQuestion.length() < 10) {
                 StringBuilder historyText = new StringBuilder();
-                for (org.springframework.ai.chat.messages.Message msg : history) {
-                   historyText.append(msg.getMessageType()).append(": ").append(msg.toString()).append("\n");
+                // 只取最近几条历史，避免太长
+                int startIndex = Math.max(0, history.size() - 4);
+                for (int i = startIndex; i < history.size(); i++) {
+                    Message msg = history.get(i);
+                    historyText.append(msg.getMessageType()).append(": ").append(msg.toString()).append("\n");
                 }
-                
-                // 优化 Prompt，强制要求简洁
+
                 String rewritePrompt = "你是一个搜索查询优化助手。请根据以下历史对话，将用户的【最新问题】改写为一个指代明确、完整的搜索关键词，以便在商品知识库中检索。\n" +
                         "规则：\n" +
                         "1. 如果最新问题包含代词（如“它”、“这个”、“多少钱”），请根据历史对话还原指代对象（如“可颂多少钱”）。\n" +
@@ -258,16 +262,15 @@ public class CoffeeAiService {
                         "历史对话:\n" + historyText +
                         "用户最新问题: " + userQuestion + "\n\n" +
                         "改写结果:";
-                
+
                 String rewritten = simpleChatClient.prompt()
                         .user(rewritePrompt)
                         .call()
                         .content();
-                
-                // 清理可能的多余字符
+
                 if (rewritten != null) {
                     rewritten = rewritten.replace("改写结果:", "").trim();
-                    if (!rewritten.isEmpty()) {
+                    if (!rewritten.isEmpty() && rewritten.length() < 30) { // 简单校验
                         searchKey = rewritten;
                         log.info("Query Rewrite Success: '{}' -> '{}'", userQuestion, searchKey);
                     }
@@ -277,22 +280,89 @@ public class CoffeeAiService {
             log.warn("Query rewrite failed: " + e.getMessage());
         }
 
-        // 修正：SearchRequest 构建方式，使用 builder
+        // 2. 手动检索：使用优化后的关键词 (searchKey) 去向量库搜索
+        // 修改为 topK(1)，确保只返回最匹配的一条商品信息，避免返回无关干扰项
         List<Document> documents = vectorStore.similaritySearch(
-                SearchRequest.builder().query(searchKey).topK(3).build());
+                SearchRequest.builder()
+                        .query(searchKey)
+                        .topK(1) // 只取最相似的1条，解决多商品混淆问题
+                        .similarityThreshold(0.5) // 过滤掉相关性太低的结果
+                        .build());
 
         String context = documents.stream()
-                .map(doc -> doc.getText()) 
+                .map(Document::getText)
                 .reduce((a, b) -> a + "\n\n" + b)
                 .orElse("暂无相关信息");
 
-        String finalSystemPrompt = systemPrompt + "\n\n【参考资料】:\n" + context + "\n\n请根据参考资料和历史对话回答问题。";
+        // 3. 构建最终 Prompt：强制要求 AI 基于 searchKey 回答
+        String finalSystemPrompt = systemPrompt + "\n\n【知识库参考资料】:\n" + context +
+                "\n\n请严格遵守以下规则回答：" +
+                "\n1. 你的任务是根据参考资料回答用户问题。" +
+                "\n2. 【重要】如果参考资料中包含多个商品，请只回答用户明确问到的那个商品。" +
+                "\n3. 如果用户没有明确指定商品，再列出所有参考资料中的商品。";
 
+        // 4. 发送给 AI：使用 searchKey (重写后的明确问题) 作为用户输入
         return chatClient.prompt()
                 .system(finalSystemPrompt)
-                .user(userQuestion)
+                .user(searchKey) // <--- 关键修改：让 AI 看到明确的 "可颂多少钱"
                 .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();
+    }
+
+
+    /**
+     * 获取指定会话的聊天记录
+     *
+     * @param chatId 会话ID
+     * @return 历史消息列表
+     */
+    public List<Map<String, String>> getHistory(Long chatId) {
+        String conversationId = String.valueOf(chatId);
+        List<Message> messages = chatMemory.get(conversationId);
+
+        if (messages == null) {
+            return new ArrayList<>();
+        }
+
+        // 将 Message 对象转换为前端友好的 Map 结构
+        return messages.stream().map(msg -> {
+            Map<String, String> map = new HashMap<>();
+            // 区分角色：USER (用户) 或 ASSISTANT (AI)
+            map.put("role", msg.getMessageType() == MessageType.USER ? "user" : "assistant");
+            // 获取内容，虽然之前 getContent 有争议，但在 Service 内部处理时我们尽量使用 toString 解析或 content
+            // 这里我们使用 toString 并在 Controller 层做更细致的处理，或者如果版本允许直接用 getContent
+            // 为了稳妥，这里先简单通过 toString 提取或者假设 getContent 可用
+            // 注意：由于之前遇到 getContent 问题，这里我们可以做一个简单的 toString 提取逻辑作为保底
+            String content = msg.toString();
+            // 简单的正则提取或者清洗逻辑，实际项目中建议排查依赖版本直接用 getContent()
+            // 临时方案：如果 toString 是 AssistantMessage [textContent=...] 格式
+            if (content.contains("textContent=")) {
+                int start = content.indexOf("textContent=") + 12;
+                int end = content.indexOf(", metadata=");
+                if (end > start) {
+                    content = content.substring(start, end);
+                }
+            } else if (content.contains("content='")) {
+                int start = content.indexOf("content='") + 9;
+                int end = content.lastIndexOf("'"); // 简单处理，可能有风险
+                if (end > start) {
+                    content = content.substring(start, end);
+                }
+            }
+
+            map.put("content", content);
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 清除指定会话的聊天记录
+     * @param chatId 会话ID
+     */
+    public void clearHistory(Long chatId) {
+        String conversationId = String.valueOf(chatId);
+        chatMemory.clear(conversationId);
+        log.info("Cleared chat history for conversationId: {}", conversationId);
     }
 }

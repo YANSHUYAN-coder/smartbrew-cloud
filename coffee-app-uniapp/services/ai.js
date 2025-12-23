@@ -5,7 +5,7 @@ import { get, post } from '@/utils/request.js'
  * @param {String} question 用户的问题
  */
 export const chatWithAi = (question) => {
-  return get(`/coffee/rag?question=${question}`)
+  return get(`/coffee/chat/rag?question=${question}`)
 }
 
 /**
@@ -19,5 +19,6 @@ export const getChatHistory = () => {
  * 清空聊天历史
  */
 export const clearChatHistory = () => {
+	console.log("清空聊天历史");
   return post('/coffee/chat/clear')
 }

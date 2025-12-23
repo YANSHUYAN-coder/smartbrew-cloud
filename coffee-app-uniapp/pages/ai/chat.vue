@@ -10,8 +10,8 @@
           <text class="page-title">智能咖啡师</text>
           <text class="status-text">{{ isTyping ? '对方正在输入...' : '在线' }}</text>
         </view>
-        <view class="right-placeholder" @click="handleClearChat">
-          <uni-icons type="trash" size="20" color="#999"></uni-icons>
+        <view class="right-placeholder" >
+          <uni-icons type="trash" size="20" color="#999" @click="handleClearChat"></uni-icons>
         </view>
       </view>
     </view>
@@ -150,7 +150,7 @@ const loadHistory = async () => {
     const history = await getChatHistory()
     if (history && history.length > 0) {
       messageList.value = history.map(item => ({
-        role: item.role,
+        role: item.role === 'assistant' ? 'ai' : item.role,
         content: item.content
       }))
       scrollToBottom()
@@ -210,6 +210,7 @@ const handleClearChat = () => {
           uni.showToast({ title: '清空失败', icon: 'none' })
         }
       }
+	  
     }
   })
 }

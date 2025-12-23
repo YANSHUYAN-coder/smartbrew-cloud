@@ -4,13 +4,13 @@ import com.coffee.ai.service.CoffeeAiService;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/coffee")
+@RequestMapping("/coffee/chat")
 public class CoffeeController {
     @Autowired
     private CoffeeAiService coffeeAiService;
@@ -30,5 +30,36 @@ public class CoffeeController {
         // 调用 service 中配置好 RAG 的对话能力
         String answer = coffeeAiService.chat("你是智咖云的服务员，你需要回答用户的问题。", question,userId);
         return Result.success(answer);
+    }
+
+    /**
+     * 获取聊天历史记录接口
+     * * @return 历史消息列表
+     */
+    @GetMapping("/history")
+    public Result<List<Map<String, String>>> getHistory() {
+        Long userId = UserContext.getUserId();
+        if (userId == null){
+            return Result.failed("请先登录");
+        }
+
+        // 直接使用 userId 作为 chatId 获取历史记录
+        // 确保了用户只能看到自己的记录，安全性更高
+        List<Map<String, String>> history = coffeeAiService.getHistory(userId);
+
+        return Result.success(history);
+    }
+
+    /**
+     * 清除指定会话的聊天记录
+     */
+    @PostMapping("/clear")
+    public Result<String> clearHistory() {
+        Long userId = UserContext.getUserId();
+        if (userId == null){
+            return Result.failed("请先登录");
+        }
+        coffeeAiService.clearHistory(userId);
+        return Result.success("清除成功");
     }
 }

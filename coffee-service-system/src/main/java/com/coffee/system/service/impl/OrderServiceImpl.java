@@ -18,13 +18,16 @@ import com.coffee.system.service.CartService;
 import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberReceiveAddressService;
+import com.coffee.system.service.UmsMemberService;
 import com.coffee.system.domain.entity.GiftCard;
 import com.coffee.common.dict.GiftCardStatus;
 import com.coffee.system.domain.entity.OmsCartItem;
 import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
+import com.coffee.system.domain.entity.UmsMember;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +58,9 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     private UmsMemberReceiveAddressService addressService;
     @Autowired
     private GiftCardService giftCardService;
+    @Autowired
+    @Lazy
+    private UmsMemberService memberService;
 
     @Autowired
     private AlipayClient alipayClient;
@@ -125,15 +131,61 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
      * @return
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateStatus(Map<String, Object> params) {
         Long id = Long.valueOf(params.get("id").toString());
         Integer status = Integer.valueOf(params.get("status").toString());
-        OmsOrder order = new OmsOrder();
-        order.setId(id);
-        order.setStatus(status);
-        return this.update(new LambdaUpdateWrapper<OmsOrder>()
+        
+        // 查询订单信息
+        OmsOrder order = this.getById(id);
+        if (order == null) {
+            return false;
+        }
+        
+        // 更新订单状态
+        boolean updateResult = this.update(new LambdaUpdateWrapper<OmsOrder>()
                 .eq(OmsOrder::getId, id)
                 .set(OmsOrder::getStatus, status));
+        
+        // 如果订单状态更新为已完成，增加用户成长值和积分（排除咖啡卡订单）
+        if (updateResult && status == OrderStatus.COMPLETED.getCode()) {
+            // 排除咖啡卡订单（虚拟商品），购买咖啡卡不增加成长值和积分
+            if (order.getDeliveryCompany() != null && "虚拟商品".equals(order.getDeliveryCompany())) {
+                log.info("咖啡卡订单完成，不增加成长值和积分: 订单ID={}", id);
+                return updateResult;
+            }
+            
+            try {
+                // 计算成长值：每消费1元增加1成长值（取整数部分）
+                if (order.getPayAmount() != null && order.getPayAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    int growth = order.getPayAmount().intValue(); // 取整数部分
+                    if (growth > 0) {
+                        memberService.addGrowth(order.getMemberId(), growth);
+                        log.info("订单完成，增加成长值: 订单ID={}, 用户ID={}, 成长值={}", id, order.getMemberId(), growth);
+                    }
+                }
+                
+                // 计算积分：每消费1元增加1积分（取整数部分）
+                if (order.getPayAmount() != null && order.getPayAmount().compareTo(BigDecimal.ZERO) > 0) {
+                    int integration = order.getPayAmount().intValue(); // 取整数部分
+                    if (integration > 0) {
+                        UmsMember member = memberService.getById(order.getMemberId());
+                        if (member != null) {
+                            int currentIntegration = member.getIntegration() != null ? member.getIntegration() : 0;
+                            memberService.update(new LambdaUpdateWrapper<UmsMember>()
+                                    .eq(UmsMember::getId, order.getMemberId())
+                                    .set(UmsMember::getIntegration, currentIntegration + integration));
+                            log.info("订单完成，增加积分: 订单ID={}, 用户ID={}, 积分={}", id, order.getMemberId(), integration);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("订单完成时增加成长值/积分失败: 订单ID={}", id, e);
+                // 不影响订单状态更新，只记录日志
+            }
+        }
+        
+        return updateResult;
     }
 
     /**

@@ -79,4 +79,16 @@ public class AppUmsMemberController {
         memberService.uploadAvatar(file);
         return Result.success("上传头像成功");
     }
+
+    /**
+     * 6. 获取个人中心统计信息
+     * 用于"我的"页面展示积分、优惠券、订单统计等数据
+     */
+    @GetMapping("/statistics")
+    // @PreAuthorize("hasAuthority('app:member:info')")
+    @Operation(summary = "获取个人中心统计信息", description = "返回积分、优惠券数量、订单统计、会员等级等信息")
+    public Result<java.util.Map<String, Object>> getStatistics() {
+        java.util.Map<String, Object> statistics = memberService.getProfileStatistics();
+        return Result.success(statistics);
+    }
 }

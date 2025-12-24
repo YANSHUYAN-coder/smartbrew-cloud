@@ -22,6 +22,14 @@ export const getUserInfo = () => {
 }
 
 /**
+ * 获取个人中心统计信息
+ * @returns {Promise} 返回积分、优惠券、订单统计等信息
+ */
+export const getProfileStatistics = () => {
+  return get('/app/member/statistics')
+}
+
+/**
  * 上传头像
  * @param {String} filePath 图片文件路径（临时路径）
  * @returns {Promise} 返回上传结果

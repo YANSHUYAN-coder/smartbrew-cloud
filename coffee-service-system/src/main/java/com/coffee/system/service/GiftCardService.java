@@ -19,6 +19,12 @@ public interface GiftCardService extends IService<GiftCard> {
     Page<GiftCard> listCurrent(PageParam pageParam);
 
     /**
+     * 获取当前用户所有咖啡卡的总余额
+     * @return 总余额
+     */
+    BigDecimal getTotalBalance();
+
+    /**
      * 为当前用户创建一张咖啡卡（发卡/购卡）
      *
      * @param amount     面值金额

@@ -51,6 +51,20 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
     }
 
     @Override
+    public BigDecimal getTotalBalance() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            return BigDecimal.ZERO;
+        }
+        LambdaQueryWrapper<GiftCard> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(GiftCard::getMemberId, userId)
+                .eq(GiftCard::getStatus, GiftCardStatus.ACTIVE.getCode()); // 只统计可用状态的咖啡卡
+        return this.list(wrapper).stream()
+                .map(GiftCard::getBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Override
     public GiftCard createForCurrent(BigDecimal amount, String name, String greeting, Integer validDays) {
         Long userId = UserContext.getUserId();
         if (userId == null) {

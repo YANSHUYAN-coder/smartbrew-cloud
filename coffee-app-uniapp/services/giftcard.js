@@ -18,3 +18,8 @@ export const getGiftCardTransactions = (cardId, params = {}) => {
   return get(`/app/giftCard/${cardId}/transactions`, params)
 }
 
+// 获取咖啡卡总余额
+export const getGiftCardTotalBalance = () => {
+  return get('/app/giftCard/totalBalance')
+}
+

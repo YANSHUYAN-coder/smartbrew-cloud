@@ -79,4 +79,25 @@ public interface UmsMemberService extends IService<UmsMember> {
      * @param file
      */
     void uploadAvatar(MultipartFile file);
+
+    /**
+     * 获取用户统计信息（用于个人中心页面）
+     * @return 包含积分、优惠券数量、订单统计等信息
+     */
+    java.util.Map<String, Object> getProfileStatistics();
+
+    /**
+     * 增加用户成长值
+     * @param userId 用户ID
+     * @param growth 增加的成长值
+     * @return 是否成功
+     */
+    boolean addGrowth(Long userId, Integer growth);
+
+    /**
+     * 检查并更新用户会员等级（根据成长值）
+     * @param userId 用户ID
+     * @return 是否升级
+     */
+    boolean checkAndUpdateLevel(Long userId);
 }

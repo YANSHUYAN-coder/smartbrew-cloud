@@ -85,6 +85,18 @@ public class AppGiftCardController {
         Page<GiftCardTxn> page = giftCardService.getTransactions(cardId, pageParam);
         return Result.success(page);
     }
+
+    /**
+     * 获取当前用户所有咖啡卡的总余额
+     * 用于个人中心页面显示
+     */
+    @GetMapping("/totalBalance")
+    // @PreAuthorize("hasAuthority('app:gift:balance')")
+    @Operation(summary = "获取咖啡卡总余额", description = "返回当前用户所有可用咖啡卡的总余额")
+    public Result<BigDecimal> getTotalBalance() {
+        BigDecimal totalBalance = giftCardService.getTotalBalance();
+        return Result.success(totalBalance);
+    }
 }
 
 

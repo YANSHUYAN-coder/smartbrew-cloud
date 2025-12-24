@@ -22,14 +22,19 @@ import com.coffee.common.dto.UmsMemberUpdateDTO;
 import com.coffee.system.mapper.UmsMemberLevelMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.mapper.UmsUserRoleMapper;
+import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberService;
+import com.coffee.system.domain.entity.OmsOrder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -46,6 +51,10 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
 
     @Autowired
     private MinioUtil minioUtil;
+
+    @Autowired
+    @Lazy
+    private OrderService orderService;
 
     @Override
     public Page<UmsMember> getList(PageParam pageParam, String phone) {
@@ -217,5 +226,146 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         this.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getAvatar, url));
+    }
+
+    @Override
+    public Map<String, Object> getProfileStatistics() {
+        Long userId = UserContext.getUserId();
+        if (Objects.isNull(userId)) {
+            throw new RuntimeException("用户未登录");
+        }
+
+        // 1. 获取用户信息
+        UmsMember member = this.getById(userId);
+        if (member == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        // 2. 获取会员等级信息
+        UmsMemberLevel level = null;
+        if (member.getLevelId() != null) {
+            level = memberLevelMapper.selectById(member.getLevelId());
+        }
+        // 如果用户没有等级ID，查询最低等级的会员等级作为默认值
+        if (level == null) {
+            List<UmsMemberLevel> defaultLevels = memberLevelMapper.selectList(
+                    new LambdaQueryWrapper<UmsMemberLevel>()
+                            .eq(UmsMemberLevel::getStatus, 1)
+                            .orderByAsc(UmsMemberLevel::getGrowthPoint)
+                            .last("LIMIT 1")
+            );
+            if (!defaultLevels.isEmpty()) {
+                level = defaultLevels.get(0);
+            }
+        }
+
+        // 3. 统计各状态订单数量
+        Map<String, Long> orderCounts = new HashMap<>();
+        orderCounts.put("pendingPayment", orderService.count(new LambdaQueryWrapper<OmsOrder>()
+                .eq(OmsOrder::getMemberId, userId)
+                .eq(OmsOrder::getStatus, 0))); // 待付款
+        orderCounts.put("making", orderService.count(new LambdaQueryWrapper<OmsOrder>()
+                .eq(OmsOrder::getMemberId, userId)
+                .in(OmsOrder::getStatus, 1, 2))); // 待制作、制作中
+        orderCounts.put("pendingPickup", orderService.count(new LambdaQueryWrapper<OmsOrder>()
+                .eq(OmsOrder::getMemberId, userId)
+                .eq(OmsOrder::getStatus, 3))); // 待取餐
+        orderCounts.put("completed", orderService.count(new LambdaQueryWrapper<OmsOrder>()
+                .eq(OmsOrder::getMemberId, userId)
+                .eq(OmsOrder::getStatus, 4))); // 已完成
+
+        // 4. 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("integration", member.getIntegration() != null ? member.getIntegration() : 0); // 积分
+        result.put("couponCount", 0); // 优惠券数量（暂时返回0，后续可对接优惠券系统）
+        result.put("growth", member.getGrowth() != null ? member.getGrowth() : 0); // 成长值
+        result.put("levelId", member.getLevelId()); // 会员等级ID
+        result.put("levelName", level != null ? level.getName() : "普通会员"); // 会员等级名称
+        result.put("orderCounts", orderCounts); // 订单统计
+
+        // 5. 计算距离下一等级的成长值
+        if (level != null && member.getGrowth() != null) {
+            // 查询下一等级
+            List<UmsMemberLevel> nextLevels = memberLevelMapper.selectList(
+                    new LambdaQueryWrapper<UmsMemberLevel>()
+                            .gt(UmsMemberLevel::getGrowthPoint, member.getGrowth())
+                            .eq(UmsMemberLevel::getStatus, 1)
+                            .orderByAsc(UmsMemberLevel::getGrowthPoint)
+                            .last("LIMIT 1")
+            );
+            if (!nextLevels.isEmpty()) {
+                UmsMemberLevel nextLevel = nextLevels.get(0);
+                int needGrowth = nextLevel.getGrowthPoint() - member.getGrowth();
+                result.put("nextLevelName", nextLevel.getName());
+                result.put("needGrowth", needGrowth);
+            } else {
+                result.put("nextLevelName", null);
+                result.put("needGrowth", 0);
+            }
+        } else {
+            result.put("nextLevelName", null);
+            result.put("needGrowth", 0);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean addGrowth(Long userId, Integer growth) {
+        if (userId == null || growth == null || growth <= 0) {
+            return false;
+        }
+        UmsMember member = this.getById(userId);
+        if (member == null) {
+            return false;
+        }
+        int currentGrowth = member.getGrowth() != null ? member.getGrowth() : 0;
+        int newGrowth = currentGrowth + growth;
+        this.update(new LambdaUpdateWrapper<UmsMember>()
+                .eq(UmsMember::getId, userId)
+                .set(UmsMember::getGrowth, newGrowth));
+        
+        // 成长值增加后，检查是否需要升级
+        checkAndUpdateLevel(userId);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean checkAndUpdateLevel(Long userId) {
+        UmsMember member = this.getById(userId);
+        if (member == null || member.getGrowth() == null) {
+            return false;
+        }
+        
+        int currentGrowth = member.getGrowth();
+        
+        // 查询所有启用的会员等级，按成长值门槛降序排列
+        List<UmsMemberLevel> levels = memberLevelMapper.selectList(
+                new LambdaQueryWrapper<UmsMemberLevel>()
+                        .eq(UmsMemberLevel::getStatus, 1)
+                        .orderByDesc(UmsMemberLevel::getGrowthPoint)
+        );
+        
+        // 找到用户当前成长值能达到的最高等级
+        UmsMemberLevel targetLevel = null;
+        for (UmsMemberLevel level : levels) {
+            if (currentGrowth >= level.getGrowthPoint()) {
+                targetLevel = level;
+                break;
+            }
+        }
+        
+        // 如果找到了新等级，且与当前等级不同，则更新
+        if (targetLevel != null && 
+            (member.getLevelId() == null || !targetLevel.getId().equals(member.getLevelId()))) {
+            this.update(new LambdaUpdateWrapper<UmsMember>()
+                    .eq(UmsMember::getId, userId)
+                    .set(UmsMember::getLevelId, targetLevel.getId()));
+            return true; // 升级了
+        }
+        
+        return false; // 没有升级
     }
 }

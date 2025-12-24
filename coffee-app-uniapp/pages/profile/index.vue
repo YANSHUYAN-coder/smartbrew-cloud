@@ -12,10 +12,13 @@
 						class="avatar" mode="aspectFill" />
 					<view class="user-details">
 						<view class="user-name-row">
-							<text class="user-name">{{userInfo.nickname}}</text>
-							<view class="level-badge">LV.3</view>
+							<text class="user-name">{{userInfo.nickname || '未登录'}}</text>
+							<view class="level-badge" v-if="profileStats && profileStats.levelName">{{ profileStats.levelName }}</view>
+							<view class="level-badge" v-else-if="userStore.isLogin">普通会员</view>
 						</view>
-						<text class="user-desc">再消费 2 杯升级为黑金会员</text>
+						<text class="user-desc" v-if="profileStats && profileStats.needGrowth > 0">再消费 {{ profileStats.needGrowth }} 成长值升级为{{ profileStats.nextLevelName }}</text>
+						<text class="user-desc" v-else-if="profileStats && profileStats.levelName && !profileStats.nextLevelName">已是最高等级</text>
+						<text class="user-desc" v-else-if="userStore.isLogin">完善信息，享受更多权益</text>
 					</view>
 				</view>
 
@@ -74,29 +77,44 @@
 	} from '@/utils/system.js'
 	import {useUserStore} from '@/store/user.js'
 	import { convertImageUrl } from '@/utils/image.js'
+	import { getGiftCardTotalBalance } from '@/services/giftcard.js'
+	import { getProfileStatistics } from '@/services/user.js'
 
 	const statusBarHeight = ref(0)
 	const userStore=new useUserStore()
 	const userInfo =ref({})
+	const profileStats = ref({
+		integration: 0,
+		couponCount: 0,
+		levelName: '',
+		nextLevelName: '',
+		needGrowth: 0,
+		orderCounts: {
+			pendingPayment: 0,
+			making: 0,
+			pendingPickup: 0,
+			completed: 0
+		}
+	})
 	
 	// 计算属性：转换后的头像 URL
 	const avatarUrl = computed(() => {
 		return convertImageUrl(userInfo.value?.avatar) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format&fit=crop'
 	})
 
-	const stats = [{
+	const stats = ref([{
 			label: '积分',
-			val: '1,204'
+			val: '0'
 		},
 		{
 			label: '优惠券',
-			val: '3'
+			val: '0'
 		},
 		{
 			label: '余额',
 			val: '0.00'
 		}
-	]
+	])
 
 	const orderTypes = [{
 			icon: '💳',
@@ -193,11 +211,69 @@
 
 	// 加载个人中心数据
 	const loadProfileData = async () => {
-		// 这里可以添加加载用户信息、订单统计等数据的逻辑
-		// 例如：获取用户信息、积分、优惠券数量等
-		// 目前使用模拟数据，所以暂时不需要
-		userInfo.value=userStore.userInfo
-		console.log("userInfo",userInfo.value);
+		userInfo.value = userStore.userInfo
+		console.log("userInfo", userInfo.value);
+		
+		// 如果已登录，加载所有统计数据
+		if (userStore.isLogin) {
+			try {
+				// 1. 加载统计信息（积分、优惠券、订单统计、会员等级）
+				const statsRes = await getProfileStatistics()
+				console.log('统计信息响应:', statsRes)
+				
+				// 处理响应数据（request.js 已经解析了 data.data，这里直接使用 statsRes）
+				const statsData = statsRes || {}
+				
+				if (statsData) {
+					// 更新 profileStats
+					profileStats.value = {
+						integration: statsData.integration || 0,
+						couponCount: statsData.couponCount || 0,
+						levelName: statsData.levelName || '普通会员',
+						nextLevelName: statsData.nextLevelName || '',
+						needGrowth: statsData.needGrowth || 0,
+						orderCounts: statsData.orderCounts || {
+							pendingPayment: 0,
+							making: 0,
+							pendingPickup: 0,
+							completed: 0
+						}
+					}
+					
+					console.log('更新后的 profileStats:', profileStats.value)
+					
+					// 更新积分显示
+					const integrationIndex = stats.value.findIndex(s => s.label === '积分')
+					if (integrationIndex !== -1) {
+						stats.value[integrationIndex].val = (statsData.integration || 0).toLocaleString()
+					}
+					
+					// 更新优惠券显示
+					const couponIndex = stats.value.findIndex(s => s.label === '优惠券')
+					if (couponIndex !== -1) {
+						stats.value[couponIndex].val = (statsData.couponCount || 0).toString()
+					}
+				}
+				
+				// 2. 加载咖啡卡总余额
+				try {
+					const balanceRes = await getGiftCardTotalBalance()
+					const balance = balanceRes?.data || balanceRes || 0
+					// 更新余额显示
+					const balanceIndex = stats.value.findIndex(s => s.label === '余额')
+					if (balanceIndex !== -1) {
+						stats.value[balanceIndex].val = parseFloat(balance).toFixed(2)
+					}
+				} catch (error) {
+					console.error('加载咖啡卡余额失败', error)
+					// 失败时保持默认值 0.00
+				}
+			} catch (error) {
+				console.error('加载统计信息失败', error)
+				// 失败时保持默认值
+			}
+		}
+		
 		return true
 	}
 	

@@ -74,26 +74,26 @@
                         </view>
                         <!-- 商品订单 -->
                         <template v-else>
-                            <view 
-                                v-for="(item, index) in (order.orderItemList || []).slice(0, 2)" 
-                                :key="index"
-                                class="goods-item"
-                            >
-                                <image :src="item.productPic" mode="aspectFill" class="goods-img" lazy-load />
-                                <view class="goods-info">
-                                    <text class="goods-name">{{ item.productName }}</text>
-                                    <view class="goods-spec" v-if="item.productAttr">
-                                        <text class="spec-text">{{ item.productAttr }}</text>
-                                    </view>
-                                    <view class="goods-bottom">
-                                        <text class="goods-price">¥{{ item.productPrice }}</text>
-                                        <text class="goods-quantity">x{{ item.productQuantity }}</text>
-                                    </view>
+                        <view 
+                            v-for="(item, index) in (order.orderItemList || []).slice(0, 2)" 
+                            :key="index"
+                            class="goods-item"
+                        >
+                            <image :src="item.productPic" mode="aspectFill" class="goods-img" lazy-load />
+                            <view class="goods-info">
+                                <text class="goods-name">{{ item.productName }}</text>
+                                <view class="goods-spec" v-if="item.productAttr">
+                                    <text class="spec-text">{{ item.productAttr }}</text>
+                                </view>
+                                <view class="goods-bottom">
+                                    <text class="goods-price">¥{{ item.productPrice }}</text>
+                                    <text class="goods-quantity">x{{ item.productQuantity }}</text>
                                 </view>
                             </view>
-                            <view v-if="(order.orderItemList || []).length > 2" class="more-goods">
-                                <text class="more-text">还有 {{ (order.orderItemList || []).length - 2 }} 件商品</text>
-                            </view>
+                        </view>
+                        <view v-if="(order.orderItemList || []).length > 2" class="more-goods">
+                            <text class="more-text">还有 {{ (order.orderItemList || []).length - 2 }} 件商品</text>
+                        </view>
                         </template>
                     </view>
 

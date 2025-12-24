@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 23/12/2025 17:38:59
+ Date: 24/12/2025 17:48:55
 */
 
 SET NAMES utf8mb4;
@@ -29,11 +29,59 @@ CREATE TABLE `ai_knowledge_doc`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI知识库文档表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ai_knowledge_doc
 -- ----------------------------
+
+-- ----------------------------
+-- Table structure for gift_card
+-- ----------------------------
+DROP TABLE IF EXISTS `gift_card`;
+CREATE TABLE `gift_card`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `card_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡卡号',
+  `member_id` bigint NOT NULL COMMENT '当前持卡人用户ID',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡名称',
+  `original_amount` decimal(10, 2) NOT NULL COMMENT '初始面值金额',
+  `balance` decimal(10, 2) NOT NULL COMMENT '当前可用余额',
+  `status` int NOT NULL DEFAULT 1 COMMENT '状态：0->未激活；1->可用；2->已用完；3->已过期',
+  `expire_time` datetime NULL DEFAULT NULL COMMENT '到期时间',
+  `greeting` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '祝福语/备注',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_card_no`(`card_no` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡主表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of gift_card
+-- ----------------------------
+INSERT INTO `gift_card` VALUES (1, 'CC202512240001E5124D', 1, '第一张卡', 100.00, 58.60, 1, '2026-12-24 13:13:01', '', '2025-12-24 13:13:01', '2025-12-24 13:16:35');
+
+-- ----------------------------
+-- Table structure for gift_card_txn
+-- ----------------------------
+DROP TABLE IF EXISTS `gift_card_txn`;
+CREATE TABLE `gift_card_txn`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `card_id` bigint NOT NULL COMMENT '礼品卡ID',
+  `member_id` bigint NOT NULL COMMENT '关联用户ID',
+  `type` int NOT NULL COMMENT '类型：0->充值/发卡；1->消费；2->退款；3->调整',
+  `amount` decimal(10, 2) NOT NULL COMMENT '变动金额（正数表示增加，负数表示扣减）',
+  `order_id` bigint NULL DEFAULT NULL COMMENT '关联订单ID（消费时）',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注说明',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡收支流水表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of gift_card_txn
+-- ----------------------------
+INSERT INTO `gift_card_txn` VALUES (1, 1, 1, 0, 100.00, 6, '购卡/发卡（订单号：202512241312461f4dfc1）', '2025-12-24 13:13:01', '2025-12-24 13:13:01');
+INSERT INTO `gift_card_txn` VALUES (2, 1, 1, 1, -41.40, 7, '订单支付 (订单号: 7)', '2025-12-24 13:16:35', '2025-12-24 13:16:35');
 
 -- ----------------------------
 -- Table structure for oms_cart_item
@@ -53,7 +101,7 @@ CREATE TABLE `oms_cart_item`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_cart_item
@@ -73,7 +121,7 @@ CREATE TABLE `oms_order`  (
   `promotion_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '促销优化金额（促销价、满减、阶梯价）',
   `coupon_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '优惠券抵扣金额',
   `coffee_card_id` bigint NULL DEFAULT NULL COMMENT '使用的咖啡卡ID',
-  `coffee_card_discount_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '咖啡卡折扣金额（会员折扣）',
+  `coffee_card_discount_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '咖啡卡折扣金额（会员折扣，9折优惠）',
   `pay_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '应付金额（实际支付金额）',
   `pay_type` int NULL DEFAULT 1 COMMENT '支付方式：0->未支付；1->支付宝；2->微信；3->咖啡卡',
   `status` int NULL DEFAULT 1 COMMENT '订单状态：0->待付款；1->待制作；2->制作中；3->待取餐；4->已完成；5->已取消',
@@ -95,15 +143,19 @@ CREATE TABLE `oms_order`  (
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_sn`(`order_sn` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order
 -- ----------------------------
-INSERT INTO `oms_order` VALUES (1, '2025121917153016b5c89', NULL, 1, NULL, 20.00, 0.00, 0.00, 20.00, 1, 3, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '少冰', 0, NULL, NULL, NULL, '2025-12-19 17:15:31', '2025-12-23 16:48:50');
-INSERT INTO `oms_order` VALUES (2, '202512221352321470791', NULL, 1, NULL, 20.00, 0.00, 0.00, 20.00, 0, 5, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-22 13:52:33', '2025-12-23 16:14:38');
-INSERT INTO `oms_order` VALUES (3, '202512231724491f96382', '101', 1, NULL, 42.00, 0.00, 0.00, 42.00, 0, 0, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:24:49', '2025-12-23 17:24:49');
-INSERT INTO `oms_order` VALUES (4, '2025122317281316eb1f4', '102', 1, NULL, 25.00, 0.00, 0.00, 25.00, 1, 1, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:28:14', '2025-12-23 17:28:59');
+INSERT INTO `oms_order` VALUES (1, '2025121917153016b5c89', NULL, 1, NULL, 20.00, 0.00, 0.00, NULL, NULL, 20.00, 1, 3, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '少冰', 0, NULL, NULL, NULL, '2025-12-19 17:15:31', '2025-12-23 16:48:50');
+INSERT INTO `oms_order` VALUES (2, '202512221352321470791', NULL, 1, NULL, 20.00, 0.00, 0.00, NULL, NULL, 20.00, 0, 5, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-22 13:52:33', '2025-12-23 16:14:38');
+INSERT INTO `oms_order` VALUES (3, '202512231724491f96382', '101', 1, NULL, 42.00, 0.00, 0.00, NULL, NULL, 42.00, 0, 0, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:24:49', '2025-12-23 17:24:49');
+INSERT INTO `oms_order` VALUES (4, '2025122317281316eb1f4', '102', 1, NULL, 25.00, 0.00, 0.00, NULL, NULL, 25.00, 1, 1, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-23 17:28:14', '2025-12-23 17:28:59');
+INSERT INTO `oms_order` VALUES (5, '2025122411522919f1185', '101', 1, NULL, 20.00, 0.00, 0.00, NULL, NULL, 20.00, 0, 5, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, NULL, NULL, NULL, '2025-12-24 11:52:30', '2025-12-24 11:52:40');
+INSERT INTO `oms_order` VALUES (6, '202512241312461f4dfc1', NULL, 1, NULL, 100.00, 0.00, 0.00, NULL, NULL, 100.00, 1, 4, '虚拟商品', NULL, '虚拟商品', '00000000000', NULL, '虚拟', '虚拟', '虚拟', '咖啡卡订单', 'GIFT_CARD:{\"name\":\"第一张卡\",\"greeting\":\"\",\"validDays\":365}', 0, '2025-12-24 13:13:01', NULL, NULL, '2025-12-24 13:12:46', '2025-12-24 13:35:13');
+INSERT INTO `oms_order` VALUES (7, '202512241316351522ea0', '102', 1, NULL, 46.00, 0.00, 0.00, 1, 4.60, 41.40, 3, 1, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, '2025-12-24 13:16:35', NULL, NULL, '2025-12-24 13:16:35', '2025-12-24 13:16:35');
+INSERT INTO `oms_order` VALUES (8, '2025122414261812deee0', '103', 1, NULL, 20.00, 0.00, 0.00, NULL, 0.00, 20.00, 1, 1, '门店自提', NULL, '张三', '13800138000', '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '', 0, '2025-12-24 14:26:35', NULL, NULL, '2025-12-24 14:26:19', '2025-12-24 14:26:35');
 
 -- ----------------------------
 -- Table structure for oms_order_item
@@ -124,7 +176,7 @@ CREATE TABLE `oms_order_item`  (
   `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of oms_order_item
@@ -134,6 +186,10 @@ INSERT INTO `oms_order_item` VALUES (2, 2, '202512221352321470791', 1, 'https://
 INSERT INTO `oms_order_item` VALUES (3, 3, '202512231724491f96382', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-23 17:24:49');
 INSERT INTO `oms_order_item` VALUES (4, 3, '202512231724491f96382', 21, 'http://192.168.110.110:8081/api/app/image/proxy?url=http%3A%2F%2F192.168.248.128%3A9000%2Fcoffee-bucket%2Fproduct%2Fa147c5273d844ae0ad287d30fce5b1fb.png', '香草拿铁', NULL, 22.00, 1, 11, NULL, '中杯,热,标准', '2025-12-23 17:24:49');
 INSERT INTO `oms_order_item` VALUES (5, 4, '2025122317281316eb1f4', 21, 'http://192.168.110.110:8081/api/app/image/proxy?url=http%3A%2F%2F192.168.248.128%3A9000%2Fcoffee-bucket%2Fproduct%2Fa147c5273d844ae0ad287d30fce5b1fb.png', '香草拿铁', NULL, 25.00, 1, 12, NULL, '大杯,热,标准', '2025-12-23 17:28:14');
+INSERT INTO `oms_order_item` VALUES (6, 5, '2025122411522919f1185', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-24 11:52:30');
+INSERT INTO `oms_order_item` VALUES (7, 7, '202512241316351522ea0', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-24 13:16:35');
+INSERT INTO `oms_order_item` VALUES (8, 7, '202512241316351522ea0', 14, 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=600&auto=format&fit=crop', '芝士白桃乌龙', NULL, 26.00, 1, NULL, NULL, '', '2025-12-24 13:16:35');
+INSERT INTO `oms_order_item` VALUES (9, 8, '2025122414261812deee0', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-24 14:26:19');
 
 -- ----------------------------
 -- Table structure for pms_category
@@ -237,43 +293,6 @@ INSERT INTO `pms_sku_stock` VALUES (10, 3, '2024030101', 22.00, 50, 5, '[{\"key\
 INSERT INTO `pms_sku_stock` VALUES (11, 21, '', 22.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"标准\"}]', '2025-12-23 14:52:45', '2025-12-23 14:52:45');
 INSERT INTO `pms_sku_stock` VALUES (12, 21, '', 25.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"标准\"}]', '2025-12-23 14:52:45', '2025-12-23 14:52:45');
 INSERT INTO `pms_sku_stock` VALUES (13, 11, '', 38.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-23 15:40:28', '2025-12-23 15:40:28');
-
--- ----------------------------
--- Table structure for gift_card
--- ----------------------------
-DROP TABLE IF EXISTS `gift_card`;
-CREATE TABLE `gift_card`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `card_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '咖啡卡卡号',
-  `member_id` bigint NOT NULL COMMENT '当前持卡人用户ID',
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '咖啡卡名称',
-  `original_amount` decimal(10, 2) NOT NULL COMMENT '初始面值金额',
-  `balance` decimal(10, 2) NOT NULL COMMENT '当前可用余额',
-  `status` int NOT NULL DEFAULT 1 COMMENT '状态：0->未激活；1->可用；2->已用完；3->已过期',
-  `expire_time` datetime NULL DEFAULT NULL COMMENT '到期时间',
-  `greeting` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '祝福语/备注',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE INDEX `uk_card_no`(`card_no` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '咖啡卡主表' ROW_FORMAT = DYNAMIC;
-
--- ----------------------------
--- Table structure for gift_card_txn
--- ----------------------------
-DROP TABLE IF EXISTS `gift_card_txn`;
-CREATE TABLE `gift_card_txn`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `card_id` bigint NOT NULL COMMENT '咖啡卡ID',
-  `member_id` bigint NOT NULL COMMENT '关联用户ID',
-  `type` int NOT NULL COMMENT '类型：0->充值/发卡；1->消费；2->退款；3->调整',
-  `amount` decimal(10, 2) NOT NULL COMMENT '变动金额（正数表示增加，负数表示扣减）',
-  `order_id` bigint NULL DEFAULT NULL COMMENT '关联订单ID（消费时）',
-  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注说明',
-  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '咖啡卡收支流水表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for ums_member

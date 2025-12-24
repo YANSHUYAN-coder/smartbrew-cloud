@@ -8,9 +8,11 @@ import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.coffee.common.dict.OrderStatus;
 import com.coffee.system.config.AliPayConfiguration;
 import com.coffee.system.domain.entity.OmsOrder;
 import com.coffee.system.service.AliPayService;
+import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,8 @@ import java.util.Map;
 public class AliPayServiceImpl implements AliPayService {
     @Autowired
     private OrderService orderService;
+    @Autowired
+    private GiftCardService giftCardService;
     @Autowired
     private AlipayClient alipayClient;
 
@@ -156,6 +160,34 @@ public class AliPayServiceImpl implements AliPayService {
 
             if (updateResult) {
                 log.info("订单支付成功，状态更新完成: {}", outTradeNo);
+
+                // 8. 检查是否是咖啡卡订单（虚拟商品），如果是则创建并激活咖啡卡，并将订单状态设为已完成
+                if (order.getDeliveryCompany() != null && "虚拟商品".equals(order.getDeliveryCompany())) {
+                    try {
+                        giftCardService.activateGiftCardByOrder(order.getId());
+                        log.info("咖啡卡创建并激活成功，订单ID: {}", order.getId());
+                        
+                        // 咖啡卡是虚拟商品，支付成功后直接设为已完成
+                        order.setStatus(OrderStatus.COMPLETED.getCode());
+                        orderService.updateById(order);
+                        log.info("咖啡卡订单状态已更新为已完成，订单ID: {}", order.getId());
+                    } catch (Exception e) {
+                        log.error("咖啡卡创建失败，订单ID: {}", order.getId(), e);
+                        // 咖啡卡创建失败不影响支付成功，但需要记录日志以便后续处理
+                    }
+                }
+                
+                // 9. 如果使用咖啡卡支付，从咖啡卡余额中扣减
+                if (order.getCoffeeCardId() != null && order.getPayType() == 3) {
+                    try {
+                        giftCardService.deductBalance(order.getCoffeeCardId(), order.getPayAmount(), order.getId());
+                        log.info("咖啡卡扣减成功，订单ID: {}, 扣减金额: {}", order.getId(), order.getPayAmount());
+                    } catch (Exception e) {
+                        log.error("咖啡卡扣减失败，订单ID: {}", order.getId(), e);
+                        // 咖啡卡扣减失败不影响支付成功，但需要记录日志以便后续处理
+                    }
+                }
+
                 return "success"; // 告诉支付宝处理成功，不要再发通知了
             } else {
                 log.error("订单状态更新失败: {}", outTradeNo);

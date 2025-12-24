@@ -48,11 +48,17 @@ public class OmsOrder extends BaseEntity implements Serializable {
     @TableField("coupon_amount")
     private BigDecimal couponAmount;
 
+    @TableField("coffee_card_id")
+    private Long coffeeCardId;
+
+    @TableField("coffee_card_discount_amount")
+    private BigDecimal coffeeCardDiscountAmount;
+
     @TableField("pay_amount")
     private BigDecimal payAmount;
 
     /**
-     * 支付方式：0->未支付；1->支付宝；2->微信
+     * 支付方式：0->未支付；1->支付宝；2->微信；3->咖啡卡
      */
     @TableField("pay_type")
     private Integer payType;

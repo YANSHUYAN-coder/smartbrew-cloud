@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 
 /**
- * 礼品卡收支流水实体
+ * 咖啡卡收支流水实体
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 public class GiftCardTxn extends BaseEntity {
 
     /**
-     * 礼品卡ID
+     * 咖啡卡ID
      */
     @TableField("card_id")
     private Long cardId;

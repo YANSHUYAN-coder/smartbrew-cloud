@@ -72,8 +72,10 @@ CREATE TABLE `oms_order`  (
   `total_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '订单总金额',
   `promotion_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '促销优化金额（促销价、满减、阶梯价）',
   `coupon_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '优惠券抵扣金额',
+  `coffee_card_id` bigint NULL DEFAULT NULL COMMENT '使用的咖啡卡ID',
+  `coffee_card_discount_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '咖啡卡折扣金额（会员折扣）',
   `pay_amount` decimal(10, 2) NULL DEFAULT NULL COMMENT '应付金额（实际支付金额）',
-  `pay_type` int NULL DEFAULT 1 COMMENT '支付方式：0->未支付；1->支付宝；2->微信',
+  `pay_type` int NULL DEFAULT 1 COMMENT '支付方式：0->未支付；1->支付宝；2->微信；3->咖啡卡',
   `status` int NULL DEFAULT 1 COMMENT '订单状态：0->待付款；1->待制作；2->制作中；3->待取餐；4->已完成；5->已取消',
   `delivery_company` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '物流公司(配送方式)',
   `delivery_sn` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '物流单号',
@@ -242,9 +244,9 @@ INSERT INTO `pms_sku_stock` VALUES (13, 11, '', 38.00, 100, NULL, '[{\"key\": \"
 DROP TABLE IF EXISTS `gift_card`;
 CREATE TABLE `gift_card`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `card_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡卡号',
+  `card_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '咖啡卡卡号',
   `member_id` bigint NOT NULL COMMENT '当前持卡人用户ID',
-  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '礼品卡名称',
+  `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '咖啡卡名称',
   `original_amount` decimal(10, 2) NOT NULL COMMENT '初始面值金额',
   `balance` decimal(10, 2) NOT NULL COMMENT '当前可用余额',
   `status` int NOT NULL DEFAULT 1 COMMENT '状态：0->未激活；1->可用；2->已用完；3->已过期',
@@ -254,7 +256,7 @@ CREATE TABLE `gift_card`  (
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_card_no`(`card_no` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡主表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '咖啡卡主表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for gift_card_txn
@@ -262,7 +264,7 @@ CREATE TABLE `gift_card`  (
 DROP TABLE IF EXISTS `gift_card_txn`;
 CREATE TABLE `gift_card_txn`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `card_id` bigint NOT NULL COMMENT '礼品卡ID',
+  `card_id` bigint NOT NULL COMMENT '咖啡卡ID',
   `member_id` bigint NOT NULL COMMENT '关联用户ID',
   `type` int NOT NULL COMMENT '类型：0->充值/发卡；1->消费；2->退款；3->调整',
   `amount` decimal(10, 2) NOT NULL COMMENT '变动金额（正数表示增加，负数表示扣减）',
@@ -271,7 +273,7 @@ CREATE TABLE `gift_card_txn`  (
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '礼品卡收支流水表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '咖啡卡收支流水表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for ums_member

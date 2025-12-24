@@ -157,8 +157,8 @@
 			name: '外卖'
 		},
 		{
-			icon: '🎁',
-			name: '礼品卡'
+			icon: '☕',
+			name: '咖啡卡'
 		},
 		{
 			icon: '💎',
@@ -206,7 +206,7 @@
 					url: '/pages/menu/index'
 				});
 				break;
-			case '礼品卡':
+			case '咖啡卡':
 				{
 					const token = uni.getStorageSync('token')
 					if (!token) {

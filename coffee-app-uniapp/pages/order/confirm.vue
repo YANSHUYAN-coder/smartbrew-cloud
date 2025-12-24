@@ -53,15 +53,81 @@
 				</view>
 			</view>
 
+			<!-- 支付方式选择 -->
+			<view class="payment-section">
+				<view class="section-title">支付方式</view>
+				<view class="payment-options">
+					<view 
+						class="payment-option" 
+						:class="{ active: payType === 1 }"
+						@click="selectPaymentType(1)"
+					>
+						<view class="payment-left">
+							<uni-icons type="wallet" size="20" :color="payType === 1 ? '#6f4e37' : '#999'"></uni-icons>
+							<text class="payment-name">支付宝</text>
+						</view>
+						<view class="payment-right" v-if="payType === 1">
+							<uni-icons type="checkmarkempty" size="16" color="#6f4e37"></uni-icons>
+						</view>
+					</view>
+					<view 
+						class="payment-option" 
+						:class="{ active: payType === 3 }"
+						@click="selectPaymentType(3)"
+					>
+						<view class="payment-left">
+							<uni-icons type="wallet-filled" size="20" :color="payType === 3 ? '#6f4e37' : '#999'"></uni-icons>
+							<text class="payment-name">咖啡卡</text>
+							<text class="payment-desc" v-if="payType === 3 && coffeeCardDiscountAmount > 0">
+								（9折优惠 -¥{{ coffeeCardDiscountAmount.toFixed(2) }}）
+							</text>
+						</view>
+						<view class="payment-right" v-if="payType === 3">
+							<uni-icons type="checkmarkempty" size="16" color="#6f4e37"></uni-icons>
+						</view>
+					</view>
+				</view>
+				
+				<!-- 咖啡卡选择（仅在选择咖啡卡支付时显示） -->
+				<view v-if="payType === 3" class="coffee-card-selector">
+					<view class="selector-title">选择咖啡卡</view>
+					<view v-if="coffeeCards.length === 0" class="no-cards">
+						<text class="no-cards-text">暂无可用咖啡卡</text>
+						<text class="no-cards-hint">请先购买咖啡卡</text>
+					</view>
+					<view v-else class="card-list">
+						<view 
+							v-for="card in coffeeCards" 
+							:key="card.id"
+							class="card-item"
+							:class="{ active: selectedCoffeeCardId === card.id }"
+							@click="selectCoffeeCard(card)"
+						>
+							<view class="card-info">
+								<text class="card-name">{{ card.name || '咖啡会员卡' }}</text>
+								<text class="card-balance">余额：¥{{ parseFloat(card.balance || 0).toFixed(2) }}</text>
+							</view>
+							<view class="card-check" v-if="selectedCoffeeCardId === card.id">
+								<uni-icons type="checkmarkempty" size="16" color="#6f4e37"></uni-icons>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+
 			<!-- 订单信息 -->
 			<view class="order-info-section">
 				<view class="info-row">
 					<text class="info-label">商品合计</text>
 					<text class="info-value">¥{{ totalPrice.toFixed(2) }}</text>
 				</view>
-				<view class="info-row">
+				<view class="info-row" v-if="deliveryFee > 0">
 					<text class="info-label">配送费</text>
 					<text class="info-value">¥{{ deliveryFee.toFixed(2) }}</text>
+				</view>
+				<view class="info-row" v-if="coffeeCardDiscountAmount > 0">
+					<text class="info-label">咖啡卡折扣（9折）</text>
+					<text class="info-value discount">-¥{{ coffeeCardDiscountAmount.toFixed(2) }}</text>
 				</view>
 				<view class="info-row total-row">
 					<text class="info-label">实付金额</text>
@@ -103,6 +169,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/store/cart.js'
 import { useUserStore } from '@/store/user.js'
 import { createOrder } from '@/services/order.js'
+import { getGiftCardList } from '@/services/giftcard.js'
 import { get } from '@/utils/request.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 
@@ -114,6 +181,12 @@ const remark = ref('')
 const submitting = ref(false)
 const deliveryFee = ref(0) // 配送费
 
+// 支付方式：1->支付宝；3->咖啡卡
+const payType = ref(1) // 默认支付宝
+const coffeeCards = ref([]) // 咖啡卡列表
+const selectedCoffeeCardId = ref(null) // 选中的咖啡卡ID
+const selectedCoffeeCard = ref(null) // 选中的咖啡卡对象
+
 // 获取选中的购物车商品
 const selectedCartItems = computed(() => {
 	return cartStore.items.filter(item => item.checked)
@@ -124,9 +197,22 @@ const totalPrice = computed(() => {
 	return selectedCartItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0)
 })
 
-// 计算最终价格（商品总价 + 配送费）
+// 计算咖啡卡折扣金额（9折，即原价 × 0.1）
+const coffeeCardDiscountAmount = computed(() => {
+	if (payType.value === 3 && totalPrice.value > 0) {
+		// 打九折，折扣金额 = 原价 × 0.1
+		return totalPrice.value * 0.1
+	}
+	return 0
+})
+
+// 计算最终价格（商品总价 + 配送费 - 咖啡卡折扣）
 const finalPrice = computed(() => {
-	return totalPrice.value + deliveryFee.value
+	let price = totalPrice.value + deliveryFee.value
+	if (payType.value === 3) {
+		price = price - coffeeCardDiscountAmount.value
+	}
+	return Math.max(0, price) // 确保不为负数
 })
 
 // 获取规格文本
@@ -147,6 +233,51 @@ const selectAddress = () => {
 	uni.navigateTo({
 		url: '/pages/address/list?select=true'
 	})
+}
+
+// 选择支付方式
+const selectPaymentType = (type) => {
+	payType.value = type
+	if (type === 3) {
+		// 选择咖啡卡支付时，加载咖啡卡列表
+		loadCoffeeCards()
+	} else {
+		// 选择其他支付方式时，清空选中的咖啡卡
+		selectedCoffeeCardId.value = null
+		selectedCoffeeCard.value = null
+	}
+}
+
+// 选择咖啡卡
+const selectCoffeeCard = (card) => {
+	selectedCoffeeCardId.value = card.id
+	selectedCoffeeCard.value = card
+	
+	// 检查余额是否足够
+	if (card.balance < finalPrice.value) {
+		uni.showToast({
+			title: '咖啡卡余额不足',
+			icon: 'none'
+		})
+	}
+}
+
+// 加载咖啡卡列表
+const loadCoffeeCards = async () => {
+	try {
+		const res = await getGiftCardList({ page: 1, pageSize: 100 })
+		const cards = res.data?.records || res.records || res.data || []
+		// 只显示可用状态的咖啡卡（status = 1）
+		coffeeCards.value = cards.filter(card => card.status === 1 && parseFloat(card.balance || 0) > 0)
+		
+		// 如果有可用咖啡卡，默认选择第一张
+		if (coffeeCards.value.length > 0 && !selectedCoffeeCardId.value) {
+			selectCoffeeCard(coffeeCards.value[0])
+		}
+	} catch (error) {
+		console.error('加载咖啡卡列表失败', error)
+		coffeeCards.value = []
+	}
 }
 
 // 加载默认地址
@@ -201,6 +332,27 @@ const submitOrder = async () => {
 		return
 	}
 
+	// 如果选择咖啡卡支付，验证咖啡卡
+	if (payType.value === 3) {
+		if (!selectedCoffeeCardId.value || !selectedCoffeeCard.value) {
+			uni.showToast({
+				title: '请选择咖啡卡',
+				icon: 'none'
+			})
+			return
+		}
+		
+		// 检查余额是否足够
+		if (selectedCoffeeCard.value.balance < finalPrice.value) {
+			uni.showToast({
+				title: '咖啡卡余额不足，请选择其他支付方式',
+				icon: 'none',
+				duration: 2000
+			})
+			return
+		}
+	}
+
 	// 检查购物车项是否都有 cartItemId（需要先同步到后端）
 	const cartItemIds = selectedCartItems.value
 		.map(item => item.cartItemId)
@@ -230,8 +382,11 @@ const submitOrder = async () => {
 		// 配送方式
 		deliveryCompany: '门店自提', // 默认门店自提
 		
-		// 支付方式（默认未支付，后续跳转支付页面）
-		payType: 0,
+		// 支付方式：1->支付宝；3->咖啡卡
+		payType: payType.value,
+		
+		// 咖啡卡ID（如果使用咖啡卡支付）
+		coffeeCardId: payType.value === 3 ? selectedCoffeeCardId.value : null,
 		
 		// 订单金额（可选，用于后端校验，后端会重新计算）
 		totalAmount: totalPrice.value,
@@ -507,6 +662,137 @@ $bg-color: #f7f8fa;
 	color: #666;
 }
 
+/* 支付方式选择 */
+.payment-section {
+	background-color: white;
+	margin: 24rpx 32rpx;
+	padding: 32rpx;
+	border-radius: 24rpx;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.payment-options {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.payment-option {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 24rpx;
+	border: 2rpx solid #eee;
+	border-radius: 16rpx;
+	transition: all 0.3s;
+}
+
+.payment-option.active {
+	border-color: #6f4e37;
+	background-color: #fef8f5;
+}
+
+.payment-left {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	flex: 1;
+}
+
+.payment-name {
+	font-size: 30rpx;
+	font-weight: 500;
+	color: #333;
+}
+
+.payment-desc {
+	font-size: 24rpx;
+	color: #6f4e37;
+	margin-left: 12rpx;
+}
+
+.payment-right {
+	display: flex;
+	align-items: center;
+}
+
+/* 咖啡卡选择器 */
+.coffee-card-selector {
+	margin-top: 24rpx;
+	padding-top: 24rpx;
+	border-top: 1rpx solid #eee;
+}
+
+.selector-title {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #666;
+	margin-bottom: 16rpx;
+}
+
+.no-cards {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 40rpx 0;
+}
+
+.no-cards-text {
+	font-size: 28rpx;
+	color: #999;
+	margin-bottom: 8rpx;
+}
+
+.no-cards-hint {
+	font-size: 24rpx;
+	color: #ccc;
+}
+
+.card-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.card-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20rpx;
+	border: 2rpx solid #eee;
+	border-radius: 12rpx;
+	background-color: #fafafa;
+	transition: all 0.3s;
+}
+
+.card-item.active {
+	border-color: #6f4e37;
+	background-color: #fef8f5;
+}
+
+.card-info {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+	flex: 1;
+}
+
+.card-name {
+	font-size: 28rpx;
+	font-weight: 500;
+	color: #333;
+}
+
+.card-balance {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.card-check {
+	display: flex;
+	align-items: center;
+}
+
 /* 订单信息 */
 .order-info-section {
 	background-color: white;
@@ -535,6 +821,11 @@ $bg-color: #f7f8fa;
 .info-value {
 	font-size: 28rpx;
 	color: #333;
+}
+
+.info-value.discount {
+	color: #6f4e37;
+	font-weight: 500;
 }
 
 .total-row {

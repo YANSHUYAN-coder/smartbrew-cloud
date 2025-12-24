@@ -133,6 +133,22 @@
 				"navigationStyle": "custom",
 				"backgroundColor": "#f5f5f5"
 			}
+		},
+		{
+			"path": "pages/giftcard/buy",
+			"style": {
+				"navigationBarTitleText": "购买礼品卡",
+				"navigationStyle": "custom",
+				"backgroundColor": "#f5f5f5"
+			}
+		},
+		{
+			"path": "pages/giftcard/transactions",
+			"style": {
+				"navigationBarTitleText": "交易明细",
+				"navigationStyle": "custom",
+				"backgroundColor": "#f5f5f5"
+			}
 		}
 	],
 	"globalStyle": {

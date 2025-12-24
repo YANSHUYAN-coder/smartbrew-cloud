@@ -15,8 +15,11 @@ import com.coffee.system.domain.vo.OrderVO;
 import com.coffee.system.mapper.OmsOrderMapper;
 import com.coffee.system.mapper.OrderItemMapper;
 import com.coffee.system.service.CartService;
+import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberReceiveAddressService;
+import com.coffee.system.domain.entity.GiftCard;
+import com.coffee.common.dict.GiftCardStatus;
 import com.coffee.system.domain.entity.OmsCartItem;
 import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import org.springframework.beans.BeanUtils;
@@ -25,6 +28,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,6 +40,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> implements OrderService {
     @Autowired
@@ -48,6 +53,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     private CartService cartService;
     @Autowired
     private UmsMemberReceiveAddressService addressService;
+    @Autowired
+    private GiftCardService giftCardService;
 
     @Autowired
     private AlipayClient alipayClient;
@@ -224,7 +231,28 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         }
         BigDecimal promotionAmount = defaultIfNull(request.getPromotionAmount());
         BigDecimal couponAmount = defaultIfNull(request.getCouponAmount());
-        BigDecimal payAmount = totalAmount.subtract(promotionAmount).subtract(couponAmount);
+        
+        // 咖啡卡折扣计算（9折，即0.9倍）
+        BigDecimal coffeeCardDiscountAmount = BigDecimal.ZERO;
+        Long coffeeCardId = request.getCoffeeCardId();
+        if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {
+            // 使用咖啡卡支付，享受9折优惠
+            GiftCard coffeeCard = giftCardService.getById(coffeeCardId);
+            if (coffeeCard == null) {
+                throw new RuntimeException("咖啡卡不存在");
+            }
+            if (!coffeeCard.getMemberId().equals(userId)) {
+                throw new RuntimeException("无权使用他人的咖啡卡");
+            }
+            if (!coffeeCard.getStatus().equals(GiftCardStatus.ACTIVE.getCode())) {
+                throw new RuntimeException("咖啡卡不可用，请检查状态");
+            }
+            // 计算折扣金额：打九折，折扣金额 = 原价 × 0.1
+            BigDecimal amountAfterPromotionAndCoupon = totalAmount.subtract(promotionAmount).subtract(couponAmount);
+            coffeeCardDiscountAmount = amountAfterPromotionAndCoupon.multiply(new BigDecimal("0.1"));
+        }
+        
+        BigDecimal payAmount = totalAmount.subtract(promotionAmount).subtract(couponAmount).subtract(coffeeCardDiscountAmount);
         if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
             payAmount = BigDecimal.ZERO;
         }
@@ -237,9 +265,25 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         order.setTotalAmount(totalAmount);
         order.setPromotionAmount(promotionAmount);
         order.setCouponAmount(couponAmount);
+        order.setCoffeeCardId(coffeeCardId);
+        order.setCoffeeCardDiscountAmount(coffeeCardDiscountAmount);
         order.setPayAmount(payAmount);
         order.setPayType(request.getPayType() == null ? 0 : request.getPayType());
-        order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
+        
+        // 如果使用咖啡卡支付，需要检查余额并立即扣减
+        if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {
+            GiftCard coffeeCard = giftCardService.getById(coffeeCardId);
+            if (coffeeCard.getBalance().compareTo(payAmount) < 0) {
+                throw new RuntimeException("咖啡卡余额不足");
+            }
+            // 咖啡卡支付，订单状态直接设为待制作（已支付）
+            order.setStatus(OrderStatus.PENDING_MAKING.getCode());
+            order.setPaymentTime(LocalDateTime.now());
+        } else {
+            // 其他支付方式，订单状态为待支付
+            order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
+        }
+        
         order.setDeliveryCompany(request.getDeliveryCompany() != null ? request.getDeliveryCompany() : "门店自提");
 
         // 5. 填充收货人信息（从地址对象拷贝）
@@ -281,6 +325,17 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
         // 8. 删除已下单的购物车项
         cartService.removeByIds(request.getCartItemIds());
+
+        // 9. 如果使用咖啡卡支付，立即扣减余额
+        if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {
+            try {
+                giftCardService.deductBalance(coffeeCardId, payAmount, order.getId());
+                log.info("咖啡卡支付成功，订单ID: {}, 扣减金额: {}", order.getId(), payAmount);
+            } catch (Exception e) {
+                log.error("咖啡卡扣减失败，订单ID: {}", order.getId(), e);
+                throw new RuntimeException("咖啡卡扣减失败: " + e.getMessage());
+            }
+        }
 
         return order;
     }

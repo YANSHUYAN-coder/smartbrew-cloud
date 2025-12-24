@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 礼品卡主表实体
+ * 咖啡卡主表实体
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class GiftCard extends BaseEntity {
 
     /**
-     * 礼品卡卡号
+     * 咖啡卡卡号
      */
     @TableField("card_no")
     private String cardNo;
@@ -29,7 +29,7 @@ public class GiftCard extends BaseEntity {
     private Long memberId;
 
     /**
-     * 礼品卡名称
+     * 咖啡卡名称
      */
     @TableField("name")
     private String name;

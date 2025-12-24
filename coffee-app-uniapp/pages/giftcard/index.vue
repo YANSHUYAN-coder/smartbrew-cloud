@@ -5,7 +5,7 @@
             <view class="nav-left" @click="goBack">
                 <uni-icons type="left" size="20" color="#333" />
             </view>
-            <text class="nav-title">礼品卡</text>
+            <text class="nav-title">咖啡卡</text>
             <view class="nav-right" />
         </view>
 
@@ -14,17 +14,17 @@
             <!-- 顶部简介卡片 -->
             <view class="intro-card">
                 <view class="intro-texts">
-                    <text class="intro-title">用一杯好咖啡，说一声谢谢</text>
-                    <text class="intro-subtitle">购买礼品卡，送给朋友或自己使用，支持余额多次消费。</text>
+                    <text class="intro-title">咖啡卡，享受会员折扣</text>
+                    <text class="intro-subtitle">充值咖啡卡，享受9折优惠，余额可多次使用，也可送给朋友。</text>
                 </view>
                 <view class="intro-badge">
                     <text class="badge-text">BETA</text>
                 </view>
             </view>
 
-            <!-- 礼品卡列表（mock 数据） -->
+            <!-- 咖啡卡列表 -->
             <view v-if="cards.length" class="card-list">
-                <view v-for="card in cards" :key="card.id" class="gift-card-item">
+                <view v-for="card in cards" :key="card.id" class="gift-card-item" @click="viewTransactions(card)">
                     <view class="card-top">
                         <view class="card-left">
                             <text class="card-name">{{ card.name }}</text>
@@ -37,11 +37,17 @@
                     </view>
                     <view class="card-bottom">
                         <view class="card-meta">
-                            <text class="meta-item">面值 ¥{{ card.originalAmount }}</text>
+                            <text class="meta-item">面值 ¥{{ card.originalAmount.toFixed(2) }}</text>
                             <text class="meta-item">有效期至 {{ card.expireDate }}</text>
                         </view>
-                        <view class="card-status" :class="`status-${card.status}`">
-                            {{ getStatusText(card.status) }}
+                        <view class="card-actions">
+                            <view class="card-status" :class="`status-${card.status}`">
+                                {{ getStatusText(card.status) }}
+                            </view>
+                            <view class="view-detail">
+                                <text class="detail-text">查看明细</text>
+                                <uni-icons type="right" size="14" color="rgba(255,255,255,0.8)" />
+                            </view>
                         </view>
                     </view>
                 </view>
@@ -50,8 +56,8 @@
             <!-- 空状态 -->
             <view v-else class="empty-box">
                 <text class="empty-icon">🎁</text>
-                <text class="empty-text">还没有礼品卡</text>
-                <text class="empty-subtext">送一杯咖啡给自己或朋友，从一张礼品卡开始</text>
+                <text class="empty-text">还没有咖啡卡</text>
+                <text class="empty-subtext">充值咖啡卡，享受9折优惠，余额可多次使用</text>
             </view>
 
             <!-- 预留底部空间 -->
@@ -69,39 +75,72 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { getGiftCardList } from '@/services/giftcard.js'
+
 const cards = ref([])
 const statusBarHeight = ref(0)
+const loading = ref(false)
 
-// mock 数据：后续可替换为真实接口
-const loadMockCards = () => {
-    cards.value = [
-        {
-            id: 1,
-            name: '智咖云 · 咖啡礼遇卡',
-            cardNo: 'GC20251223001',
-            balance: 120,
-            originalAmount: 200,
-            expireDate: '2026-12-31',
-            status: 'active',
-        },
-        {
-            id: 2,
-            name: '节日限定 · 暖心卡',
-            cardNo: 'GC20251111008',
-            balance: 0,
-            originalAmount: 100,
-            expireDate: '2025-11-30',
-            status: 'used',
-        },
-    ]
+// 加载咖啡卡列表
+const loadCards = async () => {
+    try {
+        loading.value = true
+        const res = await getGiftCardList({ page: 1, pageSize: 100 })
+        const cardList = res.data?.records || res.records || res.data || []
+        
+        // 转换数据格式，适配前端显示
+        cards.value = cardList.map(card => ({
+            id: card.id,
+            name: card.name || '咖啡会员卡',
+            cardNo: card.cardNo || '',
+            balance: parseFloat(card.balance || 0),
+            originalAmount: parseFloat(card.originalAmount || 0),
+            expireDate: formatDate(card.expireTime),
+            status: mapStatus(card.status)
+        }))
+    } catch (error) {
+        console.error('加载咖啡卡列表失败', error)
+        uni.showToast({
+            title: '加载失败，请重试',
+            icon: 'none'
+        })
+        cards.value = []
+    } finally {
+        loading.value = false
+    }
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+    if (!dateStr) return '永久有效'
+    const date = new Date(dateStr)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+// 映射状态：后端返回数字，前端使用字符串
+const mapStatus = (status) => {
+    // 0->未激活；1->可用；2->已用完；3->已过期
+    const statusMap = {
+        0: 'inactive',
+        1: 'active',
+        2: 'used',
+        3: 'expired'
+    }
+    return statusMap[status] || 'unknown'
 }
 
 const getStatusText = (status) => {
     const map = {
+        inactive: '未激活',
         active: '可用',
         used: '已用完',
         expired: '已过期',
+        unknown: '未知'
     }
     return map[status] || '未知'
 }
@@ -111,15 +150,26 @@ const goBack = () => {
 }
 
 const handleBuy = () => {
-    uni.showToast({
-        title: '购卡流程待接入',
-        icon: 'none',
+    uni.navigateTo({
+        url: '/pages/giftcard/buy'
+    })
+}
+
+// 查看交易明细
+const viewTransactions = (card) => {
+    uni.navigateTo({
+        url: `/pages/giftcard/transactions?cardId=${card.id}&cardName=${encodeURIComponent(card.name || '咖啡卡')}`
     })
 }
 
 onMounted(() => {
     statusBarHeight.value = getStatusBarHeight()
-    loadMockCards()
+    loadCards()
+})
+
+// 页面显示时重新加载（从购买页面返回时刷新列表）
+onShow(() => {
+    loadCards()
 })
 </script>
 
@@ -216,6 +266,14 @@ $bg-color: #f7f8fa;
     padding: 28rpx 24rpx;
     color: #ffffff;
     box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.25);
+    /* 可点击样式 */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gift-card-item:active {
+    transform: scale(0.98);
+    box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
 }
 
 .card-top {
@@ -260,6 +318,24 @@ $bg-color: #f7f8fa;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+}
+
+.view-detail {
+    display: flex;
+    align-items: center;
+    gap: 4rpx;
+    opacity: 0.9;
+}
+
+.detail-text {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .card-meta {

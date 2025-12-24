@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 礼品卡状态枚举
+ * 咖啡卡状态枚举
  */
 @Getter
 @AllArgsConstructor

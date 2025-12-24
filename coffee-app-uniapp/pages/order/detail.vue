@@ -18,16 +18,16 @@
 						<text class="status-title">{{ getStatusText(orderDetail.status) }}</text>
 						<text class="status-desc-text">{{ getStatusDesc(orderDetail.status) }}</text>
 						
-						<!-- 取餐码 (仅在制作中/待取餐时显示) -->
-						<view class="pickup-code-box" v-if="[1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
+						<!-- 取餐码 (仅在商品订单的制作中/待取餐时显示) -->
+						<view class="pickup-code-box" v-if="!isGiftCardOrder() && [1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
 							<text class="code-label">取餐码</text>
 							<text class="code-value">{{ orderDetail.pickupCode }}</text>
 						</view>
 					</view>
 				</view>
 
-				<!-- 下半部分：进度条 (仅进行中订单显示) -->
-				<view class="status-steps" v-if="[0, 1, 2, 3].includes(orderDetail.status)">
+				<!-- 下半部分：进度条 (仅商品订单进行中时显示) -->
+				<view class="status-steps" v-if="!isGiftCardOrder() && [0, 1, 2, 3].includes(orderDetail.status)">
 					<view class="step-item" :class="{ active: orderDetail.status >= 0 }">
 						<view class="step-circle"><uni-icons v-if="orderDetail.status >= 0" type="checkmarkempty" size="12" color="#fff" /></view>
 						<text class="step-label">已下单</text>
@@ -45,8 +45,8 @@
 				</view>
 			</view>
 
-			<!-- 收货地址 -->
-			<view class="address-section" v-if="orderDetail.receiverName">
+			<!-- 收货地址（仅商品订单显示） -->
+			<view class="address-section" v-if="!isGiftCardOrder() && orderDetail.receiverName && orderDetail.receiverName !== '虚拟商品'">
 				<view class="section-title">收货信息</view>
 				<view class="address-info">
 					<view class="address-header">
@@ -56,6 +56,15 @@
 					<view class="address-detail">
 						{{ orderDetail.receiverProvince }}{{ orderDetail.receiverCity }}{{ orderDetail.receiverRegion }} {{ orderDetail.receiverDetailAddress }}
 					</view>
+				</view>
+			</view>
+
+			<!-- 咖啡卡订单信息 -->
+			<view class="gift-card-info-section" v-if="isGiftCardOrder()">
+				<view class="section-title">订单类型</view>
+				<view class="gift-card-badge">
+					<text class="gift-card-icon">☕</text>
+					<text class="gift-card-text">咖啡卡订单</text>
 				</view>
 			</view>
 
@@ -80,8 +89,8 @@
 				</view>
 			</view>
 
-			<!-- 商品列表 -->
-			<view class="goods-section">
+			<!-- 商品列表（仅商品订单显示） -->
+			<view class="goods-section" v-if="!isGiftCardOrder() && orderDetail.orderItemList && orderDetail.orderItemList.length > 0">
 				<view class="section-title">商品清单</view>
 				<view class="goods-list">
 					<view 
@@ -246,6 +255,11 @@ const formatTime = (timeStr) => {
 	const hours = String(date.getHours()).padStart(2, '0')
 	const minutes = String(date.getMinutes()).padStart(2, '0')
 	return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+// 判断是否是咖啡卡订单
+const isGiftCardOrder = () => {
+	return orderDetail.value.deliveryCompany === '虚拟商品'
 }
 
 // 返回上一页
@@ -500,12 +514,33 @@ $bg-color: #f7f8fa;
 .order-info-section,
 .goods-section,
 .price-section,
-.remark-section {
+.remark-section,
+.gift-card-info-section {
 	background-color: white;
 	margin: 24rpx 32rpx;
 	padding: 32rpx;
 	border-radius: 24rpx;
 	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 咖啡卡订单信息 */
+.gift-card-badge {
+	display: flex;
+	align-items: center;
+	padding: 20rpx 24rpx;
+	background: linear-gradient(135deg, #6f4e37 0%, #8b6f47 100%);
+	border-radius: 16rpx;
+}
+
+.gift-card-icon {
+	font-size: 36rpx;
+	margin-right: 16rpx;
+}
+
+.gift-card-text {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #ffffff;
 }
 
 .section-title {

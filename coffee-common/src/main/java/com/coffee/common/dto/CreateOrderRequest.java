@@ -35,9 +35,14 @@ public class CreateOrderRequest {
     private String deliveryCompany;
 
     /**
-     * 支付方式：0->未支付；1->支付宝；2->微信
+     * 支付方式：0->未支付；1->支付宝；2->微信；3->咖啡卡
      */
     private Integer payType;
+
+    /**
+     * 使用的咖啡卡ID（如果使用咖啡卡支付）
+     */
+    private Long coffeeCardId;
 
     /**
      * 订单金额相关（可选，用于后端校验，如果前端不传则后端计算）

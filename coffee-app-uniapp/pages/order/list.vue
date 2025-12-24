@@ -64,26 +64,37 @@
 
                     <!-- 订单商品（显示前2个） -->
                     <view class="order-goods">
-                        <view 
-                            v-for="(item, index) in (order.orderItemList || []).slice(0, 2)" 
-                            :key="index"
-                            class="goods-item"
-                        >
-                            <image :src="item.productPic" mode="aspectFill" class="goods-img" lazy-load />
-                            <view class="goods-info">
-                                <text class="goods-name">{{ item.productName }}</text>
-                                <view class="goods-spec" v-if="item.productAttr">
-                                    <text class="spec-text">{{ item.productAttr }}</text>
-                                </view>
-                                <view class="goods-bottom">
-                                    <text class="goods-price">¥{{ item.productPrice }}</text>
-                                    <text class="goods-quantity">x{{ item.productQuantity }}</text>
-                                </view>
+                        <!-- 咖啡卡订单 -->
+                        <view v-if="isGiftCardOrder(order)" class="gift-card-order-info">
+                            <view class="gift-card-icon">☕</view>
+                            <view class="gift-card-text">
+                                <text class="gift-card-title">咖啡卡订单</text>
+                                <text class="gift-card-amount">¥{{ order.payAmount }}</text>
                             </view>
                         </view>
-                        <view v-if="(order.orderItemList || []).length > 2" class="more-goods">
-                            <text class="more-text">还有 {{ (order.orderItemList || []).length - 2 }} 件商品</text>
-                        </view>
+                        <!-- 商品订单 -->
+                        <template v-else>
+                            <view 
+                                v-for="(item, index) in (order.orderItemList || []).slice(0, 2)" 
+                                :key="index"
+                                class="goods-item"
+                            >
+                                <image :src="item.productPic" mode="aspectFill" class="goods-img" lazy-load />
+                                <view class="goods-info">
+                                    <text class="goods-name">{{ item.productName }}</text>
+                                    <view class="goods-spec" v-if="item.productAttr">
+                                        <text class="spec-text">{{ item.productAttr }}</text>
+                                    </view>
+                                    <view class="goods-bottom">
+                                        <text class="goods-price">¥{{ item.productPrice }}</text>
+                                        <text class="goods-quantity">x{{ item.productQuantity }}</text>
+                                    </view>
+                                </view>
+                            </view>
+                            <view v-if="(order.orderItemList || []).length > 2" class="more-goods">
+                                <text class="more-text">还有 {{ (order.orderItemList || []).length - 2 }} 件商品</text>
+                            </view>
+                        </template>
                     </view>
 
                     <!-- 订单底部 -->
@@ -214,6 +225,11 @@ const formatTime = (timeStr) => {
 const getTotalCount = (order) => {
     if (!order.orderItemList) return 0
     return order.orderItemList.reduce((sum, item) => sum + item.productQuantity, 0)
+}
+
+// 判断是否是咖啡卡订单
+const isGiftCardOrder = (order) => {
+    return order.deliveryCompany === '虚拟商品'
 }
 
 // 返回上一页
@@ -511,6 +527,39 @@ $bg-color: #f7f8fa;
 
 .order-goods {
     margin-bottom: 24rpx;
+}
+
+/* 咖啡卡订单样式 */
+.gift-card-order-info {
+    display: flex;
+    align-items: center;
+    padding: 20rpx;
+    background: linear-gradient(135deg, #6f4e37 0%, #8b6f47 100%);
+    border-radius: 16rpx;
+}
+
+.gift-card-icon {
+    font-size: 48rpx;
+    margin-right: 20rpx;
+}
+
+.gift-card-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.gift-card-title {
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 8rpx;
+}
+
+.gift-card-amount {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #ffffff;
 }
 
 .goods-item {

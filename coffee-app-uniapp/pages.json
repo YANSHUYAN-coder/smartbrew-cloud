@@ -149,6 +149,23 @@
 				"navigationStyle": "custom",
 				"backgroundColor": "#f5f5f5"
 			}
+		},
+		{
+			"path": "pages/points-mall/index",
+			"style": {
+				"navigationBarTitleText": "积分商城",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true,
+				"backgroundColor": "#f5f5f5"
+			}
+		},
+		{
+			"path": "pages/coupon/list",
+			"style": {
+				"navigationBarTitleText": "我的优惠券",
+				"enablePullDownRefresh": true,
+				"backgroundColor": "#f5f5f5"
+			}
 		}
 	],
 	"globalStyle": {

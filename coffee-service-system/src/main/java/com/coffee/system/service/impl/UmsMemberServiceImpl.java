@@ -19,6 +19,8 @@ import com.coffee.system.domain.entity.UmsRole;
 import com.coffee.system.domain.entity.UmsUserRole;
 import com.coffee.system.domain.vo.MemberVO;
 import com.coffee.common.dto.UmsMemberUpdateDTO;
+import com.coffee.system.domain.entity.SmsCouponHistory;
+import com.coffee.system.mapper.SmsCouponHistoryMapper;
 import com.coffee.system.mapper.UmsMemberLevelMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.mapper.UmsUserRoleMapper;
@@ -48,6 +50,9 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
 
     @Autowired
     private UmsMemberLevelMapper memberLevelMapper;
+
+    @Autowired
+    private SmsCouponHistoryMapper couponHistoryMapper;
 
     @Autowired
     private MinioUtil minioUtil;
@@ -277,7 +282,13 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         // 4. 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("integration", member.getIntegration() != null ? member.getIntegration() : 0); // 积分
-        result.put("couponCount", 0); // 优惠券数量（暂时返回0，后续可对接优惠券系统）
+        
+        // 查询当前用户可用的优惠券数量（useStatus=0 未使用）
+        Long couponCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
+                .eq(SmsCouponHistory::getMemberId, userId)
+                .eq(SmsCouponHistory::getUseStatus, 0));
+        result.put("couponCount", couponCount); // 优惠券数量
+        
         result.put("growth", member.getGrowth() != null ? member.getGrowth() : 0); // 成长值
         result.put("levelId", member.getLevelId()); // 会员等级ID
         result.put("levelName", level != null ? level.getName() : "普通会员"); // 会员等级名称

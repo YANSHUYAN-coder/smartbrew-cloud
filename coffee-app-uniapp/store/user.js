@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getUserInfo, getProfileStatistics } from '@/services/user.js'
 
 // 本地存储 Key 统一管理，避免魔法字符串
 const TOKEN_KEY = 'token'
@@ -56,6 +57,35 @@ export const useUserStore = defineStore('user', {
       this.userInfo = null
       uni.removeStorageSync(TOKEN_KEY)
       uni.removeStorageSync(USER_INFO_KEY)
+    },
+
+    /**
+     * 刷新用户信息（从服务器拉取最新数据）
+     */
+    async fetchUserInfo() {
+      if (!this.token) return
+      try {
+        // 并行请求基础信息和统计信息
+        const [baseInfo, stats] = await Promise.all([
+          getUserInfo(),
+          getProfileStatistics()
+        ])
+
+        // 合并数据 (注意：stats 可能为 null 或 undefined，视后端实现而定，做个兜底)
+        const fullUserInfo = {
+          ...(baseInfo || {}),
+          integration: stats?.integration || 0,
+          growth: stats?.growth || 0,
+          levelId: stats?.levelId,
+          levelName: stats?.levelName || ''
+        }
+
+        this.setUser(this.token, fullUserInfo)
+        return fullUserInfo
+      } catch (e) {
+        console.error('刷新用户信息失败', e)
+        // 静默失败，不打扰用户
+      }
     }
   }
 })

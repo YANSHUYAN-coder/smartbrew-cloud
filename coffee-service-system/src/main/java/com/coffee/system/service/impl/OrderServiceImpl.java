@@ -19,6 +19,10 @@ import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberReceiveAddressService;
 import com.coffee.system.service.UmsMemberService;
+import com.coffee.system.domain.entity.SmsCouponHistory;
+import com.coffee.system.domain.entity.SmsCoupon;
+import com.coffee.system.mapper.SmsCouponHistoryMapper;
+import com.coffee.system.mapper.SmsCouponMapper;
 import com.coffee.system.domain.entity.GiftCard;
 import com.coffee.common.dict.GiftCardStatus;
 import com.coffee.system.domain.entity.OmsCartItem;
@@ -64,6 +68,12 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
     @Autowired
     private AlipayClient alipayClient;
+    
+    @Autowired
+    private SmsCouponHistoryMapper couponHistoryMapper;
+    
+    @Autowired
+    private SmsCouponMapper couponMapper;
 
     @Value("${alipay.notify-url}")
     private String notifyUrl;
@@ -309,7 +319,25 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             payAmount = BigDecimal.ZERO;
         }
 
-        // 4. 构建订单基础信息
+        // 4. 处理优惠券（如果使用）- 验证并保存优惠券历史记录对象，后续更新时使用
+        Long couponId = request.getCouponId();
+        SmsCouponHistory couponHistoryForUpdate = null; // 保存验证通过的优惠券历史记录，后续更新时使用
+        if (couponId != null && couponAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // 验证优惠券是否属于当前用户且未使用
+            couponHistoryForUpdate = couponHistoryMapper.selectOne(
+                new LambdaQueryWrapper<SmsCouponHistory>()
+                    .eq(SmsCouponHistory::getCouponId, couponId)
+                    .eq(SmsCouponHistory::getMemberId, userId)
+                    .eq(SmsCouponHistory::getUseStatus, 0) // 未使用
+                    .orderByDesc(SmsCouponHistory::getCreateTime)
+                    .last("LIMIT 1")
+            );
+            if (couponHistoryForUpdate == null) {
+                throw new RuntimeException("优惠券不存在或已被使用");
+            }
+        }
+
+        // 5. 构建订单基础信息
         OmsOrder order = new OmsOrder();
         order.setMemberId(userId);
         order.setOrderSn(generateOrderSn(userId));
@@ -317,6 +345,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         order.setTotalAmount(totalAmount);
         order.setPromotionAmount(promotionAmount);
         order.setCouponAmount(couponAmount);
+        order.setCouponId(couponId); // 保存优惠券ID
         order.setCoffeeCardId(coffeeCardId);
         order.setCoffeeCardDiscountAmount(coffeeCardDiscountAmount);
         order.setPayAmount(payAmount);
@@ -340,7 +369,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         
         order.setDeliveryCompany(request.getDeliveryCompany() != null ? request.getDeliveryCompany() : "门店自提");
 
-        // 5. 填充收货人信息（从地址对象拷贝）
+        // 6. 填充收货人信息（从地址对象拷贝）
         order.setReceiverName(address.getName());
         order.setReceiverPhone(address.getPhone());
         order.setReceiverProvince(address.getProvince());
@@ -355,10 +384,10 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         order.setCreateTime(now);
         order.setUpdateTime(now);
 
-        // 6. 保存订单
+        // 7. 保存订单
         this.save(order);
 
-        // 7. 保存订单明细（从购物车项转换）
+        // 8. 保存订单明细（从购物车项转换）
         for (OmsCartItem cartItem : cartItems) {
             OmsOrderItem item = new OmsOrderItem();
             item.setOrderId(order.getId());
@@ -377,10 +406,42 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             orderItemMapper.insert(item);
         }
 
-        // 8. 删除已下单的购物车项
+        // 9. 删除已下单的购物车项
         cartService.removeByIds(request.getCartItemIds());
 
-        // 9. 如果使用咖啡卡支付，立即扣减余额
+        // 10. 如果使用优惠券，更新优惠券状态（使用之前验证时保存的对象）
+        if (couponId != null && couponAmount.compareTo(BigDecimal.ZERO) > 0 && couponHistoryForUpdate != null) {
+            try {
+                // 再次确认优惠券状态（防止并发问题）
+                SmsCouponHistory currentHistory = couponHistoryMapper.selectById(couponHistoryForUpdate.getId());
+                if (currentHistory != null && currentHistory.getUseStatus() == 0) {
+                    // 更新优惠券历史记录为已使用
+                    couponHistoryForUpdate.setUseStatus(1); // 已使用
+                    couponHistoryForUpdate.setUseTime(now);
+                    couponHistoryForUpdate.setOrderId(order.getId());
+                    couponHistoryForUpdate.setOrderSn(order.getOrderSn());
+                    couponHistoryMapper.updateById(couponHistoryForUpdate);
+                    
+                    // 更新优惠券的使用数量（更新 sms_coupon 表）
+                    couponMapper.update(null, new LambdaUpdateWrapper<SmsCoupon>()
+                        .eq(SmsCoupon::getId, couponId)
+                        .setSql("use_count = use_count + 1")
+                    );
+                    
+                    log.info("优惠券使用成功，订单ID: {}, 优惠券ID: {}, 优惠券历史ID: {}", 
+                        order.getId(), couponId, couponHistoryForUpdate.getId());
+                } else {
+                    log.warn("优惠券状态已变更，无法更新。订单ID: {}, 优惠券ID: {}, 当前状态: {}", 
+                        order.getId(), couponId, currentHistory != null ? currentHistory.getUseStatus() : "null");
+                    throw new RuntimeException("优惠券已被使用，无法重复使用");
+                }
+            } catch (Exception e) {
+                log.error("优惠券状态更新失败，订单ID: {}, 优惠券ID: {}", order.getId(), couponId, e);
+                throw new RuntimeException("优惠券状态更新失败: " + e.getMessage());
+            }
+        }
+
+        // 11. 如果使用咖啡卡支付，立即扣减余额
         if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {
             try {
                 giftCardService.deductBalance(coffeeCardId, payAmount, order.getId());

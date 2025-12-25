@@ -9,7 +9,7 @@
 			<view style="width: 48rpx;"></view>
 		</view>
 
-		<scroll-view scroll-y class="content-scroll" :style="{ height: `calc(100vh - ${statusBarHeight + 44 + 120}px)` }">
+		<scroll-view scroll-y class="content-scroll" :style="{ height: scrollHeight }">
 			<!-- 收货地址 -->
 			<view class="address-section" @click="selectAddress">
 				<view v-if="selectedAddress" class="address-info">
@@ -49,6 +49,23 @@
 								<text class="goods-quantity">x{{ item.quantity }}</text>
 							</view>
 						</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- 优惠券选择 -->
+			<view class="coupon-section" @click="openCouponPopup">
+				<view class="section-row">
+					<text class="section-label">优惠券</text>
+					<view class="section-right">
+						<text class="coupon-text" v-if="selectedCoupon">
+							-¥{{ selectedCoupon.amount }}
+						</text>
+						<text class="coupon-placeholder" v-else-if="availableCoupons.length > 0">
+							{{ availableCoupons.length }}张可用
+						</text>
+						<text class="coupon-placeholder" v-else>无可用优惠券</text>
+						<uni-icons type="right" size="16" color="#999"></uni-icons>
 					</view>
 				</view>
 			</view>
@@ -125,6 +142,10 @@
 					<text class="info-label">配送费</text>
 					<text class="info-value">¥{{ deliveryFee.toFixed(2) }}</text>
 				</view>
+				<view class="info-row" v-if="couponDiscountAmount > 0">
+					<text class="info-label">优惠券抵扣</text>
+					<text class="info-value discount">-¥{{ couponDiscountAmount.toFixed(2) }}</text>
+				</view>
 				<view class="info-row" v-if="coffeeCardDiscountAmount > 0">
 					<text class="info-label">咖啡卡折扣（9折）</text>
 					<text class="info-value discount">-¥{{ coffeeCardDiscountAmount.toFixed(2) }}</text>
@@ -143,10 +164,12 @@
 					placeholder="如有特殊要求，请在此填写（选填）" 
 					class="remark-input"
 					maxlength="200"
+					:auto-height="true"
 				></textarea>
 			</view>
 
-			<view style="height: 40rpx;"></view>
+			<!-- 底部占位，防止被提交栏遮挡 -->
+			<view class="footer-spacer"></view>
 		</scroll-view>
 
 		<!-- 底部提交栏 -->
@@ -160,62 +183,125 @@
 				{{ submitting ? '提交中...' : '提交订单' }}
 			</button>
 		</view>
+		
+		<!-- 优惠券弹窗遮罩 -->
+		<view v-if="showCouponPopup" class="popup-mask" @click="closeCouponPopup">
+			<view class="popup-content" @click.stop>
+				<view class="popup-header">
+					<text class="popup-title">选择优惠券</text>
+					<view class="popup-close" @click="closeCouponPopup">
+						<uni-icons type="closeempty" size="24" color="#999"></uni-icons>
+					</view>
+				</view>
+				<scroll-view scroll-y class="popup-scroll">
+					<view class="popup-coupon-list">
+						<!-- 不使用优惠券选项 -->
+						<view class="popup-coupon-item no-use" :class="{ active: !selectedCoupon }" @click="clearCoupon">
+							<text>不使用优惠券</text>
+							<uni-icons v-if="!selectedCoupon" type="checkmarkempty" size="20" color="#6f4e37"></uni-icons>
+						</view>
+						
+						<!-- 优惠券列表 -->
+						<view v-if="availableCoupons.length === 0" class="empty-coupons">
+							<text class="empty-text">暂无可用优惠券</text>
+						</view>
+						<view v-for="coupon in availableCoupons" :key="coupon.id" 
+							class="popup-coupon-item"
+							:class="{ active: selectedCoupon && selectedCoupon.id === coupon.id }"
+							@click="selectCoupon(coupon)">
+							<view class="popup-coupon-left">
+								<view class="popup-coupon-amount">
+									<text class="symbol">¥</text>
+									<text class="value">{{ coupon.amount }}</text>
+								</view>
+								<view class="popup-coupon-info">
+									<text class="name">{{ coupon.couponName }}</text>
+									<text class="desc" v-if="coupon.minPoint > 0">满{{ coupon.minPoint }}元可用</text>
+									<text class="desc" v-else>无门槛</text>
+									<text class="time">有效期至 {{ formatCouponDate(coupon.expireTime || coupon.endTime) }}</text>
+								</view>
+							</view>
+							<view class="popup-coupon-check" v-if="selectedCoupon && selectedCoupon.id === coupon.id">
+								<uni-icons type="checkmarkempty" size="20" color="#6f4e37"></uni-icons>
+							</view>
+						</view>
+					</view>
+				</scroll-view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/store/cart.js'
 import { useUserStore } from '@/store/user.js'
 import { createOrder } from '@/services/order.js'
 import { getGiftCardList } from '@/services/giftcard.js'
+import { getMyCoupons } from '@/services/promotion.js'
 import { get } from '@/utils/request.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 
+// ========== 基础数据 ==========
 const statusBarHeight = ref(0)
 const cartStore = useCartStore()
 const userStore = useUserStore()
 const selectedAddress = ref(null)
 const remark = ref('')
 const submitting = ref(false)
-const deliveryFee = ref(0) // 配送费
+const deliveryFee = ref(0)
 
-// 支付方式：1->支付宝；3->咖啡卡
-const payType = ref(1) // 默认支付宝
-const coffeeCards = ref([]) // 咖啡卡列表
-const selectedCoffeeCardId = ref(null) // 选中的咖啡卡ID
-const selectedCoffeeCard = ref(null) // 选中的咖啡卡对象
+// ========== 优惠券相关 ==========
+const selectedCoupon = ref(null)
+const showCouponPopup = ref(false)
+const availableCoupons = ref([])
+const loadingCoupons = ref(false)
 
-// 获取选中的购物车商品
+// ========== 支付相关 ==========
+const payType = ref(1) // 1->支付宝；3->咖啡卡
+const coffeeCards = ref([])
+const selectedCoffeeCardId = ref(null)
+const selectedCoffeeCard = ref(null)
+
+// ========== 计算属性 ==========
 const selectedCartItems = computed(() => {
 	return cartStore.items.filter(item => item.checked)
 })
 
-// 计算总价
 const totalPrice = computed(() => {
 	return selectedCartItems.value.reduce((sum, item) => sum + item.price * item.quantity, 0)
 })
 
-// 计算咖啡卡折扣金额（9折，即原价 × 0.1）
 const coffeeCardDiscountAmount = computed(() => {
 	if (payType.value === 3 && totalPrice.value > 0) {
-		// 打九折，折扣金额 = 原价 × 0.1
-		return totalPrice.value * 0.1
+		return totalPrice.value * 0.1 // 9折，折扣10%
 	}
 	return 0
 })
 
-// 计算最终价格（商品总价 + 配送费 - 咖啡卡折扣）
+const couponDiscountAmount = computed(() => {
+	if (selectedCoupon.value) {
+		return selectedCoupon.value.amount || 0
+	}
+	return 0
+})
+
 const finalPrice = computed(() => {
-	let price = totalPrice.value + deliveryFee.value
+	let price = totalPrice.value + deliveryFee.value - couponDiscountAmount.value
 	if (payType.value === 3) {
 		price = price - coffeeCardDiscountAmount.value
 	}
-	return Math.max(0, price) // 确保不为负数
+	return Math.max(0, price)
 })
 
-// 获取规格文本
+const scrollHeight = computed(() => {
+	const navHeight = statusBarHeight.value + 44 // 导航栏高度
+	const footerHeight = 120 // 底部栏高度
+	return `calc(100vh - ${navHeight + footerHeight}px)`
+})
+
+// ========== 方法 ==========
 const getSpecText = (item) => {
 	if (item.selectedSpecs && Object.keys(item.selectedSpecs).length > 0) {
 		return Object.values(item.selectedSpecs).join(' / ')
@@ -223,37 +309,58 @@ const getSpecText = (item) => {
 	return ''
 }
 
-// 返回上一页
+const formatCouponDate = (dateStr) => {
+	if (!dateStr) return '长期有效'
+	try {
+		const date = new Date(dateStr)
+		return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
+	} catch {
+		return '长期有效'
+	}
+}
+
 const goBack = () => {
 	uni.navigateBack()
 }
 
-// 选择地址
 const selectAddress = () => {
 	uni.navigateTo({
 		url: '/pages/address/list?select=true'
 	})
 }
 
-// 选择支付方式
+const openCouponPopup = () => {
+	showCouponPopup.value = true
+}
+
+const closeCouponPopup = () => {
+	showCouponPopup.value = false
+}
+
+const selectCoupon = (coupon) => {
+	selectedCoupon.value = coupon
+	closeCouponPopup()
+}
+
+const clearCoupon = () => {
+	selectedCoupon.value = null
+	closeCouponPopup()
+}
+
 const selectPaymentType = (type) => {
 	payType.value = type
 	if (type === 3) {
-		// 选择咖啡卡支付时，加载咖啡卡列表
 		loadCoffeeCards()
 	} else {
-		// 选择其他支付方式时，清空选中的咖啡卡
 		selectedCoffeeCardId.value = null
 		selectedCoffeeCard.value = null
 	}
 }
 
-// 选择咖啡卡
 const selectCoffeeCard = (card) => {
 	selectedCoffeeCardId.value = card.id
 	selectedCoffeeCard.value = card
 	
-	// 检查余额是否足够
 	if (card.balance < finalPrice.value) {
 		uni.showToast({
 			title: '咖啡卡余额不足',
@@ -262,15 +369,52 @@ const selectCoffeeCard = (card) => {
 	}
 }
 
-// 加载咖啡卡列表
+// ========== 数据加载 ==========
+const loadAvailableCoupons = async () => {
+	if (loadingCoupons.value) return
+	loadingCoupons.value = true
+	
+	try {
+		const res = await getMyCoupons(0)
+		const list = res.data || res || []
+		
+		// 过滤可用优惠券：未使用且满足使用门槛
+		availableCoupons.value = list
+			.filter(c => {
+				const minPoint = parseFloat(c.minPoint || 0)
+				return totalPrice.value >= minPoint
+			})
+			.map(item => ({
+				...item,
+				couponName: item.couponName || item.coupon_name || '优惠券',
+				amount: parseFloat(item.amount || 0),
+				minPoint: parseFloat(item.minPoint || 0),
+				endTime: item.endTime || item.end_time
+			}))
+			.sort((a, b) => b.amount - a.amount) // 按金额降序
+		
+		// 如果当前选中的优惠券不在可用列表中，清空选择
+		if (selectedCoupon.value) {
+			const stillAvailable = availableCoupons.value.find(c => c.id === selectedCoupon.value.id)
+			if (!stillAvailable) {
+				selectedCoupon.value = null
+			}
+		}
+	} catch (e) {
+		console.error('加载优惠券失败', e)
+		availableCoupons.value = []
+	} finally {
+		loadingCoupons.value = false
+	}
+}
+
 const loadCoffeeCards = async () => {
 	try {
 		const res = await getGiftCardList({ page: 1, pageSize: 100 })
 		const cards = res.data?.records || res.records || res.data || []
-		// 只显示可用状态的咖啡卡（status = 1）
-		coffeeCards.value = cards.filter(card => card.status === 1 && parseFloat(card.balance || 0) > 0)
+		coffeeCards.value = cards
+			.filter(card => card.status === 1 && parseFloat(card.balance || 0) > 0)
 		
-		// 如果有可用咖啡卡，默认选择第一张
 		if (coffeeCards.value.length > 0 && !selectedCoffeeCardId.value) {
 			selectCoffeeCard(coffeeCards.value[0])
 		}
@@ -280,14 +424,11 @@ const loadCoffeeCards = async () => {
 	}
 }
 
-// 加载默认地址
 const loadDefaultAddress = async () => {
 	try {
 		const res = await get('/app/address/list')
-		// 处理不同的返回格式
 		const addressList = res.data || res || []
 		if (addressList.length > 0) {
-			// 优先选择默认地址
 			const defaultAddr = addressList.find(addr => addr.defaultStatus === 1) || addressList[0]
 			selectedAddress.value = defaultAddr
 		}
@@ -296,7 +437,7 @@ const loadDefaultAddress = async () => {
 	}
 }
 
-// 提交订单
+// ========== 订单提交 ==========
 const submitOrder = async () => {
 	// 验证登录
 	if (!userStore.isLogin) {
@@ -332,7 +473,7 @@ const submitOrder = async () => {
 		return
 	}
 
-	// 如果选择咖啡卡支付，验证咖啡卡
+	// 验证咖啡卡支付
 	if (payType.value === 3) {
 		if (!selectedCoffeeCardId.value || !selectedCoffeeCard.value) {
 			uni.showToast({
@@ -342,7 +483,6 @@ const submitOrder = async () => {
 			return
 		}
 		
-		// 检查余额是否足够
 		if (selectedCoffeeCard.value.balance < finalPrice.value) {
 			uni.showToast({
 				title: '咖啡卡余额不足，请选择其他支付方式',
@@ -353,7 +493,7 @@ const submitOrder = async () => {
 		}
 	}
 
-	// 检查购物车项是否都有 cartItemId（需要先同步到后端）
+	// 检查购物车项同步状态
 	const cartItemIds = selectedCartItems.value
 		.map(item => item.cartItemId)
 		.filter(id => id != null)
@@ -363,35 +503,22 @@ const submitOrder = async () => {
 			title: '部分商品未同步，请稍候再试',
 			icon: 'none'
 		})
-		// 尝试同步一次
 		await cartStore.syncCart()
 		return
 	}
 
-	// 构建订单数据（优化：只传ID，后端根据ID查询）
+	// 构建订单数据
 	const orderData = {
-		// 选中的购物车项ID列表
 		cartItemIds: cartItemIds,
-		
-		// 收货地址ID
 		addressId: selectedAddress.value.id,
-		
-		// 备注
 		remark: remark.value || '',
-		
-		// 配送方式
-		deliveryCompany: '门店自提', // 默认门店自提
-		
-		// 支付方式：1->支付宝；3->咖啡卡
+		deliveryCompany: '门店自提',
 		payType: payType.value,
-		
-		// 咖啡卡ID（如果使用咖啡卡支付）
 		coffeeCardId: payType.value === 3 ? selectedCoffeeCardId.value : null,
-		
-		// 订单金额（可选，用于后端校验，后端会重新计算）
 		totalAmount: totalPrice.value,
-		promotionAmount: 0, // 促销金额
-		couponAmount: 0, // 优惠券金额
+		promotionAmount: 0,
+		couponAmount: couponDiscountAmount.value,
+		couponId: selectedCoupon.value ? selectedCoupon.value.id : null,
 		payAmount: finalPrice.value
 	}
 
@@ -405,25 +532,19 @@ const submitOrder = async () => {
 			icon: 'success'
 		})
 		
-		// 后端已经删除了购物车项，这里只需要同步一下本地 store
 		await cartStore.syncCart()
 		
-		// 跳转到订单详情或返回购物车
 		setTimeout(() => {
 			const orderId = result.id || result.orderId || result.data?.id || result.data?.orderId
 			if (orderId) {
-				// 如果有订单详情页面，跳转到详情页
-				// 否则跳转回购物车
 				uni.redirectTo({
 					url: `/pages/order/detail?id=${orderId}`
 				}).catch(() => {
-					// 如果订单详情页面不存在，返回购物车
 					uni.switchTab({
 						url: '/pages/cart/index'
 					})
 				})
 			} else {
-				// 没有订单ID，返回购物车
 				uni.switchTab({
 					url: '/pages/cart/index'
 				})
@@ -442,23 +563,23 @@ const submitOrder = async () => {
 	}
 }
 
-// 页面显示时检查是否有选中的地址（从地址列表页返回时）
+// ========== 生命周期 ==========
 onShow(() => {
-	// 检查是否有从地址列表页选择的地址
 	const selectedAddr = uni.getStorageSync('selectedAddress')
 	if (selectedAddr) {
 		selectedAddress.value = selectedAddr
 		uni.removeStorageSync('selectedAddress')
 	} else if (!selectedAddress.value) {
-		// 如果没有选中的地址，加载默认地址
 		loadDefaultAddress()
 	}
+	
+	// 重新加载优惠券（可能已使用或过期）
+	loadAvailableCoupons()
 })
 
 onMounted(() => {
 	statusBarHeight.value = getStatusBarHeight()
 	
-	// 检查是否有选中的商品
 	if (selectedCartItems.value.length === 0) {
 		uni.showModal({
 			title: '提示',
@@ -471,8 +592,15 @@ onMounted(() => {
 		return
 	}
 	
-	// 加载默认地址
 	loadDefaultAddress()
+	loadAvailableCoupons()
+})
+
+// 监听总价变化，重新过滤优惠券
+watch(totalPrice, () => {
+	if (availableCoupons.value.length > 0) {
+		loadAvailableCoupons()
+	}
 })
 </script>
 
@@ -660,6 +788,44 @@ $bg-color: #f7f8fa;
 .goods-quantity {
 	font-size: 26rpx;
 	color: #666;
+}
+
+/* 优惠券选择 */
+.coupon-section {
+	background-color: white;
+	margin: 24rpx 32rpx;
+	padding: 32rpx;
+	border-radius: 24rpx;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.section-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.section-label {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #333;
+}
+
+.section-right {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+}
+
+.coupon-text {
+	font-size: 28rpx;
+	color: #e64340;
+	font-weight: bold;
+}
+
+.coupon-placeholder {
+	font-size: 28rpx;
+	color: #999;
 }
 
 /* 支付方式选择 */
@@ -864,6 +1030,11 @@ $bg-color: #f7f8fa;
 	border-radius: 16rpx;
 	padding: 20rpx;
 	box-sizing: border-box;
+	line-height: 1.6;
+}
+
+.footer-spacer {
+	height: calc(160rpx + env(safe-area-inset-bottom));
 }
 
 /* 底部提交栏 */
@@ -899,7 +1070,7 @@ $bg-color: #f7f8fa;
 	font-weight: bold;
 }
 
-.total-price {
+.footer-bar .total-price {
 	font-size: 40rpx;
 	color: $primary;
 	font-weight: bold;
@@ -924,5 +1095,158 @@ $bg-color: #f7f8fa;
 .submit-btn[disabled] {
 	opacity: 0.6;
 }
-</style>
 
+/* 弹窗样式 */
+.popup-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 100;
+	display: flex;
+	align-items: flex-end;
+	animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.popup-content {
+	background-color: #f5f5f5;
+	border-radius: 24rpx 24rpx 0 0;
+	overflow: hidden;
+	width: 100%;
+	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
+	animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+
+.popup-header {
+	background-color: white;
+	padding: 32rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1rpx solid #eee;
+}
+
+.popup-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #333;
+}
+
+.popup-close {
+	padding: 8rpx;
+}
+
+.popup-scroll {
+	flex: 1;
+	padding: 24rpx;
+	box-sizing: border-box;
+}
+
+.popup-coupon-list {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.empty-coupons {
+	padding: 60rpx 0;
+	text-align: center;
+}
+
+.empty-coupons .empty-text {
+	font-size: 28rpx;
+	color: #999;
+}
+
+.popup-coupon-item {
+	background-color: white;
+	border-radius: 16rpx;
+	padding: 24rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	transition: all 0.3s;
+	
+	&.no-use {
+		padding: 32rpx;
+		font-size: 28rpx;
+		color: #333;
+	}
+	
+	&.active {
+		border: 2rpx solid #6f4e37;
+		background-color: #fef8f5;
+	}
+}
+
+.popup-coupon-left {
+	display: flex;
+	align-items: center;
+	flex: 1;
+}
+
+.popup-coupon-amount {
+	color: #e64340;
+	margin-right: 24rpx;
+	display: flex;
+	align-items: baseline;
+	min-width: 100rpx;
+	justify-content: center;
+	
+	.symbol { 
+		font-size: 24rpx; 
+	}
+	.value { 
+		font-size: 48rpx; 
+		font-weight: bold; 
+	}
+}
+
+.popup-coupon-info {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+	
+	.name { 
+		font-size: 28rpx; 
+		font-weight: bold; 
+		color: #333; 
+	}
+	.desc { 
+		font-size: 22rpx; 
+		color: #666; 
+	}
+	.time { 
+		font-size: 20rpx; 
+		color: #999; 
+	}
+}
+
+.popup-coupon-check {
+	display: flex;
+	align-items: center;
+	margin-left: 16rpx;
+}
+</style>

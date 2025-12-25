@@ -52,7 +52,10 @@ public class AliPayServiceImpl implements AliPayService {
         // 1. 查询订单
         OmsOrder order = orderService.getById(orderId);
         if (order == null) throw new RuntimeException("订单不存在");
-        if (order.getStatus() != 0) throw new RuntimeException("订单状态异常"); // 0-待支付
+        // 只有待支付状态的订单才能发起支付
+        if (!OrderStatus.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
+            throw new RuntimeException("订单状态异常，当前状态：" + OrderStatus.getDescByCode(order.getStatus()) + "，只有待付款订单才能支付");
+        }
 
         // 2. 构造 App 支付请求参数
         AlipayTradeAppPayRequest request = new AlipayTradeAppPayRequest();

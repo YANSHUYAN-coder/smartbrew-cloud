@@ -280,6 +280,11 @@
 					url: '/pages/profile/index'
 				});
 				break;
+			case '积分商城':
+				uni.navigateTo({
+					url: '/pages/points-mall/index'
+				});
+				break;
 		}
 	}
 

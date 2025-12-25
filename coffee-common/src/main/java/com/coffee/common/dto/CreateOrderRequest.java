@@ -51,6 +51,11 @@ public class CreateOrderRequest {
     private BigDecimal promotionAmount;
     private BigDecimal couponAmount;
     private BigDecimal payAmount;
+    
+    /**
+     * 使用的优惠券ID（如果使用优惠券）
+     */
+    private Long couponId;
 }
 
 

@@ -24,7 +24,7 @@
 
 				<!-- 数据概览 -->
 				<view class="stats-row">
-					<view v-for="(stat, index) in stats" :key="index" class="stat-item">
+					<view v-for="(stat, index) in stats" :key="index" class="stat-item" @click="navTo(stat.path)">
 						<text class="stat-value">{{ stat.val }}</text>
 						<text class="stat-label">{{ stat.label }}</text>
 					</view>
@@ -111,15 +111,18 @@
 
 	const stats = ref([{
 			label: '积分',
-			val: '0'
+			val: '0',
+            path: '/pages/points-mall/index' // 积分跳积分商城
 		},
 		{
 			label: '优惠券',
-			val: '0'
+			val: '0',
+            path: '/pages/coupon/list' // 优惠券跳我的优惠券
 		},
 		{
 			label: '余额',
-			val: '0.00'
+			val: '0.00',
+            path: '/pages/giftcard/index' // 余额跳礼品卡
 		}
 	])
 

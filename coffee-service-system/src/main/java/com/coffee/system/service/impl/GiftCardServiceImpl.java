@@ -148,6 +148,7 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
         order.setPayAmount(amount);
         order.setPayType(0); // 未支付
         order.setStatus(OrderStatus.PENDING_PAYMENT.getCode()); // 待支付
+        order.setOrderType(1); // 咖啡卡订单
         order.setDeliveryCompany("虚拟商品");
 
         // 2. 填充收货人信息（使用用户默认信息，或使用固定值）

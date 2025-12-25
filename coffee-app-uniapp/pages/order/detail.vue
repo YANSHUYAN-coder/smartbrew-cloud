@@ -10,8 +10,8 @@
 		</view>
 
 		<scroll-view scroll-y class="content-scroll">
-			<!-- 订单状态卡片 -->
-			<view class="status-card-new">
+		<!-- 订单状态卡片 -->
+		<view class="status-card-new" :class="{ 'gift-card-status': isGiftCardOrder() }">
 				<!-- 上半部分：状态文字与图标 -->
 				<view class="status-header">
 					<view class="status-info">
@@ -46,7 +46,7 @@
 			</view>
 
 			<!-- 收货地址（仅商品订单显示） -->
-			<view class="address-section" v-if="!isGiftCardOrder() && orderDetail.receiverName && orderDetail.receiverName !== '虚拟商品'">
+			<view class="address-section" v-if="!isGiftCardOrder() && orderDetail.receiverName">
 				<view class="section-title">收货信息</view>
 				<view class="address-info">
 					<view class="address-header">
@@ -69,7 +69,7 @@
 			</view>
 
 			<!-- 订单信息 -->
-			<view class="order-info-section">
+			<view class="order-info-section" :class="{ 'gift-card-info': isGiftCardOrder() }">
 				<view class="section-title">订单信息</view>
 				<view class="info-item">
 					<text class="info-label">订单编号</text>
@@ -83,7 +83,7 @@
 					<text class="info-label">支付时间</text>
 					<text class="info-value">{{ formatTime(orderDetail.paymentTime) }}</text>
 				</view>
-				<view class="info-item" v-if="orderDetail.deliveryCompany">
+				<view class="info-item" v-if="!isGiftCardOrder() && orderDetail.deliveryCompany">
 					<text class="info-label">配送方式</text>
 					<text class="info-value">{{ orderDetail.deliveryCompany }}</text>
 				</view>
@@ -117,10 +117,11 @@
 			</view>
 
 			<!-- 费用明细 -->
-			<view class="price-section">
+			<view class="price-section" :class="{ 'gift-card-price': isGiftCardOrder() }">
 				<view class="section-title">费用明细</view>
 				<view class="price-item">
-					<text class="price-label">商品合计</text>
+					<text class="price-label" v-if="!isGiftCardOrder()">商品合计</text>
+					<text class="price-label" v-else>咖啡卡金额</text>
 					<text class="price-value">¥{{ orderDetail.totalAmount || 0 }}</text>
 				</view>
 				<view class="price-item" v-if="orderDetail.promotionAmount > 0">
@@ -140,7 +141,15 @@
 			<!-- 备注 -->
 			<view class="remark-section" v-if="orderDetail.note">
 				<view class="section-title">订单备注</view>
-				<text class="remark-text">{{ orderDetail.note }}</text>
+				<!-- 咖啡卡订单：格式化显示 -->
+				<view v-if="isGiftCardOrder() && orderDetail.note.startsWith('GIFT_CARD:')" class="gift-card-remark">
+					<view class="remark-item" v-for="(value, key) in parseGiftCardNote(orderDetail.note)" :key="key">
+						<text class="remark-label">{{ getGiftCardLabel(key) }}：</text>
+						<text class="remark-value">{{ formatGiftCardValue(key, value) }}</text>
+					</view>
+				</view>
+				<!-- 普通备注：直接显示 -->
+				<text v-else class="remark-text">{{ orderDetail.note }}</text>
 			</view>
 
 			<!-- 预留底部安全距离，避免被底部操作栏遮挡 -->
@@ -199,7 +208,6 @@ const getStatusText = (status) => {
 		4: '已完成',
 		5: '已取消'
 	}
-	if (status === 4) return '已关闭'
 	return statusMap[status] || '未知'
 }
 
@@ -213,7 +221,6 @@ const getStatusIcon = (status) => {
 		4: '✓',
 		5: '✗'
 	}
-	if (status === 4) return '✗'
 	return iconMap[status] || '📦'
 }
 
@@ -227,7 +234,6 @@ const getStatusDesc = (status) => {
 		4: '订单已完成',
 		5: '订单已取消'
 	}
-	if (status === 4) return '订单已关闭'
 	return descMap[status] || ''
 }
 
@@ -241,7 +247,6 @@ const getStatusClass = (status) => {
 		4: 'status-completed',
 		5: 'status-cancelled'
 	}
-	if (status === 4) return 'status-cancelled'
 	return classMap[status] || ''
 }
 
@@ -259,7 +264,60 @@ const formatTime = (timeStr) => {
 
 // 判断是否是咖啡卡订单
 const isGiftCardOrder = () => {
-	return orderDetail.value.deliveryCompany === '虚拟商品'
+	const order = orderDetail.value
+	if (!order) return false
+	// 兼容多种情况：数字 1、字符串 "1"、或者旧数据通过 deliveryCompany 判断
+	const orderType = order.orderType
+	if (orderType === 1 || orderType === '1') {
+		return true
+	}
+	// 兼容旧数据：如果 orderType 不存在，使用 deliveryCompany 判断
+	if (orderType === null || orderType === undefined) {
+		return order.deliveryCompany === '虚拟商品'
+	}
+	return false
+}
+
+// 解析咖啡卡备注 JSON
+const parseGiftCardNote = (note) => {
+	if (!note || !note.startsWith('GIFT_CARD:')) {
+		return {}
+	}
+	try {
+		const jsonStr = note.replace('GIFT_CARD:', '')
+		const data = JSON.parse(jsonStr)
+		return data
+	} catch (e) {
+		console.error('解析咖啡卡备注失败', e)
+		return {}
+	}
+}
+
+// 获取咖啡卡备注字段的中文标签
+const getGiftCardLabel = (key) => {
+	const labelMap = {
+		name: '卡片名称',
+		greeting: '祝福语',
+		validDays: '有效期'
+	}
+	return labelMap[key] || key
+}
+
+// 格式化咖啡卡备注字段的值
+const formatGiftCardValue = (key, value) => {
+	if (key === 'validDays') {
+		if (value === 365) {
+			return '1年'
+		} else if (value === 730) {
+			return '2年'
+		} else {
+			return `${value}天`
+		}
+	}
+	if (key === 'greeting' && (!value || value.trim() === '')) {
+		return '无'
+	}
+	return value || '无'
 }
 
 // 返回上一页
@@ -388,6 +446,15 @@ $bg-color: #f7f8fa;
 	box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
 	overflow: hidden;
 	position: relative;
+	border: 2rpx solid transparent;
+	transition: all 0.3s;
+}
+
+/* 咖啡卡订单状态卡片样式 */
+.status-card-new.gift-card-status {
+	background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+	border: 2rpx solid #d4af37 !important;
+	box-shadow: 0 8rpx 24rpx rgba(212, 175, 55, 0.15) !important;
 }
 
 .status-header {
@@ -521,6 +588,15 @@ $bg-color: #f7f8fa;
 	padding: 32rpx;
 	border-radius: 24rpx;
 	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+	border: 2rpx solid transparent;
+	transition: all 0.3s;
+}
+
+/* 咖啡卡订单费用明细样式 */
+.price-section.gift-card-price {
+	background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+	border: 2rpx solid #d4af37 !important;
+	box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
 }
 
 /* 咖啡卡订单信息 */
@@ -530,6 +606,7 @@ $bg-color: #f7f8fa;
 	padding: 20rpx 24rpx;
 	background: linear-gradient(135deg, #6f4e37 0%, #8b6f47 100%);
 	border-radius: 16rpx;
+	box-shadow: 0 4rpx 12rpx rgba(111, 78, 55, 0.2);
 }
 
 .gift-card-icon {
@@ -591,6 +668,17 @@ $bg-color: #f7f8fa;
 
 .info-item:last-child {
 	border-bottom: none;
+}
+
+/* 咖啡卡订单信息区块样式 */
+.order-info-section.gift-card-info {
+	background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+	border: 2rpx solid #d4af37 !important;
+	box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
+}
+
+.order-info-section.gift-card-info .info-item {
+	border-bottom-color: rgba(212, 175, 55, 0.2) !important;
 }
 
 .info-label {
@@ -713,6 +801,38 @@ $bg-color: #f7f8fa;
 	font-size: 26rpx;
 	color: #666;
 	line-height: 1.6;
+}
+
+/* 咖啡卡备注格式化样式 */
+.gift-card-remark {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.remark-item {
+	display: flex;
+	align-items: flex-start;
+	padding: 12rpx 0;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.remark-item:last-child {
+	border-bottom: none;
+}
+
+.remark-label {
+	font-size: 26rpx;
+	color: #666;
+	min-width: 120rpx;
+	flex-shrink: 0;
+}
+
+.remark-value {
+	font-size: 26rpx;
+	color: #333;
+	font-weight: 500;
+	flex: 1;
 }
 
 /* 底部操作栏 */

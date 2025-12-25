@@ -49,6 +49,7 @@
                     v-for="order in orderList" 
                     :key="order.id"
                     class="order-card"
+                    :class="{ 'gift-card-order': isGiftCardOrder(order) }"
                     @click="goToDetail(order.id)"
                 >
                     <!-- 订单头部 -->
@@ -100,7 +101,8 @@
                     <!-- 订单底部 -->
                     <view class="order-footer">
                         <view class="order-total">
-                            <text class="total-label">共 {{ getTotalCount(order) }} 件商品，合计：</text>
+                            <text class="total-label" v-if="!isGiftCardOrder(order)">共 {{ getTotalCount(order) }} 件商品，合计：</text>
+                            <text class="total-label" v-else>订单金额：</text>
                             <text class="total-price">¥{{ order.payAmount }}</text>
                         </view>
                         <view class="order-actions">
@@ -229,7 +231,16 @@ const getTotalCount = (order) => {
 
 // 判断是否是咖啡卡订单
 const isGiftCardOrder = (order) => {
-    return order.deliveryCompany === '虚拟商品'
+    // 兼容多种情况：数字 1、字符串 "1"、或者旧数据通过 deliveryCompany 判断
+    const orderType = order.orderType
+    if (orderType === 1 || orderType === '1') {
+        return true
+    }
+    // 兼容旧数据：如果 orderType 不存在，使用 deliveryCompany 判断
+    if (orderType === null || orderType === undefined) {
+        return order.deliveryCompany === '虚拟商品'
+    }
+    return false
 }
 
 // 返回上一页
@@ -301,6 +312,12 @@ const loadOrderList = async (reset = false) => {
         // 处理分页数据
         const records = result.records || result.data?.records || result.list || []
         total.value = result.total || 0
+        
+        // 调试：打印订单数据，检查 orderType 字段
+        if (records.length > 0) {
+            console.log('订单列表数据示例:', records[0])
+            console.log('订单 orderType 字段:', records[0].orderType, 'deliveryCompany:', records[0].deliveryCompany)
+        }
         
         if (reset) {
             orderList.value = records
@@ -483,6 +500,15 @@ $bg-color: #f7f8fa;
     padding: 32rpx;
     margin-bottom: 24rpx;
     box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+    border: 2rpx solid transparent;
+    transition: all 0.3s;
+}
+
+/* 咖啡卡订单特殊样式 */
+.order-card.gift-card-order {
+    background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%);
+    border: 2rpx solid #d4af37;
+    box-shadow: 0 6rpx 20rpx rgba(212, 175, 55, 0.15);
 }
 
 .order-header {
@@ -492,6 +518,11 @@ $bg-color: #f7f8fa;
     margin-bottom: 24rpx;
     padding-bottom: 24rpx;
     border-bottom: 1rpx solid #f0f0f0;
+}
+
+/* 咖啡卡订单头部样式 */
+.order-card.gift-card-order .order-header {
+    border-bottom-color: rgba(212, 175, 55, 0.2) !important;
 }
 
 .order-info {
@@ -533,9 +564,10 @@ $bg-color: #f7f8fa;
 .gift-card-order-info {
     display: flex;
     align-items: center;
-    padding: 20rpx;
+    padding: 24rpx;
     background: linear-gradient(135deg, #6f4e37 0%, #8b6f47 100%);
     border-radius: 16rpx;
+    box-shadow: 0 4rpx 12rpx rgba(111, 78, 55, 0.2);
 }
 
 .gift-card-icon {
@@ -638,6 +670,11 @@ $bg-color: #f7f8fa;
 .order-footer {
     padding-top: 24rpx;
     border-top: 1rpx solid #f0f0f0;
+}
+
+/* 咖啡卡订单底部样式 */
+.order-card.gift-card-order .order-footer {
+    border-top-color: rgba(212, 175, 55, 0.2) !important;
 }
 
 .order-total {

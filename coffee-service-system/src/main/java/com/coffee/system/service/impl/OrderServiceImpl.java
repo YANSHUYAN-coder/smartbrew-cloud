@@ -321,6 +321,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         order.setCoffeeCardDiscountAmount(coffeeCardDiscountAmount);
         order.setPayAmount(payAmount);
         order.setPayType(request.getPayType() == null ? 0 : request.getPayType());
+        // 商品订单
+        order.setOrderType(0);
         
         // 如果使用咖啡卡支付，需要检查余额并立即扣减
         if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {

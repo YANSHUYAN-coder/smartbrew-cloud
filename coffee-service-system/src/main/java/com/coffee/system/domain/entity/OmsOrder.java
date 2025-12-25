@@ -69,6 +69,12 @@ public class OmsOrder extends BaseEntity implements Serializable {
     @TableField("status")
     private Integer status;
 
+    /**
+     * 订单类型：0->商品订单；1->咖啡卡订单
+     */
+    @TableField("order_type")
+    private Integer orderType;
+
     @TableField("delivery_company")
     private String deliveryCompany;
 

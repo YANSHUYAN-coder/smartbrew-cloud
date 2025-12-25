@@ -18,6 +18,7 @@ import java.net.URI;
 
 /**
  * AI 相关配置
+ * 手动创建 VectorStore 以避免 Lettuce 和 Jedis 冲突
  */
 @Configuration
 @Slf4j
@@ -63,9 +64,12 @@ public class CoffeeAiConfig {
 
     /**
      * 手动创建 RedisVectorStore，使用独立的 JedisPooled 客户端，避免与 Spring Data Redis 的 Lettuce 冲突
+     * 使用 @Primary 确保优先使用手动配置的 bean
      */
     @Bean
+    @Primary
     public VectorStore vectorStore(EmbeddingModel embeddingModel) {
+        log.info("手动创建 RedisVectorStore，使用独立的 JedisPooled 客户端");
         // 创建独立的 JedisPooled 客户端
         // URI 格式: redis://:password@host:port
         JedisPooled jedisPooled = new JedisPooled(URI.create(vectorStoreRedisUri));

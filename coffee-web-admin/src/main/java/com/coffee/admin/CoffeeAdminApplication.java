@@ -1,6 +1,7 @@
 package com.coffee.admin;
 
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.ai.vectorstore.redis.autoconfigure.RedisVectorStoreAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
@@ -8,8 +9,9 @@ import org.springframework.context.annotation.ComponentScan;
 /**
  * B端管理后台 启动入口
  * 扫描范围：包括本模块以及依赖的 system, ai 模块
+ * 排除 RedisVectorStoreAutoConfiguration，使用手动配置以避免 bean 冲突
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {RedisVectorStoreAutoConfiguration.class})
 @ComponentScan(basePackages = "com.coffee")
 @MapperScan("com.coffee.**.mapper")
 public class CoffeeAdminApplication {

@@ -12,6 +12,22 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-jifen01:before {
+  content: "\e62d";
+}
+
+.icon-shangdian:before {
+  content: "\e6ac";
+}
+
+.icon-tongchengwaimai:before {
+  content: "\fd27";
+}
+
+.icon-huiyuanka:before {
+  content: "\1012e";
+}
+
 .icon-yiwancheng:before {
   content: "\e63f";
 }

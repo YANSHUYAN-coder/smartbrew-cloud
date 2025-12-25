@@ -30,7 +30,11 @@
 		</view>
 
 		<!-- 2. 主体内容区 (左右联动) -->
-		<view class="menu-container">
+		<!-- 骨架屏 -->
+		<MenuSkeleton v-if="loading" />
+
+		<!-- 实际内容 -->
+		<view v-else class="menu-container">
 			<!-- 左侧分类栏 -->
 			<scroll-view class="category-sidebar" scroll-y :scroll-into-view="leftScrollId" scroll-with-animation>
 				<view v-for="(cat, index) in categories" :key="cat.id" :id="'cat-left-' + index" class="category-item"
@@ -149,6 +153,7 @@
 	import { convertImageUrl } from '@/utils/image.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
 	import SkuModal from '@/components/SkuModal.vue'
+	import MenuSkeleton from '@/components/MenuSkeleton.vue'
 
 
 	const statusBarHeight = ref(0)
@@ -162,6 +167,7 @@
 	const showModal = ref(false)
 	const currentProduct = ref({})
 	const refreshing = ref(false) // 下拉刷新状态
+	const loading = ref(true) // 页面加载状态
 
 	// --- 左右联动相关变量 ---
 	const categoryTops = ref([]) // 存储右侧每个分类 section 的 top 值
@@ -296,6 +302,7 @@
 	// 加载菜单数据（提取为独立函数，方便刷新时调用）
 	const loadMenuData = async () => {
 		try {
+			loading.value = true
 			const menuData = await getMenuVO()
 			console.log("后端返回的菜单数据", menuData)
 			
@@ -368,6 +375,8 @@
 				icon: 'none'
 			})
 			return false
+		} finally {
+			loading.value = false
 		}
 	}
 

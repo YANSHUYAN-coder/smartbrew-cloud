@@ -13,19 +13,35 @@
 			</view>
 		</view>
 
-		<!-- 沉浸式 Banner -->
-		<view class="banner-container">
-			<view class="banner">
-				<image
-					src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?q=80&w=800&auto=format&fit=crop"
-					class="banner-image" mode="aspectFill" />
-				<view class="banner-content">
-					<view class="banner-badge">NEW ARRIVAL</view>
-					<text class="banner-title">秋日桂花拿铁</text>
-					<text class="banner-desc">金桂飘香，一口入秋</text>
-					<button class="banner-btn" @click="handleBannerClick">立即尝鲜</button>
-				</view>
-			</view>
+		<!-- 骨架屏 -->
+		<HomeSkeleton v-if="loading" />
+
+		<!-- 实际内容 -->
+		<template v-else>
+			<!-- 沉浸式 Banner 轮播图 -->
+			<view class="banner-container">
+			<swiper 
+				class="banner-swiper" 
+				:indicator-dots="true" 
+				:autoplay="true" 
+				:interval="3000" 
+				:duration="500"
+				:circular="true"
+				indicator-color="rgba(255, 255, 255, 0.5)"
+				indicator-active-color="#ffffff"
+			>
+				<swiper-item v-for="(banner, index) in banners" :key="index">
+					<view class="banner">
+						<image :src="banner.image" class="banner-image" mode="aspectFill" />
+						<view class="banner-content">
+							<view class="banner-badge">{{ banner.badge }}</view>
+							<text class="banner-title">{{ banner.title }}</text>
+							<text class="banner-desc">{{ banner.desc }}</text>
+							<button class="banner-btn" @click="handleBannerClick(banner)">立即尝鲜</button>
+						</view>
+					</view>
+				</swiper-item>
+			</swiper>
 		</view>
 
 		<!-- AI 智能助手卡片 -->
@@ -46,7 +62,8 @@
 		<view class="function-grid">
 			<view v-for="(item, index) in functions" :key="index" class="function-item"
 				@click="handleFunctionClick(item)">
-				<view class="function-icon">{{ item.icon }}</view>
+				<!-- <view class="function-icon">{{ item.icon }}</view> -->
+				<uni-icons custom-prefix="iconfont" :type="item.icon" size="28"></uni-icons>
 				<text class="function-name">{{ item.name }}</text>
 			</view>
 		</view>
@@ -109,6 +126,7 @@
 				</view>
 			</view>
 		</view>
+		</template>
 
 		<!-- 规格选择弹窗 -->
 		<SkuModal v-model:show="showSkuModal" :product="selectedProduct" />
@@ -136,33 +154,62 @@
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import SkuModal from '@/components/SkuModal.vue'
+	import HomeSkeleton from '@/components/HomeSkeleton.vue'
 
 	const cartStore = useCartStore()
 	const statusBarHeight = ref(0)
 
+	// 轮播图数据
+	const banners = ref([
+		{
+			image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?q=80&w=800&auto=format&fit=crop',
+			badge: 'NEW ARRIVAL',
+			title: '秋日桂花拿铁',
+			desc: '金桂飘香，一口入秋',
+			productId: null // 可关联商品ID
+		},
+		{
+			image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?q=80&w=800&auto=format&fit=crop',
+			badge: 'HOT',
+			title: '经典美式咖啡',
+			desc: '浓郁醇香，唤醒一天',
+			productId: null
+		},
+		{
+			image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop',
+			badge: 'SPECIAL',
+			title: '焦糖玛奇朵',
+			desc: '甜蜜与咖啡的完美融合',
+			productId: null
+		}
+	])
+
 	// 商品数据
 	const recommendProducts = ref([])
 	const newProducts = ref([])
+
+	// 加载状态
+	const loading = ref(true)
 
 	// 规格弹窗控制
 	const showSkuModal = ref(false)
 	const selectedProduct = ref({})
 
 	const functions = [{
-			icon: '☕',
+			icon: 'icon-shangdian',
 			name: '到店取'
 		},
 		{
-			icon: '🛵',
+			icon: 'icon-tongchengwaimai',
 			name: '外卖'
 		},
 		{
-			icon: '☕',
+			icon: 'icon-huiyuanka',
 			name: '咖啡卡'
 		},
 		{
-			icon: '💎',
-			name: '会员'
+			icon: 'icon-jifen01',
+			name: '积分商城'
 		},
 	]
 
@@ -186,10 +233,18 @@
 		})
 	}
 
-	const handleBannerClick = () => {
-		uni.switchTab({
-			url: '/pages/menu/index'
-		})
+	const handleBannerClick = (banner) => {
+		// 如果有关联商品，跳转到商品详情
+		if (banner.productId) {
+			uni.navigateTo({
+				url: `/pages/product/detail?id=${banner.productId}`
+			})
+		} else {
+			// 否则跳转到菜单页
+			uni.switchTab({
+				url: '/pages/menu/index'
+			})
+		}
 	}
 
 	const handleFunctionClick = (item) => {
@@ -246,6 +301,7 @@
 
 	const loadHomeData = async () => {
 		try {
+			loading.value = true
 			const menuData = await getMenuVO()
 			if (menuData && menuData.products) {
 				// 商品列表映射字段名，确保与模板一致
@@ -271,6 +327,8 @@
 		} catch (error) {
 			console.error("获取首页数据失败", error)
 			return false
+		} finally {
+			loading.value = false
 		}
 	}
 
@@ -392,8 +450,14 @@
 		padding: 32rpx 40rpx;
 	}
 
-	.banner {
+	.banner-swiper {
 		height: 384rpx;
+		border-radius: 32rpx;
+		overflow: hidden;
+	}
+
+	.banner {
+		height: 100%;
 		border-radius: 32rpx;
 		background: linear-gradient(135deg, #6f4e37 0%, #8d6e53 100%);
 		position: relative;

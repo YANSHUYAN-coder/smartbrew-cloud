@@ -34,7 +34,12 @@
         </view>
 
         <!-- 订单列表 -->
+        <!-- 骨架屏 -->
+        <OrderListSkeleton v-if="loading && orderList.length === 0" />
+
+        <!-- 实际内容 -->
         <scroll-view 
+            v-else
             scroll-y 
             class="order-scroll"
             :refresher-enabled="true"
@@ -159,6 +164,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrderList } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
+import OrderListSkeleton from '@/components/OrderListSkeleton.vue'
 
 const { handleCancelOrder, handleConfirmReceive } = useOrderActions()
 

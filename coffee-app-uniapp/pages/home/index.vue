@@ -257,12 +257,15 @@
 					desc: product.description || product.desc || '',
 					// 确保有评分字段
 					rating: product.rating || 4.5,
+					// 确保有新品和推荐状态字段
+					newStatus: product.newStatus || 0,
+					recommendStatus: product.recommendStatus || 0
 				}))
 
 				// 推荐商品：只取前 6 条展示
 				recommendProducts.value = mappedProducts.slice(0, 6)
-				// 筛选分类为“人气新品”（ID为7）的数据
-				newProducts.value = mappedProducts.filter(p => p.categoryId === 7)
+				// 筛选"人气新品"：newStatus=1 且 recommendStatus=1（与菜单页逻辑一致）
+				newProducts.value = mappedProducts.filter(p => p.newStatus === 1 && p.recommendStatus === 1)
 			}
 			return true
 		} catch (error) {

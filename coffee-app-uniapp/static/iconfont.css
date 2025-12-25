@@ -5,37 +5,61 @@
 }
 
 .iconfont {
-	font-family: "iconfont" !important;
-	font-size: 16px;
-	font-style: normal;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-yiwancheng:before {
+  content: "\e63f";
+}
+
+.icon-daizhifu:before {
+  content: "\e629";
+}
+
+.icon-daifukuan:before {
+  content: "\e600";
+}
+
+.icon-dingdan-yiwancheng:before {
+  content: "\e60f";
+}
+
+.icon-drink:before {
+  content: "\e661";
+}
+
+.icon-daiqucan:before {
+  content: "\e659";
 }
 
 .icon-sousuo:before {
-	content: "\e602";
+  content: "\e602";
 }
 
 .icon-search:before {
-	content: "\e6b9";
+  content: "\e6b9";
 }
 
 .icon-message:before {
-	content: "\e604";
+  content: "\e604";
 }
 
 .icon-cart_active:before {
-	content: "\e6a9";
+  content: "\e6a9";
 }
 
 .icon-profile-active:before {
-	content: "\e63c";
+  content: "\e63c";
 }
 
 .icon-menu-active:before {
-	content: "\e606";
+  content: "\e606";
 }
 
 .icon-home_active:before {
-	content: "\e610";
+  content: "\e610";
 }

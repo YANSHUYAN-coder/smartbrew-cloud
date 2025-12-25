@@ -42,7 +42,8 @@
 				<view v-for="(order, index) in orderTypes" :key="index" class="order-type-item"
 					@click="handleOrderTypeClick(order)">
 					<view class="order-icon-wrapper">
-						<text class="order-icon">{{ order.icon }}</text>
+						<!-- <text class="order-icon">{{ order.icon }}</text> -->
+						<uni-icons custom-prefix="iconfont" :type="order.icon" size="24" color="#666"></uni-icons>
 						<!-- 小红点显示数量（仅待付款、制作中、待取餐显示，已完成不显示） -->
 						<view v-if="order.key !== 'completed' && getOrderCount(order.key) > 0" class="order-badge">
 							<text class="badge-text">{{ getOrderCount(order.key) > 99 ? '99+' : getOrderCount(order.key) }}</text>
@@ -123,22 +124,22 @@
 	])
 
 	const orderTypes = [{
-			icon: '💳',
+			icon: 'icon-daizhifu',
 			label: '待付款',
 			key: 'pendingPayment' // 对应 profileStats.orderCounts.pendingPayment
 		},
 		{
-			icon: '⏰',
+			icon: 'icon-drink',
 			label: '制作中',
 			key: 'making' // 对应 profileStats.orderCounts.making
 		},
 		{
-			icon: '🚚',
+			icon: 'icon-daiqucan',
 			label: '待取餐',
 			key: 'pendingPickup' // 对应 profileStats.orderCounts.pendingPickup
 		},
 		{
-			icon: '✓',
+			icon: 'icon-yiwancheng',
 			label: '已完成',
 			key: 'completed' // 对应 profileStats.orderCounts.completed（不显示小红点）
 		},

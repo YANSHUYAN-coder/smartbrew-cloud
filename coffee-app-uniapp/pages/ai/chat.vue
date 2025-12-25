@@ -54,7 +54,7 @@
 
           <!-- 用户头像 (右侧) -->
           <view class="avatar-box" v-if="msg.role === 'user'">
-            <image :src="userAvatar.value" class="user-avatar" mode="aspectFill"></image>
+            <image :src="userAvatar" class="user-avatar" mode="aspectFill"></image>
           </view>
         </view>
 
@@ -118,6 +118,11 @@
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { chatWithAi, getChatHistory, clearChatHistory } from '@/services/ai.js'
+import { useUserStore } from '@/store/user.js'
+// 导入图片转换工具
+import { convertImageUrl } from '@/utils/image.js'
+
+
 
 // 状态管理
 const statusBarHeight = ref(0)
@@ -127,12 +132,11 @@ const inputText = ref('')
 const isLoading = ref(false)
 const isTyping = ref(false)
 const inputFocus = ref(false)
+const userStore = new useUserStore()
+const userInfo = userStore.userInfo
 
-// 导入图片转换工具
-import { convertImageUrl } from '@/utils/image.js'
 
 // 用户信息
-const userInfo = uni.getStorageSync('userInfo') || {}
 const userAvatar = computed(() => {
   return convertImageUrl(userInfo.avatar) || '/static/default-avatar.png'
 })

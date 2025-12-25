@@ -266,7 +266,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
                 .eq(OmsOrder::getStatus, 0))); // 待付款
         orderCounts.put("making", orderService.count(new LambdaQueryWrapper<OmsOrder>()
                 .eq(OmsOrder::getMemberId, userId)
-                .in(OmsOrder::getStatus, 1, 2))); // 待制作、制作中
+                .eq(OmsOrder::getStatus, 2))); // 制作中（仅状态2）
         orderCounts.put("pendingPickup", orderService.count(new LambdaQueryWrapper<OmsOrder>()
                 .eq(OmsOrder::getMemberId, userId)
                 .eq(OmsOrder::getStatus, 3))); // 待取餐

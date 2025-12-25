@@ -316,7 +316,7 @@
 					newStatus: product.newStatus || 0,
 					recommendStatus: product.recommendStatus || 0
 				}))
-
+				
 				// 2. 前端构建"人气新品"虚拟分类
 				// 筛选逻辑：newStatus=1 且 recommendStatus=1
 				const hotProducts = mappedProducts

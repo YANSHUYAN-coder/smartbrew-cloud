@@ -2,7 +2,7 @@ spring:
   ai:
     vectorstore:
       redis:
-        uri: redis://:123456@localhost:6379
+        uri: redis://:123456@192.168.248.128:6379
         prefix: "coffee:doc:"        #  Redis键名前级，用于区分不同应用的向量数据
         initialize-schema: true #启动时自动创建Redis向量索引结构(首次部署需开启)
         index: coffee-product-index  # #Redis向量索引名称

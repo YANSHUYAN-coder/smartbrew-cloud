@@ -103,7 +103,7 @@ public class AppOrderController {
      * 确认收货（将状态置为“已完成”）
      */
     @PostMapping("/confirm/{id}")
-    @PreAuthorize("hasAuthority('app:order:confirm')")
+//    @PreAuthorize("hasAuthority('app:order:confirm')")
     @Operation(summary = "确认收货", description = "仅允许当前登录用户对自己的待取餐订单执行确认收货")
     public Result<String> confirm(
             @Parameter(description = "订单ID") @PathVariable("id") Long id) {

@@ -154,8 +154,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, computed } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrderList } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
@@ -388,8 +388,23 @@ const confirmReceive = (order) => {
     })
 }
 
-onMounted(() => {
+// 页面加载时处理 URL 参数
+onLoad((options) => {
     statusBarHeight.value = getStatusBarHeight()
+    
+    // 如果 URL 中有 status 参数，切换到对应的标签
+    if (options.status !== undefined && options.status !== null && options.status !== '') {
+        const status = parseInt(options.status)
+        // 查找对应的标签索引
+        const tabIndex = statusTabs.findIndex(tab => tab.status === status)
+        if (tabIndex !== -1) {
+            currentStatus.value = status
+            // 滚动到对应的标签
+            tabIntoView.value = 'tab-' + (tabIndex > 1 ? tabIndex - 1 : 0)
+        }
+    }
+    
+    // 加载订单列表
     loadOrderList(true)
 })
 

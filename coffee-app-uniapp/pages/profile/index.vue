@@ -41,7 +41,13 @@
 			<view class="order-types">
 				<view v-for="(order, index) in orderTypes" :key="index" class="order-type-item"
 					@click="handleOrderTypeClick(order)">
-					<text class="order-icon">{{ order.icon }}</text>
+					<view class="order-icon-wrapper">
+						<text class="order-icon">{{ order.icon }}</text>
+						<!-- 小红点显示数量（仅待付款、制作中、待取餐显示，已完成不显示） -->
+						<view v-if="order.key !== 'completed' && getOrderCount(order.key) > 0" class="order-badge">
+							<text class="badge-text">{{ getOrderCount(order.key) > 99 ? '99+' : getOrderCount(order.key) }}</text>
+						</view>
+					</view>
 					<text class="order-label">{{ order.label }}</text>
 				</view>
 			</view>
@@ -118,21 +124,33 @@
 
 	const orderTypes = [{
 			icon: '💳',
-			label: '待付款'
+			label: '待付款',
+			key: 'pendingPayment' // 对应 profileStats.orderCounts.pendingPayment
 		},
 		{
 			icon: '⏰',
-			label: '制作中'
+			label: '制作中',
+			key: 'making' // 对应 profileStats.orderCounts.making
 		},
 		{
 			icon: '🚚',
-			label: '待取餐'
+			label: '待取餐',
+			key: 'pendingPickup' // 对应 profileStats.orderCounts.pendingPickup
 		},
 		{
 			icon: '✓',
-			label: '已完成'
+			label: '已完成',
+			key: 'completed' // 对应 profileStats.orderCounts.completed（不显示小红点）
 		},
 	]
+
+	// 获取订单数量
+	const getOrderCount = (key) => {
+		if (!profileStats.value || !profileStats.value.orderCounts) {
+			return 0
+		}
+		return profileStats.value.orderCounts[key] || 0
+	}
 
 	const functions = [{
 			name: '收货地址',
@@ -156,14 +174,21 @@
 		// 根据订单类型跳转到订单列表页，并筛选对应状态
 		const statusMap = {
 			'待付款': 0,
-			'制作中': 2,
+			'制作中': 2,  // 制作中对应状态 2
 			'待取餐': 3,
 			'已完成': 4
 		}
 		const status = statusMap[order.label]
-		uni.navigateTo({
-			url: `/pages/order/list?status=${status !== undefined ? status : ''}`
-		})
+		if (status !== undefined) {
+			uni.navigateTo({
+				url: `/pages/order/list?status=${status}`
+			})
+		} else {
+			// 如果没有匹配的状态，跳转到全部订单
+			uni.navigateTo({
+				url: '/pages/order/list'
+			})
+		}
 	}
 
 	const goToOrderList = () => {
@@ -470,6 +495,11 @@
 		transform: scale(0.95);
 	}
 
+	.order-icon-wrapper {
+		position: relative;
+		display: inline-block;
+	}
+
 	.order-icon {
 		font-size: 44rpx;
 	}
@@ -477,6 +507,30 @@
 	.order-label {
 		font-size: 20rpx;
 		color: #666;
+	}
+
+	/* 订单数量小红点（圆形） */
+	.order-badge {
+		position: absolute;
+		top: -8rpx;
+		right: -16rpx;
+		background-color: #ff4757;
+		border-radius: 50%;
+		width: 32rpx;
+		height: 32rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 2rpx solid #ffffff;
+		box-shadow: 0 2rpx 8rpx rgba(255, 71, 87, 0.3);
+		/* 固定宽高，确保是完美的圆形 */
+	}
+
+	.badge-text {
+		color: #ffffff;
+		font-size: 20rpx;
+		font-weight: bold;
+		line-height: 1;
 	}
 
 	.function-list {

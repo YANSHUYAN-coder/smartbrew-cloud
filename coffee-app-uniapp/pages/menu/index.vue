@@ -39,8 +39,8 @@
 					<text class="category-name">{{ cat.name }}</text>
 					<!-- 选中指示器 -->
 					<view v-if="activeCategoryIndex === index" class="active-indicator"></view>
-					<!-- 分类角标 (模拟：仅第一个分类 HOT) -->
-					<view v-if="index === 0" class="cat-badge">NEW</view>
+					<!-- 分类角标 (仅对虚拟分类 '人气新品' 显示 NEW) -->
+					<view v-if="cat.id === -1" class="cat-badge">NEW</view>
 				</view>
 				<!-- 底部占位 -->
 				<view style="height: 100rpx;"></view>
@@ -77,7 +77,7 @@
 								</view>
 
 								<view class="prod-tags">
-									<text class="tag" v-if="cat.id === 'new'">本周新品</text>
+									<text class="tag" v-if="cat.id === -1">人气新品</text>
 									<text class="tag" v-else>人气热销</text>
 									<text class="tag">好评 {{ prod.rating }}</text>
 								</view>
@@ -147,8 +147,6 @@
 		useCartStore
 	} from '@/store/cart.js'
 	import { convertImageUrl } from '@/utils/image.js'
-	
-	import { getCategories } from '@/services/categories.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
 	import SkuModal from '@/components/SkuModal.vue'
 
@@ -205,13 +203,12 @@
 		})
 	}
 
-	// 获取要显示的商品列表（支持分页）
+	// 获取要显示的商品列表（支持分页，已移除新品分类的数量限制）
 	const getDisplayProducts = (cat) => {
-		const categoryProducts = allProducts.value.filter(p => p.categoryId === cat.id)
-		// 如果是新品分类（id === 7），显示前2个；否则显示已加载的商品数量
-		if (cat.id === 7) {
-			return categoryProducts.slice(0, 2)
-		}
+		// 注意：虚拟分类ID现在是 -1 (Long 类型在 JS 中可能需要注意比较，这里用严格相等)
+		const categoryId = cat.id
+		const categoryProducts = allProducts.value.filter(p => p.categoryId === categoryId)
+		
 		// 计算当前分类应该显示的商品数量
 		// 简化处理：每个分类显示最多 displayedProductCount 个商品
 		return categoryProducts.slice(0, displayedProductCount.value)
@@ -228,7 +225,7 @@
 			// 计算所有分类中商品最多的分类的商品数量
 			const maxProductsPerCategory = Math.max(
 				...categories.value.map(cat => {
-					if (cat.id === 7) return 2 // 新品分类固定2个
+					// 虚拟分类ID为-1，不需要特殊逻辑，直接过滤即可
 					return allProducts.value.filter(p => p.categoryId === cat.id).length
 				}),
 				0
@@ -304,10 +301,7 @@
 			
 			// 直接使用后端返回的数据，无需转换
 			if (menuData && menuData.categories && menuData.products) {
-				// 分类列表直接使用
-				categories.value = menuData.categories
-				
-				// 商品列表需要映射字段名，确保与模板一致
+				// 1. 商品列表需要映射字段名，确保与模板一致
 				const mappedProducts = menuData.products.map(product => ({
 					...product,
 					// 字段名映射：后端 picUrl -> 前端 image，并转换为代理 URL
@@ -317,10 +311,36 @@
 					// 确保有评分字段
 					rating: product.rating || 4.5,
 					// categoryId 已经是 Long 类型，直接使用
-					categoryId: product.categoryId
+					categoryId: product.categoryId,
+					// 确保有新品和推荐状态字段
+					newStatus: product.newStatus || 0,
+					recommendStatus: product.recommendStatus || 0
 				}))
+
+				// 2. 前端构建"人气新品"虚拟分类
+				// 筛选逻辑：newStatus=1 且 recommendStatus=1
+				const hotProducts = mappedProducts
+					.filter(p => p.newStatus === 1 && p.recommendStatus === 1)
+					.map(p => ({
+						...p,
+						categoryId: -1 // 归属到虚拟分类 ID
+					}))
+
+				// 3. 如果有新品，则在分类列表最前面插入虚拟分类，并将虚拟商品加入总列表
+				if (hotProducts.length > 0) {
+					// 插入虚拟分类到最前面
+					menuData.categories.unshift({
+						id: -1,
+						name: '人气新品'
+					})
+					// 将虚拟分类的商品加入总列表
+					mappedProducts.push(...hotProducts)
+				}
+
+				// 4. 分类列表直接使用（已包含虚拟分类）
+				categories.value = menuData.categories
 				
-				// 存储所有商品数据
+				// 5. 存储所有商品数据
 				allProducts.value = mappedProducts
 				
 				// 重置显示数量
@@ -328,7 +348,6 @@
 				// 判断是否还有更多商品（计算所有分类中商品最多的分类的商品数量）
 				const maxProductsPerCategory = Math.max(
 					...categories.value.map(cat => {
-						if (cat.id === 7) return 2 // 新品分类固定2个
 						return mappedProducts.filter(p => p.categoryId === cat.id).length
 					}),
 					0

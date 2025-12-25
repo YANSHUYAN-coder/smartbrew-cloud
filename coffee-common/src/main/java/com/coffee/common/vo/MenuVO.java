@@ -68,6 +68,12 @@ public class MenuVO {
 
         @Schema(description = "评分（如 4.5）")
         private Double rating;     // 评分（如果有）
+
+        @Schema(description = "是否新品: 0->否；1->是")
+        private Integer newStatus;
+
+        @Schema(description = "是否推荐: 0->否；1->是")
+        private Integer recommendStatus;
     }
 }
 

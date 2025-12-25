@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -237,21 +238,10 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 })
                 .collect(Collectors.toList());
 
-        // 4. 构建商品列表（每个商品包含 categoryId）
+        // 4. 构建商品列表
         List<MenuVO.ProductVO> productList = allProducts.stream()
                 .filter(product -> product.getCategoryId() != null)
-                .map(product -> {
-                    MenuVO.ProductVO productVO = new MenuVO.ProductVO();
-                    BeanUtil.copyProperties(product, productVO);
-                    productVO.setPicUrl(product.getPicUrl()); // 确保图片URL正确映射
-                    productVO.setDescription(product.getDescription()); // 确保描述正确映射
-                    productVO.setCategoryId(product.getCategoryId()); // 设置分类ID
-                    // 如果没有评分字段，可以设置默认值
-                    if (productVO.getRating() == null) {
-                        productVO.setRating(4.5); // 默认评分
-                    }
-                    return productVO;
-                })
+                .map(product -> convertToVO(product, product.getCategoryId()))
                 .collect(Collectors.toList());
 
         // 5. 组装返回对象
@@ -259,6 +249,24 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         menuVO.setCategories(categoryList);
         menuVO.setProducts(productList);
         return menuVO;
+    }
+
+    private MenuVO.ProductVO convertToVO(Product product, Long categoryId) {
+        MenuVO.ProductVO productVO = new MenuVO.ProductVO();
+        BeanUtil.copyProperties(product, productVO);
+        productVO.setPicUrl(product.getPicUrl());
+        productVO.setDescription(product.getDescription());
+        productVO.setCategoryId(categoryId);
+        // 传递新品和推荐状态给前端
+        productVO.setNewStatus(product.getNewStatus());
+        productVO.setRecommendStatus(product.getRecommendStatus());
+
+        if (productVO.getRating() == null) {
+            // 生成 4.0 到 5.0 之间的随机评分，保留一位小数
+            double randomRating = 3.5 + Math.random();
+            productVO.setRating(Math.round(randomRating * 10.0) / 10.0);
+        }
+        return productVO;
     }
 
     @Override

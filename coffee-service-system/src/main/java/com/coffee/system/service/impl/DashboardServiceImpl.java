@@ -1,6 +1,7 @@
 package com.coffee.system.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.system.domain.entity.OmsOrder;
 import com.coffee.system.domain.entity.OmsOrderItem;
 import com.coffee.system.domain.entity.UmsMember;
@@ -78,7 +79,7 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getSalesTrend(int days) {
         List<Map<String, Object>> result = new ArrayList<>();
         LocalDate today = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
+        DateTimeFormatter formatter = DateFormatConstants.MONTH_DAY;
 
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);

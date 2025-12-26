@@ -11,6 +11,7 @@ import com.coffee.common.dto.UmsMemberUpdateDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 public interface UmsMemberService extends IService<UmsMember> {
     /**
@@ -84,7 +85,7 @@ public interface UmsMemberService extends IService<UmsMember> {
      * 获取用户统计信息（用于个人中心页面）
      * @return 包含积分、优惠券数量、订单统计等信息
      */
-    java.util.Map<String, Object> getProfileStatistics();
+    Map<String, Object> getProfileStatistics();
 
     /**
      * 增加用户成长值

@@ -237,6 +237,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/store/cart.js'
 import { useUserStore } from '@/store/user.js'
+import { formatDate } from '@/utils/date.js'
 import { createOrder } from '@/services/order.js'
 import { getGiftCardList } from '@/services/giftcard.js'
 import { getMyCoupons } from '@/services/promotion.js'
@@ -310,15 +311,7 @@ const getSpecText = (item) => {
 	return ''
 }
 
-const formatCouponDate = (dateStr) => {
-	if (!dateStr) return '长期有效'
-	try {
-		const date = new Date(dateStr)
-		return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
-	} catch {
-		return '长期有效'
-	}
-}
+const formatCouponDate = (dateStr) => formatDate(dateStr)
 
 const goBack = () => {
 	uni.navigateBack()

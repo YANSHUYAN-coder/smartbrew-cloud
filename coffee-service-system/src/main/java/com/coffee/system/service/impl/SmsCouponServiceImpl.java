@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.PageParam;
 import com.coffee.system.domain.entity.SmsCoupon;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -97,7 +99,7 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
             }
             
             return vo;
-        }).collect(java.util.stream.Collectors.toList());
+        }).collect(Collectors.toList());
         
         voPage.setRecords(voList);
         return voPage;
@@ -245,7 +247,7 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
     }
 
     private String generateCouponCode(Long memberId) {
-        return LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) 
+        return LocalDateTime.now().format(DateFormatConstants.DATE_COMPACT) 
                 + String.format("%04d", memberId % 10000) 
                 + IdUtil.simpleUUID().substring(0, 6);
     }

@@ -121,7 +121,13 @@ public class MinioUtil {
 
         // 2. 生成唯一文件名: dirPath + uuid + extension
         // 例如: avatar/550e8400-e29b-41d4-a716-446655440000.jpg
-        String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String suffix = "";
+        int lastDotIndex = originalFilename.lastIndexOf(".");
+        if (lastDotIndex > 0 && lastDotIndex < originalFilename.length() - 1) {
+            suffix = originalFilename.substring(lastDotIndex);
+        } else {
+            log.warn("文件名没有扩展名，将使用空扩展名: {}", originalFilename);
+        }
         String objectName = dirPath + UUID.randomUUID().toString().replace("-", "") + suffix;
 
         try {

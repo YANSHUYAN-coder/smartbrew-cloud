@@ -3,6 +3,7 @@ package com.coffee.system.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dict.GiftCardStatus;
 import com.coffee.common.dict.OrderStatus;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -260,7 +260,7 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
      * 生成订单编号：时间戳 + 用户ID + 随机串
      */
     private String generateOrderSn(Long userId) {
-        String timePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String timePart = LocalDateTime.now().format(DateFormatConstants.DATETIME_COMPACT);
         String userPart = userId == null ? "0" : String.valueOf(userId);
         String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 6);
         return timePart + userPart + randomPart;
@@ -343,7 +343,7 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
      * 生成咖啡卡卡号：日期前缀 + 用户ID 尾号 + 随机串
      */
     private String generateCardNo(Long userId) {
-        String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String datePart = LocalDateTime.now().format(DateFormatConstants.DATE_COMPACT);
         String userPart = userId == null ? "0000" : String.format("%04d", userId % 10000);
         String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
         return "CC" + datePart + userPart + randomPart; // CC = Coffee Card

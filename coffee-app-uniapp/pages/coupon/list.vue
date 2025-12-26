@@ -57,6 +57,7 @@ import { ref, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { getMyCoupons } from '@/services/promotion.js'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { formatDate } from '@/utils/date.js'
 const statusBarHeight = ref(0)
 const currentTab = ref(0)
 const tabs = [
@@ -114,11 +115,7 @@ const handleUse = () => {
     })
 }
 
-const formatDate = (dateStr) => {
-    if (!dateStr) return '长期有效'
-    const date = new Date(dateStr)
-    return `${date.getFullYear()}.${(date.getMonth() + 1).toString().padStart(2, '0')}.${date.getDate().toString().padStart(2, '0')}`
-}
+// formatDate 已从工具类导入
 
 const getStatusText = (tabIndex) => {
     return tabs[tabIndex].name

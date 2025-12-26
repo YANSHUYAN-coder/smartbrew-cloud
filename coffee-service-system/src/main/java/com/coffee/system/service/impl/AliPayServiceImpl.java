@@ -144,7 +144,13 @@ public class AliPayServiceImpl implements AliPayService {
 
             // 6. 金额一致性校验 (防止金额篡改攻击)
             // 必须比较回调金额与数据库订单金额是否一致
-            BigDecimal notifyPayAmount = new BigDecimal(totalAmountStr);
+            BigDecimal notifyPayAmount;
+            try {
+                notifyPayAmount = new BigDecimal(totalAmountStr);
+            } catch (NumberFormatException e) {
+                log.error("支付宝回调金额格式错误: {}", totalAmountStr, e);
+                return "failure";
+            }
             // 注意：BigDecimal 比较必须用 compareTo，不能用 equals
             if (order.getPayAmount().compareTo(notifyPayAmount) != 0) {
                 log.error("支付宝回调金额不一致! 订单金额:{}, 回调金额:{}", order.getPayAmount(), notifyPayAmount);

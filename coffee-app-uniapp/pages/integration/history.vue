@@ -62,6 +62,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { formatDateTime } from '@/utils/date.js'
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { getStatusBarHeight } from '@/utils/system.js'
 // 确保路径正确
@@ -138,16 +139,7 @@ const loadMore = () => {
     }
 }
 
-const formatTime = (timeStr) => {
-    if (!timeStr) return ''
-    const date = new Date(timeStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hour = String(date.getHours()).padStart(2, '0')
-    const minute = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hour}:${minute}`
-}
+const formatTime = (timeStr) => formatDateTime(timeStr)
 
 </script>
 

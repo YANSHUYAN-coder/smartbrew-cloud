@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -67,19 +66,28 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         wrapper.orderByDesc(Product::getCreateTime);
         Page<Product> result = this.page(productPage, wrapper);
         
-        // 填充分类名称
+        // 填充分类名称（优化：只查询当前商品列表中涉及到的分类，避免全表扫描）
         if (result != null && CollUtil.isNotEmpty(result.getRecords())) {
-            // 查询所有分类（包括禁用的），构建 ID -> 名称的映射
-            List<Category> categories = categoryService.list();
-            Map<Long, String> categoryMap = categories.stream()
-                    .collect(Collectors.toMap(Category::getId, Category::getName));
+            // 收集所有商品涉及到的分类ID（去重）
+            List<Long> categoryIds = result.getRecords().stream()
+                    .map(Product::getCategoryId)
+                    .filter(categoryId -> categoryId != null)
+                    .distinct()
+                    .collect(Collectors.toList());
             
-            // 为每个商品填充分类名称
-            result.getRecords().forEach(product -> {
-                if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
-                    product.setCategory(categoryMap.get(product.getCategoryId()));
-                }
-            });
+            if (!categoryIds.isEmpty()) {
+                // 只查询涉及到的分类，构建 ID -> 名称的映射
+                List<Category> categories = categoryService.listByIds(categoryIds);
+                Map<Long, String> categoryMap = categories.stream()
+                        .collect(Collectors.toMap(Category::getId, Category::getName));
+                
+                // 为每个商品填充分类名称
+                result.getRecords().forEach(product -> {
+                    if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
+                        product.setCategory(categoryMap.get(product.getCategoryId()));
+                    }
+                });
+            }
         }
         
         return result;
@@ -113,19 +121,28 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         
         Page<Product> result = this.page(productPage, wrapper);
         
-        // 填充分类名称（管理端和C端都需要）
+        // 填充分类名称（优化：只查询当前商品列表中涉及到的分类，避免全表扫描）
         if (result != null && CollUtil.isNotEmpty(result.getRecords())) {
-            // 查询所有分类（包括禁用的），构建 ID -> 名称的映射
-            List<Category> categories = categoryService.list();
-            Map<Long, String> categoryMap = categories.stream()
-                    .collect(Collectors.toMap(Category::getId, Category::getName));
+            // 收集所有商品涉及到的分类ID（去重）
+            List<Long> categoryIds = result.getRecords().stream()
+                    .map(Product::getCategoryId)
+                    .filter(categoryId -> categoryId != null)
+                    .distinct()
+                    .collect(Collectors.toList());
             
-            // 为每个商品填充分类名称
-            result.getRecords().forEach(product -> {
-                if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
-                    product.setCategory(categoryMap.get(product.getCategoryId()));
-                }
-            });
+            if (!categoryIds.isEmpty()) {
+                // 只查询涉及到的分类，构建 ID -> 名称的映射
+                List<Category> categories = categoryService.listByIds(categoryIds);
+                Map<Long, String> categoryMap = categories.stream()
+                        .collect(Collectors.toMap(Category::getId, Category::getName));
+                
+                // 为每个商品填充分类名称
+                result.getRecords().forEach(product -> {
+                    if (product.getCategoryId() != null && categoryMap.containsKey(product.getCategoryId())) {
+                        product.setCategory(categoryMap.get(product.getCategoryId()));
+                    }
+                });
+            }
         }
         
         return result;

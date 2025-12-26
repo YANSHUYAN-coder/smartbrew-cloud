@@ -194,6 +194,7 @@ import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getOrderDetail } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 
 const { handleCancelOrder, handleConfirmReceive, handlePayOrder } = useOrderActions()
@@ -255,16 +256,7 @@ const getStatusClass = (status) => {
 }
 
 // 格式化时间
-const formatTime = (timeStr) => {
-	if (!timeStr) return ''
-	const date = new Date(timeStr)
-	const year = date.getFullYear()
-	const month = String(date.getMonth() + 1).padStart(2, '0')
-	const day = String(date.getDate()).padStart(2, '0')
-	const hours = String(date.getHours()).padStart(2, '0')
-	const minutes = String(date.getMinutes()).padStart(2, '0')
-	return `${year}-${month}-${day} ${hours}:${minutes}`
-}
+const formatTime = (timeStr) => formatDateTime(timeStr)
 
 // 判断是否是咖啡卡订单
 const isGiftCardOrder = () => {

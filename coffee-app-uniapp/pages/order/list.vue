@@ -163,6 +163,7 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrderList } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
+import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 import OrderListSkeleton from '@/components/OrderListSkeleton.vue'
 
@@ -218,16 +219,8 @@ const getStatusClass = (status) => {
     return classMap[status] || ''
 }
 
-// 格式化时间
-const formatTime = (timeStr) => {
-    if (!timeStr) return ''
-    const date = new Date(timeStr)
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${month}-${day} ${hours}:${minutes}`
-}
+// 格式化时间（显示月-日 时:分）
+const formatTime = (timeStr) => formatDateTime(timeStr, 'MM-DD HH:mm')
 
 // 计算订单商品总数
 const getTotalCount = (order) => {

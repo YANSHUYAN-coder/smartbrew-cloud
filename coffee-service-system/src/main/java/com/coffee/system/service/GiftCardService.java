@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.PageParam;
 import com.coffee.system.domain.entity.GiftCard;
 import com.coffee.system.domain.entity.GiftCardTxn;
+import com.coffee.system.domain.entity.OmsOrder;
 
 import java.math.BigDecimal;
 
@@ -54,7 +55,7 @@ public interface GiftCardService extends IService<GiftCard> {
      * @param validDays 有效天数
      * @return 创建的订单
      */
-    com.coffee.system.domain.entity.OmsOrder createGiftCardOrder(BigDecimal amount, String name, String greeting, Integer validDays);
+    OmsOrder createGiftCardOrder(BigDecimal amount, String name, String greeting, Integer validDays);
 
     /**
      * 根据订单创建并激活咖啡卡（支付成功后调用）

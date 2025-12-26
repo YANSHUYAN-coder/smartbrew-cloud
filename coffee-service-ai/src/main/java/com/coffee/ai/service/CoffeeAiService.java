@@ -181,33 +181,17 @@ public class CoffeeAiService {
                         .eq(SkuStock::getProductId, product.getId()));
 
                 // 3. 构建结构化描述文本
-                StringBuilder sb = new StringBuilder();
-                sb.append("商品名称: ").append(product.getName()).append("\n");
-                sb.append("基础价格: ￥").append(product.getPrice()).append("\n");
-                sb.append("商品描述: ").append(product.getDescription()).append("\n");
+                String productText = String.format(
+                    "商品名称: %s\n基础价格: ￥%s\n商品描述: %s\n%s",
+                    product.getName(),
+                    product.getPrice(),
+                    product.getDescription(),
+                    buildSkuDescription(skus)
+                );
 
-                if (!skus.isEmpty()) {
-                    sb.append("可选规格与价格详情:\n");
-                    for (SkuStock sku : skus) {
-                        sb.append("- 价格: ￥").append(sku.getPrice());
-                        if (sku.getSpec() != null) {
-                            // 优化：尝试将 JSON 格式的规格转为易读文字
-                            String specText = sku.getSpec()
-                                    .replace("[", "").replace("]", "")
-                                    .replace("{\"key\":", "").replace("\"value\":", "")
-                                    .replace("\"", "").replace("}", "").replace("{", "");
-                            sb.append(" | 规格: ").append(specText);
-                        }
-                        sb.append(" | 库存状态: ").append(sku.getStock() > 0 ? "有货" : "售罄");
-                        sb.append("\n");
-                    }
-                } else {
-                    sb.append("规格信息: 本品为标准规格，暂无其他可选属性。\n");
-                }
-
-                // 4. 创建文档对象，并设置固定 ID 以实现“存在即更新，不存在则插入”
+                // 4. 创建文档对象，并设置固定 ID 以实现"存在即更新，不存在则插入"
                 // 使用 product_ 前缀加上商品 ID，确保唯一且可追溯
-                Document document = new Document("doc_prod_" + product.getId(), sb.toString(), new java.util.HashMap<>());
+                Document document = new Document("doc_prod_" + product.getId(), productText, new java.util.HashMap<>());
                 document.getMetadata().put("type", "product");
                 document.getMetadata().put("id", product.getId());
 
@@ -222,6 +206,32 @@ public class CoffeeAiService {
             log.error("数据库同步到 RAG 失败", e);
             return "同步失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 构建SKU描述文本
+     */
+    private String buildSkuDescription(List<SkuStock> skus) {
+        if (skus.isEmpty()) {
+            return "规格信息: 本品为标准规格，暂无其他可选属性。\n";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("可选规格与价格详情:\n");
+        for (SkuStock sku : skus) {
+            sb.append("- 价格: ￥").append(sku.getPrice());
+            if (sku.getSpec() != null) {
+                // 优化：尝试将 JSON 格式的规格转为易读文字
+                String specText = sku.getSpec()
+                        .replace("[", "").replace("]", "")
+                        .replace("{\"key\":", "").replace("\"value\":", "")
+                        .replace("\"", "").replace("}", "").replace("{", "");
+                sb.append(" | 规格: ").append(specText);
+            }
+            sb.append(" | 库存状态: ").append(sku.getStock() > 0 ? "有货" : "售罄");
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     /**

@@ -62,6 +62,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { formatDateTime } from '@/utils/date.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { getGiftCardTransactions } from '@/services/giftcard.js'
 
@@ -126,17 +127,7 @@ const refresh = () => {
     loadTransactions(true)
 }
 
-// 格式化日期时间
-const formatDateTime = (dateStr) => {
-    if (!dateStr) return ''
-    const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}`
-}
+// formatDateTime 已从工具类导入
 
 // 获取交易类型文本
 const getTypeText = (type) => {

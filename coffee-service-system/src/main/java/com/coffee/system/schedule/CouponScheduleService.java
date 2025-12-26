@@ -79,6 +79,7 @@ public class CouponScheduleService {
                     .set(SmsCouponHistory::getUseStatus, 2) // 设置为已过期
             );
             
+            // 记录更新结果（updatedCount 为 0 是正常情况，说明当前没有需要更新的记录）
             log.info("优惠券过期状态更新完成，共更新 {} 张优惠券为已过期状态", updatedCount);
         } catch (Exception e) {
             log.error("优惠券过期状态更新失败", e);

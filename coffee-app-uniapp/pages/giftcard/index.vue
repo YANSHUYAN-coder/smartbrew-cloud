@@ -75,6 +75,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { formatDate } from '@/utils/date.js'
 import { onShow } from '@dcloudio/uni-app'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { getGiftCardList } from '@/services/giftcard.js'
@@ -112,15 +113,7 @@ const loadCards = async () => {
     }
 }
 
-// 格式化日期
-const formatDate = (dateStr) => {
-    if (!dateStr) return '永久有效'
-    const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-}
+// formatDate 已从工具类导入
 
 // 映射状态：后端返回数字，前端使用字符串
 const mapStatus = (status) => {

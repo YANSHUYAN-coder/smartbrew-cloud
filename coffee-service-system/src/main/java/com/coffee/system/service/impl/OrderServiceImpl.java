@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.CreateOrderRequest;
 import com.coffee.common.dto.PageParam;
@@ -41,12 +42,12 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -98,23 +99,33 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         wrapper.orderByDesc(OmsOrder::getCreateTime);
         Page<OmsOrder> page = orderMapper.selectPage(orderPage, wrapper);
 
-        // 转换为 OrderVO 并补充商品明细
+        // 转换为 OrderVO 并补充商品明细（优化：批量查询，避免 N+1 查询问题）
         Page<OrderVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         if (page.getRecords() != null && !page.getRecords().isEmpty()) {
-            List<OrderVO> voList = new ArrayList<>();
-            for (OmsOrder order : page.getRecords()) {
+            // 收集所有订单ID
+            List<Long> orderIds = page.getRecords().stream()
+                    .map(OmsOrder::getId)
+                    .collect(Collectors.toList());
+            
+            // 批量查询所有订单项
+            List<OmsOrderItem> allItems = orderItemMapper.selectList(
+                    new LambdaQueryWrapper<OmsOrderItem>()
+                            .in(OmsOrderItem::getOrderId, orderIds)
+            );
+            
+            // 按订单ID分组
+            Map<Long, List<OmsOrderItem>> itemsMap = allItems.stream()
+                    .collect(Collectors.groupingBy(OmsOrderItem::getOrderId));
+            
+            // 构建 OrderVO 列表
+            List<OrderVO> voList = page.getRecords().stream().map(order -> {
                 OrderVO orderVO = new OrderVO();
                 BeanUtils.copyProperties(order, orderVO);
-
-                // 查询订单商品明细
-                List<OmsOrderItem> items = orderItemMapper.selectList(
-                        new LambdaQueryWrapper<OmsOrderItem>()
-                                .eq(OmsOrderItem::getOrderId, order.getId())
-                );
-                orderVO.setOrderItemList(items);
-
-                voList.add(orderVO);
-            }
+                // 从分组后的 Map 中获取对应的订单项
+                orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
+                return orderVO;
+            }).collect(Collectors.toList());
+            
             voPage.setRecords(voList);
         }
 
@@ -193,6 +204,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 } catch (Exception e) {
                     log.error("订单取消时恢复优惠券失败: 订单ID={}", id, e);
                     // 不影响订单状态更新，只记录日志
+                    // 必须抛出异常，触发事务回滚！
+                    throw new RuntimeException("退款失败，系统异常");
                 }
             }
             
@@ -284,20 +297,30 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         // 转换为 OrderVO 并补充商品明细
         Page<OrderVO> voPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         if (page.getRecords() != null && !page.getRecords().isEmpty()) {
-            List<OrderVO> voList = new ArrayList<>();
-            for (OmsOrder order : page.getRecords()) {
+            // 优化：批量查询所有订单的商品明细，避免 N+1 查询问题
+            List<Long> orderIds = page.getRecords().stream()
+                    .map(OmsOrder::getId)
+                    .collect(Collectors.toList());
+            
+            // 批量查询所有订单项
+            List<OmsOrderItem> allItems = orderItemMapper.selectList(
+                    new LambdaQueryWrapper<OmsOrderItem>()
+                            .in(OmsOrderItem::getOrderId, orderIds)
+            );
+            
+            // 按订单ID分组
+            Map<Long, List<OmsOrderItem>> itemsMap = allItems.stream()
+                    .collect(Collectors.groupingBy(OmsOrderItem::getOrderId));
+            
+            // 构建 OrderVO 列表
+            List<OrderVO> voList = page.getRecords().stream().map(order -> {
                 OrderVO orderVO = new OrderVO();
                 BeanUtils.copyProperties(order, orderVO);
-
-                // 查询订单商品明细
-                List<OmsOrderItem> items = orderItemMapper.selectList(
-                        new LambdaQueryWrapper<OmsOrderItem>()
-                                .eq(OmsOrderItem::getOrderId, order.getId())
-                );
-                orderVO.setOrderItemList(items);
-
-                voList.add(orderVO);
-            }
+                // 从分组后的 Map 中获取对应的订单项
+                orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
+                return orderVO;
+            }).collect(Collectors.toList());
+            
             voPage.setRecords(voList);
         }
 
@@ -567,23 +590,31 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
      * Redis Key: coffee:order:pickup:20231223
      */
     private String generatePickupCode() {
-        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String key = "coffee:order:pickup:" + dateStr;
+        try {
+            String dateStr = LocalDate.now().format(DateFormatConstants.DATE_COMPACT);
+            String key = "coffee:order:pickup:" + dateStr;
 
-        // Redis 原子递增
-        Long increment = redisTemplate.opsForValue().increment(key);
+            // Redis 原子递增
+            Long increment = redisTemplate.opsForValue().increment(key);
+            
+            if (increment == null) {
+                log.warn("Redis increment 返回 null，使用默认值");
+                increment = 1L;
+            }
 
-        // 如果是今天第一个单，设置过期时间为 24 小时 (避免 Redis 堆积垃圾数据)
-        if (increment != null && increment == 1) {
-            redisTemplate.expire(key, 24, TimeUnit.HOURS);
+            // 如果是今天第一个单，设置过期时间为 24 小时 (避免 Redis 堆积垃圾数据)
+            if (increment == 1) {
+                redisTemplate.expire(key, 24, TimeUnit.HOURS);
+            }
+
+            // 格式化：从 100 开始，显得单子多一点，或者从 1 开始
+            // 这里演示：直接从 101 开始 (1 + 100)
+            return String.valueOf(100 + increment);
+        } catch (Exception e) {
+            log.error("生成取餐码失败（Redis 操作异常），使用时间戳作为备选方案", e);
+            // 降级方案：使用时间戳后4位作为取餐码
+            return String.valueOf(System.currentTimeMillis() % 10000);
         }
-
-        // 格式化：从 100 开始，显得单子多一点，或者从 1 开始
-        // 这里演示：直接从 101 开始 (1 + 100)
-        return String.valueOf(100 + increment);
-
-        // 如果想要 "A101" 这种格式：
-        // return "A" + (100 + increment);
     }
 
 
@@ -591,7 +622,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
      * 生成订单编号：时间戳 + 用户ID + 随机串
      */
     private String generateOrderSn(Long userId) {
-        String timePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String timePart = LocalDateTime.now().format(DateFormatConstants.DATETIME_COMPACT);
         String userPart = userId == null ? "0" : String.valueOf(userId);
         String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 6);
         return timePart + userPart + randomPart;

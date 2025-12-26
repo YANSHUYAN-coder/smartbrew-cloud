@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.cache.CacheKeyConstants;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.MemberStatusDTO;
 import com.coffee.common.dto.PageParam;
@@ -28,12 +29,15 @@ import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberService;
 import com.coffee.system.domain.entity.OmsOrder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +65,44 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
     @Lazy
     private OrderService orderService;
 
+    /**
+     * 注入自身代理对象，用于解决内部调用 @CacheEvict 失效的问题
+     * 必须加 @Lazy 防止循环依赖
+     */
+    @Autowired
+    @Lazy
+    private UmsMemberService self;
+
+
+    /**
+     * 重写 getById，增加缓存
+     * 这是核心：所有内部调用 getById 的地方（如 getUserInfo）都会自动走缓存
+     */
+    @Override
+    @Cacheable(value = CacheKeyConstants.User.INFO, key = "#id")
+    public UmsMember getById(Serializable id) {
+        // log.info("【UmsMemberService】查询用户信息，未命中缓存，正在查库... userId={}", id);
+        return super.getById(id);
+    }
+
+    /**
+     * 重写 updateById，清理缓存
+     * 确保任何通过 ID 更新用户信息的操作都能让缓存失效
+     */
+    @Override
+    @CacheEvict(value = CacheKeyConstants.User.INFO, key = "#entity.id")
+    public boolean updateById(UmsMember entity) {
+        return super.updateById(entity);
+    }
+
+    /**
+     * 重写 removeById，清理缓存
+     */
+    @Override
+    @CacheEvict(value = CacheKeyConstants.User.INFO, key = "#id")
+    public boolean removeById(Serializable id) {
+        return super.removeById(id);
+    }
     @Override
     public Page<UmsMember> getList(PageParam pageParam, String phone) {
         Page<UmsMember> memberPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
@@ -104,6 +146,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = CacheKeyConstants.User.INFO, key = "#dto.id")
     public boolean updateStatus(MemberStatusDTO dto) {
         return this.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, dto.getId())
@@ -117,7 +160,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             // 这里其实也可以不抛异常，返回null让Controller处理，看你业务风格
             throw new RuntimeException("用户未登录");
         }
-        UmsMember member = this.getById(userId);
+        UmsMember member = self.getById(userId);
 
         // 脱敏处理：不返回密码
         if (member != null) {
@@ -144,7 +187,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         // 这样前端只传 nickname 时，不会把 avatar 覆盖为空
         BeanUtil.copyProperties(param, exist, CopyOptions.create().setIgnoreNullValue(true));
 
-        return this.updateById(exist);
+        return self.updateById(exist);
     }
 
     @Override
@@ -171,7 +214,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         //2.加密：使用 passwordEncoder.encode 加密新密码。
         member.setPassword(passwordEncoder.encode(param.getNewPassword()));
         //3.更新：写入数据库。
-        return this.update(new LambdaUpdateWrapper<UmsMember>()
+        return self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getPassword, member.getPassword()));
     }
@@ -184,7 +227,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             throw new RuntimeException("用户未登录");
         }
         // 使用 UpdateWrapper 只需要操作一次数据库，比先查再改更高效
-        return this.update(new LambdaUpdateWrapper<UmsMember>()
+        return self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getStatus, 0)); // 0 表示禁用/注销
     }
@@ -223,12 +266,12 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         }
 
         // 1. 查出数据库里的原始数据
-        UmsMember exist = this.getById(userId);
+        UmsMember exist = self.getById(userId);
         if (exist == null) {
             throw new RuntimeException("用户不存在");
         }
         String url = minioUtil.uploadAvatar(file);
-        this.update(new LambdaUpdateWrapper<UmsMember>()
+        self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getAvatar, url));
     }
@@ -241,7 +284,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         }
 
         // 1. 获取用户信息
-        UmsMember member = this.getById(userId);
+        UmsMember member = self.getById(userId);
         if (member == null) {
             throw new RuntimeException("用户不存在");
         }
@@ -327,13 +370,13 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         if (userId == null || growth == null || growth <= 0) {
             return false;
         }
-        UmsMember member = this.getById(userId);
+        UmsMember member = self.getById(userId);
         if (member == null) {
             return false;
         }
         int currentGrowth = member.getGrowth() != null ? member.getGrowth() : 0;
         int newGrowth = currentGrowth + growth;
-        this.update(new LambdaUpdateWrapper<UmsMember>()
+        self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getGrowth, newGrowth));
         
@@ -345,7 +388,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean checkAndUpdateLevel(Long userId) {
-        UmsMember member = this.getById(userId);
+        UmsMember member = self.getById(userId);
         if (member == null || member.getGrowth() == null) {
             return false;
         }
@@ -371,7 +414,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         // 如果找到了新等级，且与当前等级不同，则更新
         if (targetLevel != null && 
             (member.getLevelId() == null || !targetLevel.getId().equals(member.getLevelId()))) {
-            this.update(new LambdaUpdateWrapper<UmsMember>()
+            self.update(new LambdaUpdateWrapper<UmsMember>()
                     .eq(UmsMember::getId, userId)
                     .set(UmsMember::getLevelId, targetLevel.getId()));
             return true; // 升级了

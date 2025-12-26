@@ -41,5 +41,12 @@ public interface OrderService extends IService<OmsOrder> {
      * 根据前端传入的收货地址、订单金额和商品明细生成订单及订单项
      */
     OmsOrder createOrder(CreateOrderRequest request);
+    
+    /**
+     * 咖啡卡支付
+     * @param orderId 订单ID
+     * @return 支付是否成功
+     */
+    boolean payByCoffeeCard(Long orderId);
 }
 

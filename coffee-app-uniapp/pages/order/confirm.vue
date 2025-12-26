@@ -80,7 +80,7 @@
 						@click="selectPaymentType(1)"
 					>
 						<view class="payment-left">
-							<uni-icons type="wallet" size="20" :color="payType === 1 ? '#6f4e37' : '#999'"></uni-icons>
+							<uni-icons  custom-prefix="iconfont" type="icon-alipay" size="20" :color="payType === 1 ? '#1296db' : '#999'"></uni-icons>
 							<text class="payment-name">支付宝</text>
 						</view>
 						<view class="payment-right" v-if="payType === 1">
@@ -240,6 +240,7 @@ import { useUserStore } from '@/store/user.js'
 import { createOrder } from '@/services/order.js'
 import { getGiftCardList } from '@/services/giftcard.js'
 import { getMyCoupons } from '@/services/promotion.js'
+import { payByCoffeeCard } from '@/services/pay.js'
 import { get } from '@/utils/request.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 
@@ -518,7 +519,7 @@ const submitOrder = async () => {
 		totalAmount: totalPrice.value,
 		promotionAmount: 0,
 		couponAmount: couponDiscountAmount.value,
-		couponId: selectedCoupon.value ? selectedCoupon.value.id : null,
+		couponHistoryId: selectedCoupon.value ? selectedCoupon.value.id : null,
 		payAmount: finalPrice.value
 	}
 
@@ -526,29 +527,56 @@ const submitOrder = async () => {
 		submitting.value = true
 		
 		const result = await createOrder(orderData)
+		const orderId = result.id || result.orderId || result.data?.id || result.data?.orderId
 		
-		uni.showToast({
-			title: '订单创建成功',
-			icon: 'success'
-		})
+		if (!orderId) {
+			throw new Error('订单创建失败，未获取到订单ID')
+		}
+		
+		// 如果是咖啡卡支付，立即调用支付接口
+		if (payType.value === 3) {
+			try {
+				await payByCoffeeCard(orderId)
+				uni.showToast({
+					title: '支付成功',
+					icon: 'success'
+				})
+			} catch (payError) {
+				console.error('咖啡卡支付失败', payError)
+				uni.showToast({
+					title: payError.message || '支付失败，请前往订单详情重新支付',
+					icon: 'none',
+					duration: 2000
+				})
+				// 支付失败也跳转到订单详情页，用户可以重新支付
+				setTimeout(() => {
+					uni.redirectTo({
+						url: `/pages/order/detail?id=${orderId}`
+					}).catch(() => {
+						uni.switchTab({
+							url: '/pages/cart/index'
+						})
+					})
+				}, 2000)
+				return
+			}
+		} else {
+			uni.showToast({
+				title: '订单创建成功',
+				icon: 'success'
+			})
+		}
 		
 		await cartStore.syncCart()
 		
 		setTimeout(() => {
-			const orderId = result.id || result.orderId || result.data?.id || result.data?.orderId
-			if (orderId) {
-				uni.redirectTo({
-					url: `/pages/order/detail?id=${orderId}`
-				}).catch(() => {
-					uni.switchTab({
-						url: '/pages/cart/index'
-					})
-				})
-			} else {
+			uni.redirectTo({
+				url: `/pages/order/detail?id=${orderId}`
+			}).catch(() => {
 				uni.switchTab({
 					url: '/pages/cart/index'
 				})
-			}
+			})
 		}, 1500)
 		
 	} catch (error) {

@@ -53,9 +53,10 @@ public class CreateOrderRequest {
     private BigDecimal payAmount;
     
     /**
-     * 使用的优惠券ID（如果使用优惠券）
+     * 使用的优惠券历史记录ID（如果使用优惠券）
+     * 注意：这是 sms_coupon_history 表的ID，不是 sms_coupon 表的ID
      */
-    private Long couponId;
+    private Long couponHistoryId;
 }
 
 

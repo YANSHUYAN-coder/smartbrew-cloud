@@ -3,10 +3,10 @@ package com.coffee.app.controller;
 import com.coffee.common.result.Result;
 import com.coffee.system.service.AliPayService;
 import com.coffee.system.service.OrderService;
+import lombok.RequiredArgsConstructor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +21,7 @@ import java.util.Map;
 public class AppPayController {
 
     private final AliPayService aliPayService;
+    private final OrderService orderService;
 
     @Operation(summary = "支付宝支付", description = "获取支付宝 App 支付串")
     @PostMapping("/alipay")
@@ -50,5 +51,12 @@ public class AppPayController {
 
         // 2. 交给 Service 处理验签和业务
         return aliPayService.handleAlipayNotify(params);
+    }
+
+    @Operation(summary = "咖啡卡支付", description = "使用咖啡卡余额支付订单")
+    @PostMapping("/coffee-card")
+    public Result<String> payByCoffeeCard(@RequestParam Long orderId) {
+        boolean success = orderService.payByCoffeeCard(orderId);
+        return success ? Result.success("支付成功") : Result.failed("支付失败");
     }
 }

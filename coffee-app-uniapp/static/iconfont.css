@@ -12,6 +12,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-alipay:before {
+  content: "\e618";
+}
+
 .icon-jifen01:before {
   content: "\e62d";
 }

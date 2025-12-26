@@ -112,7 +112,7 @@
 	const stats = ref([{
 			label: '积分',
 			val: '0',
-            path: '/pages/points-mall/index' // 积分跳积分商城
+            path: '/pages/integration/history' // 积分跳积分明细
 		},
 		{
 			label: '优惠券',

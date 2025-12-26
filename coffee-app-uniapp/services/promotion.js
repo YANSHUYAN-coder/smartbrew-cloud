@@ -18,3 +18,18 @@ export const getMyCoupons = (useStatus) => {
   return get('/app/coupon/my/list', { useStatus })
 }
 
+// 每日签到
+export const signIn = () => {
+  return post('/app/signin/sign')
+}
+
+// 查询今日签到状态
+export const getTodaySignIn = () => {
+  return get('/app/signin/today')
+}
+
+// 获取积分明细列表
+export const getIntegrationHistory = (page = 1, pageSize = 10) => {
+  return get('/app/integration/history', { page, pageSize })
+}
+

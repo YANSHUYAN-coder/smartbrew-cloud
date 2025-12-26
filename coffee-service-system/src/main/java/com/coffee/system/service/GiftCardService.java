@@ -72,6 +72,15 @@ public interface GiftCardService extends IService<GiftCard> {
      * @param orderId 关联订单ID
      */
     void deductBalance(Long cardId, BigDecimal amount, Long orderId);
+    
+    /**
+     * 恢复咖啡卡余额（用于订单取消退款）
+     *
+     * @param cardId 咖啡卡ID
+     * @param amount 恢复金额
+     * @param orderId 关联订单ID
+     */
+    void refundBalance(Long cardId, BigDecimal amount, Long orderId);
 }
 
 

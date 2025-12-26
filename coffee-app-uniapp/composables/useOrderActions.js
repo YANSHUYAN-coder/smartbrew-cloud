@@ -1,5 +1,5 @@
 import { cancelOrder as cancelOrderApi, confirmReceiveOrder as confirmReceiveOrderApi } from '@/services/order.js'
-import { alipay } from '@/services/pay.js'
+import { alipay, payByCoffeeCard } from '@/services/pay.js'
 
 /**
  * 订单相关通用操作逻辑
@@ -11,38 +11,51 @@ export function useOrderActions() {
    * @param {Function} onSuccess 成功后的回调函数
    */
   const handlePayOrder = async (order, onSuccess) => {
-    const orderId = typeof order === 'object' ? order.id : order
+    const orderObj = typeof order === 'object' ? order : { id: order }
+    const orderId = orderObj.id
     
     try {
       uni.showLoading({ title: '正在发起支付...' })
       
-      // 1. 处理沙箱环境（仅开发环境）
-      if (process.env.NODE_ENV === 'development') {
-        // #ifdef APP-PLUS
-        const EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
-        if (EnvUtils) {
-          EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
+      // 判断支付方式：3->咖啡卡，1->支付宝
+      const payType = orderObj.payType || 1
+      
+      if (payType === 3) {
+        // 咖啡卡支付
+        await payByCoffeeCard(orderId)
+        uni.hideLoading()
+        uni.showToast({ title: '支付成功', icon: 'success' })
+        if (onSuccess) onSuccess()
+      } else {
+        // 支付宝支付
+        // 1. 处理沙箱环境（仅开发环境）
+        if (process.env.NODE_ENV === 'development') {
+          // #ifdef APP-PLUS
+          const EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
+          if (EnvUtils) {
+            EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
+          }
+          // #endif
         }
-        // #endif
+
+        // 2. 获取后端签名的支付串
+        const orderStr = await alipay(orderId)
+        uni.hideLoading()
+
+        // 3. 调起支付
+        uni.requestPayment({
+          provider: 'alipay',
+          orderInfo: orderStr,
+          success: (res) => {
+            uni.showToast({ title: '支付成功', icon: 'success' })
+            if (onSuccess) onSuccess()
+          },
+          fail: (err) => {
+            console.error('支付失败:', err)
+            uni.showToast({ title: '支付未完成', icon: 'none' })
+          }
+        })
       }
-
-      // 2. 获取后端签名的支付串
-      const orderStr = await alipay(orderId)
-      uni.hideLoading()
-
-      // 3. 调起支付
-      uni.requestPayment({
-        provider: 'alipay',
-        orderInfo: orderStr,
-        success: (res) => {
-          uni.showToast({ title: '支付成功', icon: 'success' })
-          if (onSuccess) onSuccess()
-        },
-        fail: (err) => {
-          console.error('支付失败:', err)
-          uni.showToast({ title: '支付未完成', icon: 'none' })
-        }
-      })
     } catch (error) {
       uni.hideLoading()
       console.error('支付请求异常:', error)

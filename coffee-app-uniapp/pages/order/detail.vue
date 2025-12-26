@@ -132,6 +132,10 @@
 					<text class="price-label">优惠券</text>
 					<text class="price-value discount">-¥{{ orderDetail.couponAmount }}</text>
 				</view>
+				<view class="price-item" v-if="orderDetail.coffeeCardDiscountAmount > 0">
+					<text class="price-label">咖啡卡优惠</text>
+					<text class="price-value discount">-¥{{ orderDetail.coffeeCardDiscountAmount }}</text>
+				</view>
 				<view class="price-item total">
 					<text class="price-label">实付金额</text>
 					<text class="price-value total-price">¥{{ orderDetail.payAmount || 0 }}</text>
@@ -787,7 +791,7 @@ $bg-color: #f7f8fa;
 }
 
 .price-value.discount {
-	color: #52c41a;
+	color: #ff4d4f;
 }
 
 .price-value.total-price {

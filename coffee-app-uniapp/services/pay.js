@@ -7,3 +7,8 @@ import { get, post } from '@/utils/request.js'
 export const alipay = (orderId) => {
   return post(`/app/pay/alipay?orderId=${orderId}`)
 }
+
+// 咖啡卡支付
+export const payByCoffeeCard = (orderId) => {
+  return post(`/app/pay/coffee-card?orderId=${orderId}`)
+}

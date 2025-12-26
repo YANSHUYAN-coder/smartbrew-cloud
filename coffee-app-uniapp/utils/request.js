@@ -24,7 +24,8 @@ const responseInterceptor = (response) => {
   if (statusCode === 200) {
     // 根据后端返回的数据结构处理
     if (data.code === 200 || data.success) {
-      return data.data || data
+      // 如果 data 对象有 data 属性（即使值为 null），返回 data.data；否则返回整个 data 对象
+      return ('data' in data) ? data.data : data
     } else {
       uni.showToast({
         title: data.message || '请求失败',

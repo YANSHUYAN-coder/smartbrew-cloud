@@ -192,10 +192,19 @@
 		const currentCartCount = cartItem ? cartItem.quantity : 0
 		const newCount = currentCartCount + delta
 		if (newCount < 0) return
+		// 记录是否是第一次加入购物车（当前购物车数量为0且要增加）
+		const isFirstAdd = currentCartCount === 0 && delta > 0
+		
 		currentTempCount.value = newCount
 		if (delta > 0) {
 			cartStore.addToCart(productWithSku, 1).then(() => {
 				uni.showToast({ title: '已加入购物车', icon: 'success', duration: 1000 })
+				// 只在第一次加入购物车时关闭弹框
+				if (isFirstAdd) {
+					setTimeout(() => {
+						closeModal()
+					}, 500) // 延迟500ms关闭，让用户看到成功提示
+				}
 			}).catch(() => {
 				currentTempCount.value = currentCartCount
 			})

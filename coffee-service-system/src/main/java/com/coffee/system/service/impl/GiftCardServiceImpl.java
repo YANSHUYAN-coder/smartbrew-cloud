@@ -306,6 +306,40 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
     }
 
     /**
+     * 恢复咖啡卡余额（用于订单取消退款）
+     *
+     * @param cardId 咖啡卡ID
+     * @param amount 恢复金额
+     * @param orderId 关联订单ID
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refundBalance(Long cardId, BigDecimal amount, Long orderId) {
+        GiftCard card = this.getById(cardId);
+        if (card == null) {
+            throw new RuntimeException("咖啡卡不存在");
+        }
+
+        // 恢复余额
+        card.setBalance(card.getBalance().add(amount));
+        // 如果咖啡卡之前是已用完状态，现在有余额了，恢复为可用状态
+        if (card.getStatus().equals(GiftCardStatus.USED_UP.getCode())) {
+            card.setStatus(GiftCardStatus.ACTIVE.getCode());
+        }
+        this.updateById(card);
+
+        // 记录退款流水
+        GiftCardTxn txn = new GiftCardTxn();
+        txn.setCardId(cardId);
+        txn.setMemberId(card.getMemberId());
+        txn.setType(2); // 2 -> 退款
+        txn.setAmount(amount); // 正数表示增加
+        txn.setOrderId(orderId);
+        txn.setRemark("订单取消退款 (订单号: " + orderId + ")");
+        giftCardTxnMapper.insert(txn);
+    }
+
+    /**
      * 生成咖啡卡卡号：日期前缀 + 用户ID 尾号 + 随机串
      */
     private String generateCardNo(Long userId) {

@@ -16,6 +16,7 @@ import com.coffee.system.mapper.SmsCouponHistoryMapper;
 import com.coffee.system.mapper.SmsCouponMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.service.SmsCouponService;
+import com.coffee.system.service.UmsMemberIntegrationHistoryService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,9 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
 
     @Autowired
     private SmsCouponHistoryMapper couponHistoryMapper;
+    
+    @Autowired
+    private UmsMemberIntegrationHistoryService integrationHistoryService;
 
     @Override
     public Page<RedeemableCouponVO> listRedeemableCoupons(PageParam pageParam) {
@@ -57,23 +61,34 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
             
             // 检查用户是否已领取（如果用户已登录）
             if (userId != null) {
-                Long redeemedCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
+                // 检查今日已领取数量（每日限领）
+                LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+                LocalDateTime todayEnd = todayStart.plusDays(1);
+                Long todayRedeemedCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
+                        .eq(SmsCouponHistory::getMemberId, userId)
+                        .eq(SmsCouponHistory::getCouponId, coupon.getId())
+                        .ge(SmsCouponHistory::getCreateTime, todayStart)
+                        .lt(SmsCouponHistory::getCreateTime, todayEnd));
+                
+                // 总领取数量（用于显示）
+                Long totalRedeemedCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
                         .eq(SmsCouponHistory::getMemberId, userId)
                         .eq(SmsCouponHistory::getCouponId, coupon.getId()));
-                vo.setRedeemedCount(redeemedCount.intValue());
+                vo.setRedeemedCount(totalRedeemedCount.intValue());
                 
-                // 判断是否已领取（达到限领数量）
+                // 判断是否已领取（每日限领：检查今日是否达到限领数量）
                 if (coupon.getPerLimit() != null && coupon.getPerLimit() > 0) {
-                    boolean isRedeemed = redeemedCount >= coupon.getPerLimit();
+                    // 每日限领：检查今日是否已领取
+                    boolean isRedeemed = todayRedeemedCount >= coupon.getPerLimit();
                     vo.setIsRedeemed(isRedeemed);
-                    log.debug("优惠券ID: {}, 用户ID: {}, 已领取数量: {}, 限领数量: {}, 是否已领取: {}", 
-                        coupon.getId(), userId, redeemedCount, coupon.getPerLimit(), isRedeemed);
+                    log.debug("优惠券ID: {}, 用户ID: {}, 今日已领取: {}, 限领数量: {}, 是否已领取: {}", 
+                        coupon.getId(), userId, todayRedeemedCount, coupon.getPerLimit(), isRedeemed);
                 } else {
                     // 如果没有限领，则只要领取过就认为已领取
-                    boolean isRedeemed = redeemedCount > 0;
+                    boolean isRedeemed = totalRedeemedCount > 0;
                     vo.setIsRedeemed(isRedeemed);
-                    log.debug("优惠券ID: {}, 用户ID: {}, 已领取数量: {}, 无限领限制, 是否已领取: {}", 
-                        coupon.getId(), userId, redeemedCount, isRedeemed);
+                    log.debug("优惠券ID: {}, 用户ID: {}, 总领取数量: {}, 无限领限制, 是否已领取: {}", 
+                        coupon.getId(), userId, totalRedeemedCount, isRedeemed);
                 }
             } else {
                 vo.setRedeemedCount(0);
@@ -132,14 +147,25 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
             throw new RuntimeException("积分不足");
         }
         
-        // 3. 检查限领数量
+        // 3. 检查每日限领数量（每日限领，第二天会刷新）
         if (coupon.getPerLimit() > 0) {
-            Long count = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
+            // 计算今天的开始和结束时间
+            LocalDateTime todayStart = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+            LocalDateTime todayEnd = todayStart.plusDays(1);
+            
+            // 检查今日已领取数量
+            Long todayCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
                     .eq(SmsCouponHistory::getMemberId, userId)
-                    .eq(SmsCouponHistory::getCouponId, couponId));
-            if (count >= coupon.getPerLimit()) {
-                throw new RuntimeException("每人限领" + coupon.getPerLimit() + "张");
+                    .eq(SmsCouponHistory::getCouponId, couponId)
+                    .ge(SmsCouponHistory::getCreateTime, todayStart)
+                    .lt(SmsCouponHistory::getCreateTime, todayEnd));
+            
+            if (todayCount >= coupon.getPerLimit()) {
+                throw new RuntimeException("每日限领" + coupon.getPerLimit() + "张，今日已领取");
             }
+            
+            log.debug("优惠券ID: {}, 用户ID: {}, 今日已领取: {}, 限领数量: {}", 
+                couponId, userId, todayCount, coupon.getPerLimit());
         }
 
         // 4. 扣除积分
@@ -147,6 +173,16 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
         memberMapper.update(null, new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getIntegration, updatedPoints));
+        
+        // 记录积分明细（扣除积分，使用负数）
+        integrationHistoryService.recordIntegrationChange(
+            userId, 
+            2, // 2->兑换优惠券扣除
+            -coupon.getPoints(), // 负数表示扣除
+            "coupon_redeem", 
+            couponId, 
+            String.format("兑换优惠券：%s", coupon.getName())
+        );
 
         // 5. 生成领取记录
         SmsCouponHistory history = new SmsCouponHistory();

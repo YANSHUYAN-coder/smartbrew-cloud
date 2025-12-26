@@ -3,7 +3,7 @@
     <!-- 顶部 Logo 区域 -->
     <view class="header">
       <!-- 已替换为在线咖啡主题 Logo 图片，您可以直接预览效果 -->
-      <image src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=250&auto=format&fit=crop" mode="aspectFit" class="logo"></image>
+      <image src="@/static/logo.png" mode="aspectFit" class="logo"></image>
       <text class="title">{{ isLogin ? '欢迎回来' : '创建账号' }}</text>
       <text class="subtitle">{{ isLogin ? '登录以管理您的咖啡订单' : '注册成为 SmartBrew 会员' }}</text>
     </view>

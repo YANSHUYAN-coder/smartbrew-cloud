@@ -3,7 +3,7 @@
 		<!-- 顶部占位，如果不需要导航栏背景可去掉 -->
 		<view class="status-placeholder"></view>
 		<view class="logo-section">
-			<image src="https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?q=80&w=250&auto=format&fit=crop" mode="aspectFit" class="logo"></image>
+			<image src="@/static/logo.png" mode="aspectFit" class="logo"></image>
 			<text class="app-name">SmartBrew</text>
 			<text class="version">Version 1.0.0</text>
 		</view>

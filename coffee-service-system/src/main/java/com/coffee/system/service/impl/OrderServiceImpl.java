@@ -42,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -602,9 +603,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 increment = 1L;
             }
 
-            // 如果是今天第一个单，设置过期时间为 24 小时 (避免 Redis 堆积垃圾数据)
+            // 如果是今天第一个单，设置过期时间为当天结束时（额外增加1小时缓冲，确保跨天边界也能使用）
             if (increment == 1) {
-                redisTemplate.expire(key, 24, TimeUnit.HOURS);
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime endOfDay = now.toLocalDate().atTime(23, 59, 59).plusSeconds(1);
+                long secondsUntilEndOfDay = ChronoUnit.SECONDS.between(now, endOfDay);
+                // 额外增加 1 小时缓冲，确保在第二天也能使用（处理跨天边界情况）
+                redisTemplate.expire(key, secondsUntilEndOfDay + 3600, TimeUnit.SECONDS);
             }
 
             // 格式化：从 100 开始，显得单子多一点，或者从 1 开始

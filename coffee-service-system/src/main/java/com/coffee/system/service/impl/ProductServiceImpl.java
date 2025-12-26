@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.cache.CacheKeyConstants;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.dto.ProductSearchParam;
 import com.coffee.common.vo.MenuVO;
@@ -18,6 +19,8 @@ import com.coffee.system.service.CategoryService;
 import com.coffee.system.service.ProductService;
 import com.coffee.system.service.SkuStockService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -148,6 +151,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         return result;
     }
 
+    /**
+     * 获取商品详情（缓存）
+     * 缓存原因：查询频率高，数据变化少
+     */
+    @Cacheable(value = CacheKeyConstants.Product.DETAIL, key = "#id")
     @Override
     public ProductDTO getDetail(Long id) {
         Product product = this.getById(id);
@@ -164,6 +172,13 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
 
+    /**
+     * 创建商品（清除菜单和列表缓存）
+     */
+    @CacheEvict(value = {
+        CacheKeyConstants.Product.MENU,
+        CacheKeyConstants.Product.LIST
+    }, allEntries = true)
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean create(ProductDTO productDTO) {
@@ -182,6 +197,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         return success;
     }
 
+    /**
+     * 更新商品（清除相关缓存）
+     */
+    @CacheEvict(value = {
+        CacheKeyConstants.Product.MENU,
+        CacheKeyConstants.Product.DETAIL,
+        CacheKeyConstants.Product.LIST
+    }, allEntries = true)
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean update(ProductDTO productDTO) {
@@ -235,6 +258,11 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .collect(Collectors.groupingBy(product -> categoryMap.get(product.getCategoryId())));
     }
 
+    /**
+     * 获取菜单数据（缓存）
+     * 缓存原因：查询频率极高，数据量大，提升用户体验
+     */
+    @Cacheable(value = CacheKeyConstants.Product.MENU, key = "'menu'")
     @Override
     public MenuVO getMenuVO() {
         // 1. 查询所有上架商品 (status=1)
@@ -242,7 +270,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
                 .eq(Product::getStatus, 1)
                 .orderByDesc(Product::getSales));
 
-        // 2. 查询所有启用的分类
+        // 2. 查询所有启用的分类（已缓存）
         List<Category> categories = categoryService.getEnabledCategories();
 
         // 3. 构建分类列表

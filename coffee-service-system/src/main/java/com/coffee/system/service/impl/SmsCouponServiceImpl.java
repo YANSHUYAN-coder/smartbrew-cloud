@@ -246,6 +246,29 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
         return couponHistoryMapper.selectList(wrapper);
     }
 
+    /**
+     * 退回优惠券
+     * 将 sms_coupon_history 的使用状态重置为 0 (未使用)
+     */
+    @Override
+    public void releaseCoupon(Long couponHistoryId) {
+        if (couponHistoryId == null) return;
+
+        SmsCouponHistory history = new SmsCouponHistory();
+        history.setId(couponHistoryId);
+        history.setUseStatus(0); // 0:未使用, 1:已使用, 2:已过期
+        history.setUseTime(null);
+        history.setOrderId(null); // 清空关联的订单ID
+
+        // 更新字段为 null 时需要注意 MyBatisPlus 的策略，或者手动 update
+        // 这里假设 updateById 能处理 null 更新，或者使用 UpdateWrapper
+        couponHistoryMapper.update(null, new LambdaUpdateWrapper<SmsCouponHistory>()
+                .eq(SmsCouponHistory::getId, couponHistoryId)
+                .set(SmsCouponHistory::getUseStatus, 0)
+                .set(SmsCouponHistory::getUseTime, null)
+                .set(SmsCouponHistory::getOrderId, null));
+    }
+
     private String generateCouponCode(Long memberId) {
         return LocalDateTime.now().format(DateFormatConstants.DATE_COMPACT) 
                 + String.format("%04d", memberId % 10000) 

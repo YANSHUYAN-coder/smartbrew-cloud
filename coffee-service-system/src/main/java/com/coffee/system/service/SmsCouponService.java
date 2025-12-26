@@ -38,4 +38,10 @@ public interface SmsCouponService extends IService<SmsCoupon> {
      * 获取当前用户可用的优惠券（旧方法，保留兼容）
      */
     List<SmsCouponHistory> listMemberCoupons(Integer useStatus);
+
+    /**
+     * 释放/退回优惠券
+     * @param couponHistoryId 优惠券领取记录ID
+     */
+    void releaseCoupon(Long couponHistoryId);
 }

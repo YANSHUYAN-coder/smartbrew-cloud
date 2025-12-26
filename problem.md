@@ -27,3 +27,18 @@
 并不是 RAG 和 Memory 互斥，而是**检索器（Retriever）太笨，不懂上下文**。
 
 所以我们必须多加一层中间件（查询重写），**把“隐含上下文的问题”翻译成“独立完整的查询语句”**，这样检索器才能听懂，RAG 才能和 Memory 完美配合。这就是我们在代码里加 `simpleChatClient` 做重写的根本原因。
+
+
+
+
+
+### Redis客户端之间的冲突
+
+### **为什么会有冲突？**
+
+通知/系统模块:使用spring-boot-starter-data-redis，其默认为Lettuce客户端用于通用缓存和WebSocket会话。
+Al模块:spring-ai-redis (版本1.0.0)依赖Jedis进行向量操作。当两者同时存在时，Spring Boot 的自动配置功能可能会变得混乱，或者Lettuce的配置可能"胜出"，导致AI模块无法获得其所期望的特定VectorStore bean (这需要与Jedis连接)。
+
+### 怎么解决冲突？
+
+手动定义了VectorStore Bean，明确为AI向量存储创建了一个JedisPooled客户端，确保它不与应用程序其余部分使用的Lettuce客户端冲突。

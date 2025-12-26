@@ -1,10 +1,12 @@
 package com.coffee.system.service.impl;
 
 import com.alipay.api.AlipayClient;
+import org.springframework.amqp.core.Message;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.config.RabbitMqConfig;
 import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.CreateOrderRequest;
@@ -30,6 +32,8 @@ import com.coffee.common.dict.GiftCardStatus;
 import com.coffee.system.domain.entity.OmsCartItem;
 import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
 import com.coffee.system.domain.entity.UmsMember;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +42,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.MessagePostProcessor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -84,6 +89,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Value("${alipay.notify-url}")
     private String notifyUrl;
 
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
     /**
      * 获取所有订单列表（包含商品明细）
      * @param pageParam
@@ -519,7 +526,37 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         // 注意：咖啡卡支付不再在创建订单时立即扣减，改为在支付时扣减
         // 优惠券在创建订单时已经使用，如果订单取消需要恢复
 
+        // 假设订单创建成功，orderId 为新生成的订单ID
+        Long orderId = order.getId();
+
+        // 【新增】发送延迟消息，15分钟后检查订单是否支付
+        sendDelayMessage(orderId);
+
         return order;
+    }
+
+    /**
+     * 发送订单超时取消的延迟消息
+     */
+    private void sendDelayMessage(Long orderId) {
+        // 延迟时间：15分钟 (毫秒)
+        // int delayTime = 15 * 60 * 1000;
+        int delayTime = 30 * 1000; // 测试用：30秒
+
+        rabbitTemplate.convertAndSend(
+                RabbitMqConfig.DELAY_EXCHANGE_NAME,
+                RabbitMqConfig.ORDER_TIMEOUT_ROUTING_KEY,
+                orderId, // 消息内容：订单ID
+                new MessagePostProcessor() {
+                    @Override
+                    public Message postProcessMessage(Message message) throws AmqpException {
+                        // 设置延迟头
+                        message.getMessageProperties().setDelay(delayTime);
+                        return message;
+                    }
+                }
+        );
+        log.info("订单创建成功，发送延迟取消消息。OrderId: {}, Delay: {}ms", orderId, delayTime);
     }
 
     @Override

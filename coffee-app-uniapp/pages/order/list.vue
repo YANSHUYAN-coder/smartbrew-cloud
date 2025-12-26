@@ -314,8 +314,6 @@ const loadOrderList = async (reset = false) => {
         
         // 调试：打印订单数据，检查 orderType 字段
         if (records.length > 0) {
-            console.log('订单列表数据示例:', records[0])
-            console.log('订单 orderType 字段:', records[0].orderType, 'deliveryCompany:', records[0].deliveryCompany)
         }
         
         if (reset) {

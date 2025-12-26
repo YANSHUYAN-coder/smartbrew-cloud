@@ -240,7 +240,6 @@ const sendMessage = async () => {
   try {
     // 2. 调用后端 API
     const responseText = await chatWithAi(text)
-	console.log("responseText",responseText);
     
     // 3. 模拟打字机效果显示 AI 回复
     isLoading.value = false

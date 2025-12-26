@@ -242,7 +242,6 @@ const fillFormFromStore = () => {
 const refreshUserInfo = async () => {
   try {
     const res = await getUserInfo()
-	console.log("res:",res);
     if (res) {
       // 同步更新 store
       userStore.setUser(userStore.token, res)

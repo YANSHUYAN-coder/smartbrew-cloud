@@ -203,7 +203,6 @@
 					// 记录相对于第一个 section 的位置
 					const baseTop = data[0].top
 					categoryTops.value = data.map(item => item.top - baseTop)
-					console.log('各分类位置', categoryTops.value)
 				}
 			}).exec()
 		})
@@ -304,7 +303,6 @@
 		try {
 			loading.value = true
 			const menuData = await getMenuVO()
-			console.log("后端返回的菜单数据", menuData)
 			
 			// 直接使用后端返回的数据，无需转换
 			if (menuData && menuData.categories && menuData.products) {
@@ -364,9 +362,6 @@
 				// 数据加载后，计算各分类位置以实现左右联动
 				calcCategoryTops()
 			}
-			
-			console.log("分类列表", categories.value)
-			console.log("商品列表", allProducts.value)
 			return true
 		} catch (error) {
 			console.error("获取菜单数据失败", error)

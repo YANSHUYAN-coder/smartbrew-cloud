@@ -60,8 +60,12 @@ public class AdminProductController {
     @PostMapping("/updateStatus")
     @PreAuthorize("hasAuthority('pms:product:status')")
     public Result<String> updateStatus(@RequestBody Product product) {
+        // 建议增加参数校验
+        if (product.getId() == null || product.getStatus() == null) {
+            return Result.failed("参数错误");
+        }
         // 只需要传 id 和 status
-        boolean success = productService.updateById(product);
+        boolean success = productService.updateStatus(product.getId(), product.getStatus());
         return success ? Result.success("状态更新成功") : Result.failed("状态更新失败");
     }
 

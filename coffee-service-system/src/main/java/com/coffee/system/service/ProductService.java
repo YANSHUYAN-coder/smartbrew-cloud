@@ -58,4 +58,9 @@ public interface ProductService extends IService<Product> {
     MenuVO getMenuVO();
 
     ProductDetailVO getMenuDetail(Long id);
+
+    /**
+     * 更新商品状态（上下架）
+     */
+    boolean updateStatus(Long id, Integer status);
 }

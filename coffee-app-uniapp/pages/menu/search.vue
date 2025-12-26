@@ -221,7 +221,6 @@
 	}
 
 	const goBack = () => {
-        console.log("11");
         
 		uni.navigateBack()
 	}

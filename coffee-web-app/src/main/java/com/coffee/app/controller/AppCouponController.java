@@ -1,4 +1,4 @@
-package com.coffee.system.controller.app;
+package com.coffee.app.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.coffee.common.dto.PageParam;

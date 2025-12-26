@@ -13,6 +13,7 @@ public class CacheKeyConstants {
         private static final String PREFIX = "product:";
         public static final String LIST = PREFIX + "list"; // 商品列表
         public static final String DETAIL = PREFIX + "detail:"; // 商品详情，需要拼接 ID
+        public static final String APP_DETAIL = PREFIX + "app:detail:"; // C端商品详情(包含规格)，需要拼接 ID -> 新增这个
         public static final String MENU = PREFIX + "menu"; // 菜单数据
     }
     

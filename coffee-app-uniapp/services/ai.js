@@ -19,6 +19,5 @@ export const getChatHistory = () => {
  * 清空聊天历史
  */
 export const clearChatHistory = () => {
-	console.log("清空聊天历史");
   return post('/coffee/chat/clear')
 }

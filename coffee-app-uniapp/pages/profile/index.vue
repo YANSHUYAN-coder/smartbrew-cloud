@@ -241,14 +241,12 @@
 	// 加载个人中心数据
 	const loadProfileData = async () => {
 		userInfo.value = userStore.userInfo
-		console.log("userInfo", userInfo.value);
 		
 		// 如果已登录，加载所有统计数据
 		if (userStore.isLogin) {
 			try {
 				// 1. 加载统计信息（积分、优惠券、订单统计、会员等级）
 				const statsRes = await getProfileStatistics()
-				console.log('统计信息响应:', statsRes)
 				
 				// 处理响应数据（request.js 已经解析了 data.data，这里直接使用 statsRes）
 				const statsData = statsRes || {}
@@ -269,7 +267,6 @@
 						}
 					}
 					
-					console.log('更新后的 profileStats:', profileStats.value)
 					
 					// 更新积分显示
 					const integrationIndex = stats.value.findIndex(s => s.label === '积分')
@@ -335,7 +332,6 @@
 	})
 
 	onLoad(() => {
-		console.log('我的页面加载')
 	})
 	
 	onShow(() => {

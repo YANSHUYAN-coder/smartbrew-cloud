@@ -22,7 +22,7 @@ const getBaseUrl = () => {
   // #ifdef APP-PLUS
   // APP 环境：必须使用完整的 HTTP URL
   return process.env.NODE_ENV === 'development'
-    ? `http://${DEV_IP}:${DEV_PORT}/api`  // 开发环境
+    ? `http://6882edb6.r36.cpolar.top/api`  // 开发环境
     : `${PROD_DOMAIN}/api`  // 生产环境
   // #endif
 

@@ -1,57 +1,11 @@
+# coffee-web-app/src/main/resources/application.yml
+
 server:
-  port: 8081 # App端端口
-  servlet:
-    context-path: /api
+  port: 8081 # 独有端口
 
 spring:
   application:
-    name: coffee-app
-  profiles:
-    include: ai
+    name: coffee-app # 独有应用名
   config:
     import:
-      - optional:classpath:common-config.yml  # 导入通用配置
-
-  # AI 配置 (通义千问)
-  ai:
-    dashscope:
-      api-key: ${AI_API_KEY:sk-your-api-key-here} # 从环境变量获取，或直接填写
-      chat:
-        options:
-          model: qwen-turbo # 模型选择
-
-  # 数据库配置 (需修改为你本地的 MySQL)
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/coffee_cloud?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
-
-# MyBatis Plus 配置
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  configuration:
-    map-underscore-to-camel-case: true
-
-# 日志配置
-logging:
-  level:
-    com.coffee: debug
-    org.springframework.ai: debug
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
-
-# 高德地图
-amap:
-  key: f5ca3cdf9f9acf90ac8fa849446a0f15
-
-# 沙箱支付
-alipay:
-  gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do  # 沙箱网关（官方文档地址）
-  app-id: 9021000151646402  # 移动应用 APPID
-  merchant-private-key: MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDnnIVPYpdzvjP7AvTn8ZnG1aBYHIn0icjYSktrqpHlPkfk8nLSqesxeVW2i+KaK9yz5JNrszK6g3h4P6dosoHuyF9H3NjNPcjWtBJwNOEJphy7CKAuo4AK11hcejrGRdfELRJpsv4qojeQiIlQNkdhZ4dRK0D7ODZB9cMJoYL2L/35mw7N94uNslZ3mCjF2PFSwjBg3qNB7Doyls/S//LukeP+6BVHLZsvk2h3NLjGPRx9NRz5S/MCv0jrq5ZB2SmGsPgMVA0YEIdw9vIomDg7/VB1yADqD/qWLcPvQUw51KE5pKmFyVJci86PFGdx9thABWWx9et7/skexPhr8UA3AgMBAAECggEACkJlqVGNsePP+6Ny479Q93zJAH4rIjjkO6h21MsWcVgj6SFQMsKyF1vvjwl9PSUKPrG2UgP7EEX4lSMEsF+P39riVZWTyOuetNv/IRdGjJ3eEe7c4ZP+fPxy/o2vgs7fMuJoOWRjW9IZsf5KTtJIsSjb1p2a4EXqKVvQiuGromoCOE1ivJR4bMHAijrZt85HBX5empL3exQSv5NJ5muL93RWn8/tL6yJWeAS8JvXMBXWlG0GfUBovalLswARbSMBH8kiyjQsK57uXKjUHV5Qm1BC3SnJJcWrPlb5w+VHoUiwArPvTR0rkkPI6jNwZ70xgjyIxRSAd6Twpbvlztm14QKBgQD9Mgs1gw/Avo9z8b1PT8DU0lSxWwRf05d2idpKeyFEDOqLxj2KIY0NQLg+eJbEFdDJ8uCfYkXPP5Vi2TDrYHbcJ7O5P68dE3nRPqajopq/zZh7GQ5O9ktyOWYUDPL6xtLYT3G929PjyC/Uc0uD59lULdvcKH/uXIxQD1SNWnPDMQKBgQDqLUYI6lMzYEXHoM4ROWxuW3Gh3FsCFQoWUbHllA+A2VZiWWwb5KjXcVT2nGYQj+F2DjNtx8yOSH7gfY5LiOWWDb+Nsdbnvy2vcUK/B5VqLZb+rvHAzmTDRNzXlBUKPAo5fgBNXkE11qSJf32Gk8NH+rOLr/k/ViyESduDyEBP5wKBgEuFjcpcWWqIbImM5YaupznTsudj2p4qotb8r1vf9kAyChO/AcQd1dDKKSqZFX9PcoOKKm3gBiqXMJvXZLwQfeOVBAqRcE4f7Qn4wgO1EKt9S6oMAzSSSla7wDLi2ebrPyC+MZML6tvabknUSgYCNdTiCN5WRjJ28HNA31t6S2VBAoGADivbNyLnEg7bai9DCSvOcgc6oy7wmvmm+J7NAzWokoWUgrMipbV6uj7zg1EHpCzw2fIWDqiuqlWcx/0RJWUNb705QFvow3GAVEOoZGMTGa/UmWkA3EghNOfv7WPauhnUDJKhdg0kKRvqLR/3+rLqeGqlfuiRTtHqM788d4cgzTUCgYEAwRbdOZ4eO5uf2TbuyiyKPSF6+Z3llC5sepQzDPffkEzLQxELvaCQOW2mjKFydDr4zGYp3CDmJkCgdo/kngIVDQDNRPOAofcoe9q6Jv134sNBdLf2fq97YqJqSERipKEr5Ip72nf5C4Pwnz1q7e8H9ksL1IxktmjKbPVAaHxmVcA=
-  alipay-public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1IwOy71oGV6G95/ynQyhAJamEaBH9BIA9PErbDqh7Xy7jMEAU6eHZpOi/d4elI2OxhHhMM+ngxSnbxKxfl21pEz6y6dEm1obw8QbmaG57f3R3JNoLGefrmvgUFce5q1ERf5Cq66YIEbXML6RcNrlYjRrT/Ha/my9+BESI4BQw43MqmI34+PqWAhVMsFJ6E3pFrgxox8KmQxYVt0Bjd53kpEmbneKXMxPcFDB3eI7M3d66T4pgJGC4Y47DnQh2JANo6gbtCAKi2VICqoz2yf9lNkW/J+78Q9P6htJ+V9EsIphJKAa6M7P2beWgNc5qj2HGD/99BZeZUNF7Z5qdNk4RQIDAQAB
-  notify-url: https://6972ad0c.r36.cpolar.top/api/app/pay/notify
-  charset: UTF-8
-  format: json
-  sign-type: RSA2
+      - optional:classpath:common-config.yml # 核心：导入通用配置

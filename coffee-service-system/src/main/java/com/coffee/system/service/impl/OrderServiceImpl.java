@@ -540,8 +540,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
      */
     private void sendDelayMessage(Long orderId) {
         // 延迟时间：15分钟 (毫秒)
-        // int delayTime = 15 * 60 * 1000;
-        int delayTime = 30 * 1000; // 测试用：30秒
+         int delayTime = 15 * 60 * 1000;
+        //int delayTime = 30 * 1000; // 测试用：30秒
 
         rabbitTemplate.convertAndSend(
                 RabbitMqConfig.DELAY_EXCHANGE_NAME,

@@ -43,10 +43,10 @@ public class OrderTimeOutListener {
             OmsOrder order = orderService.getById(orderId);
             
             // 2. 只有“待支付”状态的订单才需要取消
-            if (order != null && order.getStatus() == OrderStatus.PENDING_PAYMENT.getValue()) {
+            if (order != null && order.getStatus() == OrderStatus.PENDING_PAYMENT.getCode()) {
                 
                 // 2.1 修改订单状态为“已取消”
-                order.setStatus(OrderStatus.CANCELLED.getValue());
+                order.setStatus(OrderStatus.CANCELLED.getCode());
                 order.setCancelReason("订单超时未支付，自动取消");
                 orderService.updateById(order);
 
@@ -70,7 +70,7 @@ public class OrderTimeOutListener {
             log.error("处理订单超时消息异常: {}", e.getMessage(), e);
             // 发生异常，拒绝消息并重新入队 (requeue=true)，或者进入死信队列人工处理
             // 这里简单演示重新入队，生产环境建议有最大重试次数限制
-            channel.basicReject(message.getMessageProperties().getDeliveryTag(), true);
+            channel.basicReject(message.getMessageProperties().getDeliveryTag(), false);
         }
     }
 }

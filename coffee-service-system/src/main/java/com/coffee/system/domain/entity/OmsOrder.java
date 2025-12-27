@@ -104,6 +104,11 @@ public class OmsOrder extends BaseEntity implements Serializable {
 
     @TableField("note")
     private String note;
+    /**
+     * 订单取消原因 (新增这个字段)
+     */
+    @TableField("cancel_reason")
+    private String cancelReason;
 
     @TableField("confirm_status")
     private Integer confirmStatus;

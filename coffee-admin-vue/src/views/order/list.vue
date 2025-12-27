@@ -56,7 +56,7 @@
             <el-button v-if="scope.row.status === 1" type="primary" size="small" @click="updateStatus(scope.row, 2)">开始制作</el-button>
             <el-button v-if="scope.row.status === 2" type="success" size="small" @click="updateStatus(scope.row, 3)">制作完成</el-button>
             <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="updateStatus(scope.row, 4)">通知取餐</el-button>
-            <el-button v-if="scope.row.status === 0" type="danger" size="small">取消订单</el-button>
+            <el-button v-if="scope.row.status === 0" type="danger" size="small" @click="updateStatus(scope.row, 5)">取消订单</el-button>
           </template>
         </el-table-column>
       </el-table>

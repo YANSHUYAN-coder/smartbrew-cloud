@@ -18,13 +18,33 @@ spring:
 
   # 3. RabbitMQ 配置 (共用)
   rabbitmq:
-    host: 192.168.14.128  # 虚拟机IP
+    host: 192.168.14.128
     port: 5672
     username: admin
     password: 12345678
+    # 【新增】生产者发布确认：确保消息到达交换机 (Exchange)
+    publisher-confirm-type: correlated
+    # 【新增】生产者回退机制：确保消息从交换机到达队列 (Queue)
+    publisher-returns: true
+    template:
+      # 【新增】强制投递：如果消息无法路由到队列，会退回给生产者（而不是直接丢弃）
+      mandatory: true
     listener:
       simple:
+        # 【保持】消费者手动确认：确保业务逻辑执行成功后再告诉 MQ
         acknowledge-mode: manual
+        # 预取数量：控制消费者一次拉取多少条（防止一次拉太多处理不过来）
+        prefetch: 1
+        retry:
+          enabled: true
+          # 最大重试次数：3次（包含第1次调用，即：1次正常 + 2次重试）
+          max-attempts: 3
+          # 初始间隔：1000ms (1秒)
+          initial-interval: 1000ms
+          # 间隔倍数：每次重试间隔 * 2 (例如：1s -> 2s -> 4s)
+          multiplier: 2
+          # 最大间隔：10秒 (防止倍数乘得太大)
+          max-interval: 10000ms
 
 # 4. MinIO 配置
 minio:

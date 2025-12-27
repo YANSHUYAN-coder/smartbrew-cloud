@@ -323,7 +323,7 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
      * 修复重点：添加 @Cacheable，使用独立的 Key 避免与管理端冲突
      */
     @Override
-    @Cacheable(value = CacheKeyConstants.Product.APP_DETAIL, key = "#id")
+    @Cacheable(value = CacheKeyConstants.Product.APP_DETAIL, key = "#id",sync = true)
     public ProductDetailVO getMenuDetail(Long id) {
         // 1. 查商品基本信息
         Product product = this.getById(id);

@@ -20,6 +20,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Redis 缓存配置
@@ -67,11 +69,22 @@ public class RedisCacheConfig {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer())) // Key 使用 String 序列化
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(serializer)) // Value 使用 JSON 序列化 (带类型)
-                .disableCachingNullValues(); // 不缓存 null 值
+                        .fromSerializer(serializer)); // Value 使用 JSON 序列化 (带类型)
+                // .disableCachingNullValues(); // 注释掉这行，允许缓存 null
+
+        // 2. 定义特殊缓存的配置 Map
+        Map<String, RedisCacheConfiguration> initialCacheConfigurations = new HashMap<>();
+
+        // 【重点】给用户信息 (CacheKeyConstants.User.INFO) 设置 7 天过期
+        // 注意：这里的 Key 字符串必须和你 @Cacheable(value="...") 里的 value 一模一样
+        initialCacheConfigurations.put("user:info", config.entryTtl(Duration.ofDays(7)));
+
+        // 如果有字典数据，可以设置永久或更长
+        initialCacheConfigurations.put("system:dict", config.entryTtl(Duration.ofDays(30)));
 
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(config)
+                .withInitialCacheConfigurations(initialCacheConfigurations)
                 .build();
     }
 

@@ -344,3 +344,39 @@ public ProductDetailVO getMenuDetailWithLogicalExpire(Long id) {
 }
 ```
 
+### 订单超时未支付自动取消”功能
+
+#### 第一步：发送延迟消息（生产者）
+
+**位置**：`OrderServiceImpl.java` -> `sendDelayMessage` 方法
+
+当你调用 `createOrder` 创建订单成功后，代码执行了以下操作：
+
+1. **发送时机**：订单入库后，事务提交前（或内）。
+2. **发送内容**：只发送了 `orderId`（订单ID）。
+3. **设置延迟**：
+   - 代码逻辑：`message.getMessageProperties().setDelay(time)`。
+   - 逻辑意图：告诉 RabbitMQ，“这条消息你先帮我拿着，**30分钟**（或者你配置的时间）后再投递出去”。
+
+#### 第二步：等待与投递（RabbitMQ 服务端）
+
+- 消息到达 `order.delay.exchange` 后，**不会**立即进入队列。
+- 它会保存在 Mnesia 数据库（插件内部机制）中等待。
+- 倒计时结束（比如 30分钟后），交换机才会把消息路由到 `order.timeout.queue`。
+
+#### 第三步：处理超时逻辑（消费者）
+
+**位置**：`OrderTimeOutListener.java`
+
+消费者监听 `order.timeout.queue`，收到消息后执行以下逻辑：
+
+1. **查单**：根据 `orderId` 查询数据库中的订单状态。
+2. **判断**：
+   - **如果订单已支付**：说明用户在 30 分钟内付钱了，消息直接丢弃（Ack），什么都不做。
+   - **如果订单还是“待支付”**：说明用户超时了。
+3. **执行取消**：
+   - 修改订单状态为 `CANCELLED` (已取消)。
+   - 写取消原因：“订单超时未支付，自动取消”。
+   - **回滚库存**：调用 `SkuStockService.releaseStock` 把占用的库存还回去。
+   - **退回优惠券**：调用 `SmsCouponService.releaseCoupon` 把用户用的券还回去。
+4. **确认消息**：最后手动调用 `channel.basicAck` 告诉 MQ 任务完成。

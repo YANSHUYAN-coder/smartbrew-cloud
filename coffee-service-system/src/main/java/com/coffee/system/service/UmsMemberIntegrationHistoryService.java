@@ -29,5 +29,14 @@ public interface UmsMemberIntegrationHistoryService extends IService<UmsMemberIn
      * @return 积分明细列表
      */
     Page<IntegrationHistoryVO> getMyIntegrationHistory(PageParam pageParam);
+
+    /**
+     * 【新增】检查该订单是否已经发放过积分
+     * 用于保证 RabbitMQ 消费的幂等性
+     *
+     * @param orderId 订单ID
+     * @return true=已发放过, false=未发放
+     */
+    boolean hasRecord(Long orderId);
 }
 

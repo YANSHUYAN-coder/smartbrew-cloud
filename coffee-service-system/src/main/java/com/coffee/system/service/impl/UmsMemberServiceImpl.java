@@ -28,6 +28,7 @@ import com.coffee.system.mapper.UmsUserRoleMapper;
 import com.coffee.system.service.OrderService;
 import com.coffee.system.service.UmsMemberService;
 import com.coffee.system.domain.entity.OmsOrder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -45,6 +46,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember> implements UmsMemberService {
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -103,6 +105,7 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
     public boolean removeById(Serializable id) {
         return super.removeById(id);
     }
+
     @Override
     public Page<UmsMember> getList(PageParam pageParam, String phone) {
         Page<UmsMember> memberPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
@@ -214,9 +217,13 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         //2.加密：使用 passwordEncoder.encode 加密新密码。
         member.setPassword(passwordEncoder.encode(param.getNewPassword()));
         //3.更新：写入数据库。
-        return self.update(new LambdaUpdateWrapper<UmsMember>()
+        boolean success = self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getPassword, member.getPassword()));
+        if (success){
+            self.clearUserCache(userId);
+        }
+        return success;
     }
 
     @Override
@@ -227,9 +234,13 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             throw new RuntimeException("用户未登录");
         }
         // 使用 UpdateWrapper 只需要操作一次数据库，比先查再改更高效
-        return self.update(new LambdaUpdateWrapper<UmsMember>()
+        boolean success = self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
-                .set(UmsMember::getStatus, 0)); // 0 表示禁用/注销
+                .set(UmsMember::getStatus, 0));
+        if (success) {
+            self.clearUserCache(userId);
+        }
+        return success; // 0 表示禁用/注销
     }
 
     @Override
@@ -271,9 +282,12 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
             throw new RuntimeException("用户不存在");
         }
         String url = minioUtil.uploadAvatar(file);
-        self.update(new LambdaUpdateWrapper<UmsMember>()
+        boolean success = self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getAvatar, url));
+        if (success) {
+            self.clearUserCache(userId);
+        }
     }
 
     @Override
@@ -325,13 +339,13 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         // 4. 构建返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("integration", member.getIntegration() != null ? member.getIntegration() : 0); // 积分
-        
+
         // 查询当前用户可用的优惠券数量（useStatus=0 未使用）
         Long couponCount = couponHistoryMapper.selectCount(new LambdaQueryWrapper<SmsCouponHistory>()
                 .eq(SmsCouponHistory::getMemberId, userId)
                 .eq(SmsCouponHistory::getUseStatus, 0));
         result.put("couponCount", couponCount); // 优惠券数量
-        
+
         result.put("growth", member.getGrowth() != null ? member.getGrowth() : 0); // 成长值
         result.put("levelId", member.getLevelId()); // 会员等级ID
         result.put("levelName", level != null ? level.getName() : "普通会员"); // 会员等级名称
@@ -376,13 +390,40 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         }
         int currentGrowth = member.getGrowth() != null ? member.getGrowth() : 0;
         int newGrowth = currentGrowth + growth;
-        self.update(new LambdaUpdateWrapper<UmsMember>()
+        boolean success = self.update(new LambdaUpdateWrapper<UmsMember>()
                 .eq(UmsMember::getId, userId)
                 .set(UmsMember::getGrowth, newGrowth));
-        
+        if (success) {
+            self.clearUserCache(userId);
+        }
+
         // 成长值增加后，检查是否需要升级
         checkAndUpdateLevel(userId);
         return true;
+    }
+
+    /**
+     * 增加积分 (并清理缓存)
+     *
+     * @param userId
+     * @param integration
+     */
+    @Override
+    public boolean addIntegration(Long userId, Integer integration) {
+        if (userId == null || integration == null || integration == 0) {
+            return false;
+        }
+
+        // 1. 简单做法：直接在数据库层做加法 (原子性更好，防止并发覆盖)
+        // update ums_member set integration = integration + ? where id = ?
+        boolean success = self.update(new LambdaUpdateWrapper<UmsMember>()
+                .eq(UmsMember::getId, userId)
+                .setSql("integration = integration + " + integration));
+        // 2. 【核心】清理缓存
+        if (success) {
+            self.clearUserCache(userId);
+        }
+        return success;
     }
 
     @Override
@@ -392,16 +433,16 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
         if (member == null || member.getGrowth() == null) {
             return false;
         }
-        
+
         int currentGrowth = member.getGrowth();
-        
+
         // 查询所有启用的会员等级，按成长值门槛降序排列
         List<UmsMemberLevel> levels = memberLevelMapper.selectList(
                 new LambdaQueryWrapper<UmsMemberLevel>()
                         .eq(UmsMemberLevel::getStatus, 1)
                         .orderByDesc(UmsMemberLevel::getGrowthPoint)
         );
-        
+
         // 找到用户当前成长值能达到的最高等级
         UmsMemberLevel targetLevel = null;
         for (UmsMemberLevel level : levels) {
@@ -410,16 +451,28 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
                 break;
             }
         }
-        
+
         // 如果找到了新等级，且与当前等级不同，则更新
-        if (targetLevel != null && 
-            (member.getLevelId() == null || !targetLevel.getId().equals(member.getLevelId()))) {
-            self.update(new LambdaUpdateWrapper<UmsMember>()
+        if (targetLevel != null &&
+                (member.getLevelId() == null || !targetLevel.getId().equals(member.getLevelId()))) {
+            boolean Success = self.update(new LambdaUpdateWrapper<UmsMember>()
                     .eq(UmsMember::getId, userId)
                     .set(UmsMember::getLevelId, targetLevel.getId()));
+            if (Success) {
+                self.clearUserCache(userId);
+            }
             return true; // 升级了
         }
-        
+
         return false; // 没有升级
+    }
+
+    /**
+     * 专门用于清理缓存的空方法
+     */
+    @CacheEvict(value = CacheKeyConstants.User.INFO, key = "#userId")
+    public void clearUserCache(Long userId) {
+        // 什么都不用做，注解会帮你删缓存
+        log.info("触发缓存清理: {}", userId);
     }
 }

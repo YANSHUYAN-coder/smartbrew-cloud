@@ -63,7 +63,36 @@ public class UmsMemberIntegrationHistoryServiceImpl
         
         return voPage;
     }
-    
+
+    /**
+     * 【新增】检查该订单是否已经发放过积分
+     * 用于保证 RabbitMQ 消费的幂等性
+     *
+     * @param orderId 订单ID
+     * @return true=已发放过, false=未发放
+     */
+    @Override
+    public boolean hasRecord(Long orderId) {
+        if (orderId == null) {
+            return false;
+        }
+
+        // 查询条件：订单ID匹配
+        // 注意：这里假设你的实体类字段名为 orderId。
+        // 如果你的实体类使用的是通用的 sourceId，请改为 .eq(UmsMemberIntegrationHistory::getSourceId, orderId)
+        LambdaQueryWrapper<UmsMemberIntegrationHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UmsMemberIntegrationHistory::getSourceId, orderId);
+
+        // 可选：如果你同一个订单有多种积分变动类型，建议加上类型限制
+        // 3 代表订单完成获得的积分 (根据你Listener里的 recordIntegrationChange 调用推断)
+         wrapper.eq(UmsMemberIntegrationHistory::getChangeType, 3);
+
+        // selectCount 比 selectList 效率更高，只返回数量
+        long count = this.count(wrapper);
+
+        return count > 0;
+    }
+
     /**
      * 获取变动类型描述
      */

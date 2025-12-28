@@ -250,6 +250,8 @@
 				
 				// 处理响应数据（request.js 已经解析了 data.data，这里直接使用 statsRes）
 				const statsData = statsRes || {}
+				console.log('statsData',statsData);
+				
 				
 				if (statsData) {
 					// 更新 profileStats

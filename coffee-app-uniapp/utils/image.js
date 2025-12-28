@@ -16,7 +16,7 @@ export function convertImageUrl(imageUrl) {
   }
   
   // 如果是 MinIO 的 URL（包含 192.168.248.128:9000），转换为代理 URL
-  if (imageUrl.includes('192.168.14.128:9000') || imageUrl.includes('coffee-bucket')) {
+  if (imageUrl.includes('192.168.248.128:9000') || imageUrl.includes('coffee-bucket')) {
     // 使用后端代理接口
     const proxyUrl = `${BASE_URL}/app/image/proxy?url=${encodeURIComponent(imageUrl)}`
     return proxyUrl

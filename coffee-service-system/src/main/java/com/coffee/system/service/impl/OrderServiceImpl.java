@@ -1,6 +1,7 @@
 package com.coffee.system.service.impl;
 
 import com.alipay.api.AlipayClient;
+import com.coffee.system.service.*;
 import org.springframework.amqp.core.Message;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -17,12 +18,6 @@ import com.coffee.system.domain.entity.OmsOrderItem;
 import com.coffee.system.domain.vo.OrderVO;
 import com.coffee.system.mapper.OmsOrderMapper;
 import com.coffee.system.mapper.OrderItemMapper;
-import com.coffee.system.service.CartService;
-import com.coffee.system.service.GiftCardService;
-import com.coffee.system.service.OrderService;
-import com.coffee.system.service.UmsMemberReceiveAddressService;
-import com.coffee.system.service.UmsMemberService;
-import com.coffee.system.service.UmsMemberIntegrationHistoryService;
 import com.coffee.system.domain.entity.SmsCouponHistory;
 import com.coffee.system.domain.entity.SmsCoupon;
 import com.coffee.system.mapper.SmsCouponHistoryMapper;
@@ -75,24 +70,23 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     private UmsMemberService memberService;
 
     @Autowired
-    private AlipayClient alipayClient;
-    
-    @Autowired
     private SmsCouponHistoryMapper couponHistoryMapper;
-    
+
     @Autowired
     private SmsCouponMapper couponMapper;
-    
+
     @Autowired
     private UmsMemberIntegrationHistoryService integrationHistoryService;
 
-    @Value("${alipay.notify-url}")
-    private String notifyUrl;
-
     @Autowired
     private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private SmsCouponService smsCouponService;
+
     /**
      * 获取所有订单列表（包含商品明细）
+     *
      * @param pageParam
      * @param status
      * @return
@@ -114,17 +108,17 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             List<Long> orderIds = page.getRecords().stream()
                     .map(OmsOrder::getId)
                     .collect(Collectors.toList());
-            
+
             // 批量查询所有订单项
             List<OmsOrderItem> allItems = orderItemMapper.selectList(
                     new LambdaQueryWrapper<OmsOrderItem>()
                             .in(OmsOrderItem::getOrderId, orderIds)
             );
-            
+
             // 按订单ID分组
             Map<Long, List<OmsOrderItem>> itemsMap = allItems.stream()
                     .collect(Collectors.groupingBy(OmsOrderItem::getOrderId));
-            
+
             // 构建 OrderVO 列表
             List<OrderVO> voList = page.getRecords().stream().map(order -> {
                 OrderVO orderVO = new OrderVO();
@@ -133,7 +127,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
                 return orderVO;
             }).collect(Collectors.toList());
-            
+
             voPage.setRecords(voList);
         }
 
@@ -143,6 +137,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
     /**
      * 获取订单详情
+     *
      * @param id
      * @return
      */
@@ -160,6 +155,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
     /**
      * 更新订单状态
+     *
      * @param params
      * @return
      */
@@ -168,121 +164,41 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     public boolean updateStatus(Map<String, Object> params) {
         Long id = Long.valueOf(params.get("id").toString());
         Integer status = Integer.valueOf(params.get("status").toString());
-        
+
         // 查询订单信息
         OmsOrder order = this.getById(id);
         if (order == null) {
             return false;
         }
-        
+
         // 更新订单状态
         boolean updateResult = this.update(new LambdaUpdateWrapper<OmsOrder>()
                 .eq(OmsOrder::getId, id)
                 .set(OmsOrder::getStatus, status));
-        
+
         // 如果订单状态更新为已取消，恢复优惠券和咖啡卡余额
         if (updateResult && status == OrderStatus.CANCELLED.getCode()) {
             // 恢复优惠券
-            if (order.getCouponId() != null) {
-                try {
-                // 查找该订单使用的优惠券历史记录
-                SmsCouponHistory couponHistory = couponHistoryMapper.selectOne(
-                    new LambdaQueryWrapper<SmsCouponHistory>()
-                        .eq(SmsCouponHistory::getOrderId, id)
-                        .eq(SmsCouponHistory::getUseStatus, 1) // 已使用状态
-                );
-                
-                if (couponHistory != null) {
-                    // 恢复优惠券状态为未使用
-                    couponHistory.setUseStatus(0); // 未使用
-                    couponHistory.setUseTime(null);
-                    couponHistory.setOrderId(null);
-                    couponHistory.setOrderSn(null);
-                    couponHistoryMapper.updateById(couponHistory);
-                    
-                    // 减少优惠券的使用数量（更新 sms_coupon 表）
-                    couponMapper.update(null, new LambdaUpdateWrapper<SmsCoupon>()
-                        .eq(SmsCoupon::getId, order.getCouponId())
-                        .setSql("use_count = GREATEST(use_count - 1, 0)") // 确保不会小于0
-                    );
-                    
-                    log.info("订单取消，恢复优惠券成功，订单ID: {}, 优惠券ID: {}, 优惠券历史ID: {}", 
-                        id, order.getCouponId(), couponHistory.getId());
-                }
-                } catch (Exception e) {
-                    log.error("订单取消时恢复优惠券失败: 订单ID={}", id, e);
-                    // 不影响订单状态更新，只记录日志
-                    // 必须抛出异常，触发事务回滚！
-                    throw new RuntimeException("退款失败，系统异常");
-                }
-            }
-            
+            smsCouponService.releaseCoupon(order.getCouponId());
+
             // 恢复咖啡卡余额（如果使用咖啡卡支付）
             if (order.getCoffeeCardId() != null && order.getPayType() != null && order.getPayType() == 3 && order.getPayAmount() != null) {
                 try {
                     giftCardService.refundBalance(order.getCoffeeCardId(), order.getPayAmount(), id);
-                    log.info("订单取消，恢复咖啡卡余额成功，订单ID: {}, 咖啡卡ID: {}, 恢复金额: {}", 
-                        id, order.getCoffeeCardId(), order.getPayAmount());
+                    log.info("订单取消，恢复咖啡卡余额成功，订单ID: {}, 咖啡卡ID: {}, 恢复金额: {}",
+                            id, order.getCoffeeCardId(), order.getPayAmount());
                 } catch (Exception e) {
                     log.error("订单取消时恢复咖啡卡余额失败: 订单ID={}", id, e);
                     // 不影响订单状态更新，只记录日志
                 }
             }
         }
-        
-        // 如果订单状态更新为已完成，增加用户成长值和积分（排除咖啡卡订单）
-        if (updateResult && status == OrderStatus.COMPLETED.getCode()) {
-            // 排除咖啡卡订单（虚拟商品），购买咖啡卡不增加成长值和积分
-            if (order.getDeliveryCompany() != null && "虚拟商品".equals(order.getDeliveryCompany())) {
-                log.info("咖啡卡订单完成，不增加成长值和积分: 订单ID={}", id);
-                return updateResult;
-            }
-            
-            try {
-                // 计算成长值：每消费1元增加1成长值（取整数部分）
-                if (order.getPayAmount() != null && order.getPayAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    int growth = order.getPayAmount().intValue(); // 取整数部分
-                    if (growth > 0) {
-                        memberService.addGrowth(order.getMemberId(), growth);
-                        log.info("订单完成，增加成长值: 订单ID={}, 用户ID={}, 成长值={}", id, order.getMemberId(), growth);
-                    }
-                }
-                
-                // 计算积分：每消费1元增加1积分（取整数部分）
-                if (order.getPayAmount() != null && order.getPayAmount().compareTo(BigDecimal.ZERO) > 0) {
-                    int integration = order.getPayAmount().intValue(); // 取整数部分
-                    if (integration > 0) {
-                        UmsMember member = memberService.getById(order.getMemberId());
-                        if (member != null) {
-                            int currentIntegration = member.getIntegration() != null ? member.getIntegration() : 0;
-                            memberService.update(new LambdaUpdateWrapper<UmsMember>()
-                                    .eq(UmsMember::getId, order.getMemberId())
-                                    .set(UmsMember::getIntegration, currentIntegration + integration));
-                            log.info("订单完成，增加积分: 订单ID={}, 用户ID={}, 积分={}", id, order.getMemberId(), integration);
-                            
-                            // 记录积分明细
-                            integrationHistoryService.recordIntegrationChange(
-                                order.getMemberId(), 
-                                3, // 3->订单完成获得
-                                integration, 
-                                "order_complete", 
-                                id, 
-                                String.format("订单完成获得，订单号：%s", order.getOrderSn())
-                            );
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.error("订单完成时增加成长值/积分失败: 订单ID={}", id, e);
-                // 不影响订单状态更新，只记录日志
-            }
-        }
-        
         return updateResult;
     }
 
     /**
      * 获取当前用户的订单列表
+     *
      * @param pageParam
      * @param status
      * @return
@@ -290,7 +206,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Override
     public Page<OrderVO> listCurrent(PageParam pageParam, Integer status) {
         Long userId = UserContext.getUserId();
-        if (userId == null){
+        if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
         Page<OmsOrder> orderPage = new Page<>(pageParam.getPage(), pageParam.getPageSize());
@@ -309,17 +225,17 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             List<Long> orderIds = page.getRecords().stream()
                     .map(OmsOrder::getId)
                     .collect(Collectors.toList());
-            
+
             // 批量查询所有订单项
             List<OmsOrderItem> allItems = orderItemMapper.selectList(
                     new LambdaQueryWrapper<OmsOrderItem>()
                             .in(OmsOrderItem::getOrderId, orderIds)
             );
-            
+
             // 按订单ID分组
             Map<Long, List<OmsOrderItem>> itemsMap = allItems.stream()
                     .collect(Collectors.groupingBy(OmsOrderItem::getOrderId));
-            
+
             // 构建 OrderVO 列表
             List<OrderVO> voList = page.getRecords().stream().map(order -> {
                 OrderVO orderVO = new OrderVO();
@@ -328,7 +244,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
                 return orderVO;
             }).collect(Collectors.toList());
-            
+
             voPage.setRecords(voList);
         }
 
@@ -336,7 +252,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     }
 
     /**
-     *  创建订单
+     * 创建订单
+     *
      * @param request
      * @return
      */
@@ -386,7 +303,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         }
         BigDecimal promotionAmount = defaultIfNull(request.getPromotionAmount());
         BigDecimal couponAmount = defaultIfNull(request.getCouponAmount());
-        
+
         // 咖啡卡折扣计算（9折，即0.9倍）
         BigDecimal coffeeCardDiscountAmount = BigDecimal.ZERO;
         Long coffeeCardId = request.getCoffeeCardId();
@@ -406,7 +323,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             BigDecimal amountAfterPromotionAndCoupon = totalAmount.subtract(promotionAmount).subtract(couponAmount);
             coffeeCardDiscountAmount = amountAfterPromotionAndCoupon.multiply(new BigDecimal("0.1"));
         }
-        
+
         BigDecimal payAmount = totalAmount.subtract(promotionAmount).subtract(couponAmount).subtract(coffeeCardDiscountAmount);
         if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
             payAmount = BigDecimal.ZERO;
@@ -419,10 +336,10 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         if (couponHistoryId != null && couponAmount.compareTo(BigDecimal.ZERO) > 0) {
             // 直接根据优惠券历史记录ID查询，验证是否属于当前用户且未使用
             couponHistoryForUpdate = couponHistoryMapper.selectOne(
-                new LambdaQueryWrapper<SmsCouponHistory>()
-                    .eq(SmsCouponHistory::getId, couponHistoryId)
-                    .eq(SmsCouponHistory::getMemberId, userId)
-                    .eq(SmsCouponHistory::getUseStatus, 0) // 未使用
+                    new LambdaQueryWrapper<SmsCouponHistory>()
+                            .eq(SmsCouponHistory::getId, couponHistoryId)
+                            .eq(SmsCouponHistory::getMemberId, userId)
+                            .eq(SmsCouponHistory::getUseStatus, 0) // 未使用
             );
             if (couponHistoryForUpdate == null) {
                 throw new RuntimeException("优惠券不存在或已被使用");
@@ -445,10 +362,10 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         order.setPayType(request.getPayType() == null ? 0 : request.getPayType());
         // 商品订单
         order.setOrderType(0);
-        
+
         // 所有支付方式，订单初始状态都为待支付（包括咖啡卡支付）
         order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
-        
+
         order.setDeliveryCompany(request.getDeliveryCompany() != null ? request.getDeliveryCompany() : "门店自提");
 
         // 6. 填充收货人信息（从地址对象拷贝）
@@ -503,18 +420,18 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                     couponHistoryForUpdate.setOrderId(order.getId());
                     couponHistoryForUpdate.setOrderSn(order.getOrderSn());
                     couponHistoryMapper.updateById(couponHistoryForUpdate);
-                    
+
                     // 更新优惠券的使用数量（更新 sms_coupon 表）
                     couponMapper.update(null, new LambdaUpdateWrapper<SmsCoupon>()
-                        .eq(SmsCoupon::getId, couponId)
-                        .setSql("use_count = use_count + 1")
+                            .eq(SmsCoupon::getId, couponId)
+                            .setSql("use_count = use_count + 1")
                     );
-                    
-                    log.info("优惠券使用成功，订单ID: {}, 优惠券ID: {}, 优惠券历史ID: {}", 
-                        order.getId(), couponId, couponHistoryForUpdate.getId());
+
+                    log.info("优惠券使用成功，订单ID: {}, 优惠券ID: {}, 优惠券历史ID: {}",
+                            order.getId(), couponId, couponHistoryForUpdate.getId());
                 } else {
-                    log.warn("优惠券状态已变更，无法更新。订单ID: {}, 优惠券ID: {}, 当前状态: {}", 
-                        order.getId(), couponId, currentHistory != null ? currentHistory.getUseStatus() : "null");
+                    log.warn("优惠券状态已变更，无法更新。订单ID: {}, 优惠券ID: {}, 当前状态: {}",
+                            order.getId(), couponId, currentHistory != null ? currentHistory.getUseStatus() : "null");
                     throw new RuntimeException("优惠券已被使用，无法重复使用");
                 }
             } catch (Exception e) {
@@ -540,8 +457,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
      */
     private void sendDelayMessage(Long orderId) {
         // 延迟时间：15分钟 (毫秒)
-         int delayTime = 15 * 60 * 1000;
-        //int delayTime = 30 * 1000; // 测试用：30秒
+//        int delayTime = 15 * 60 * 1000;
+        int delayTime = 30 * 1000; // 测试用：30秒
 
         rabbitTemplate.convertAndSend(
                 RabbitMqConfig.DELAY_EXCHANGE_NAME,
@@ -566,33 +483,33 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
-        
+
         // 1. 查询订单
         OmsOrder order = this.getById(orderId);
         if (order == null) {
             throw new RuntimeException("订单不存在");
         }
-        
+
         // 2. 校验订单所有权
         if (!order.getMemberId().equals(userId)) {
             throw new RuntimeException("无权支付他人订单");
         }
-        
+
         // 3. 校验订单状态
         if (!OrderStatus.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
             throw new RuntimeException("订单状态异常，当前状态：" + OrderStatus.getDescByCode(order.getStatus()) + "，只有待付款订单才能支付");
         }
-        
+
         // 4. 校验支付方式
         if (order.getPayType() == null || !order.getPayType().equals(3)) {
             throw new RuntimeException("该订单不是咖啡卡支付订单");
         }
-        
+
         // 5. 校验咖啡卡
         if (order.getCoffeeCardId() == null) {
             throw new RuntimeException("订单未绑定咖啡卡");
         }
-        
+
         GiftCard coffeeCard = giftCardService.getById(order.getCoffeeCardId());
         if (coffeeCard == null) {
             throw new RuntimeException("咖啡卡不存在");
@@ -606,19 +523,25 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         if (coffeeCard.getBalance().compareTo(order.getPayAmount()) < 0) {
             throw new RuntimeException("咖啡卡余额不足");
         }
-        
+
         // 6. 扣减咖啡卡余额
         giftCardService.deductBalance(order.getCoffeeCardId(), order.getPayAmount(), orderId);
-        
+
         // 7. 更新订单状态为待制作（已支付）
         order.setStatus(OrderStatus.PENDING_MAKING.getCode());
         order.setPaymentTime(LocalDateTime.now());
         boolean updateResult = this.updateById(order);
-        
+
         if (updateResult) {
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.ORDER_EVENT_EXCHANGE,
+                    RabbitMqConfig.ORDER_PAY_KEY,
+                    order.getId() // 发送订单ID
+            );
+            log.info("发送支付成功消息，订单ID: {}", order.getId());
             log.info("咖啡卡支付成功，订单ID: {}, 扣减金额: {}", orderId, order.getPayAmount());
         }
-        
+
         return updateResult;
     }
 
@@ -634,7 +557,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
             // Redis 原子递增
             Long increment = redisTemplate.opsForValue().increment(key);
-            
+
             if (increment == null) {
                 log.warn("Redis increment 返回 null，使用默认值");
                 increment = 1L;

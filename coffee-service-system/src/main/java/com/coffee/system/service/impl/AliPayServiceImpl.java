@@ -8,6 +8,7 @@ import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.coffee.common.config.RabbitMqConfig;
 import com.coffee.common.dict.OrderStatus;
 import com.coffee.system.config.AliPayConfiguration;
 import com.coffee.system.domain.entity.OmsOrder;
@@ -15,6 +16,7 @@ import com.coffee.system.service.AliPayService;
 import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,9 @@ public class AliPayServiceImpl implements AliPayService {
     // 注入支付宝配置类，用于获取公钥、编码格式等
     @Autowired
     private AliPayConfiguration alipayConfig;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
 
 
     /**
@@ -159,7 +164,7 @@ public class AliPayServiceImpl implements AliPayService {
 
             // 7. 更新订单状态
             // 这是一个事务操作
-            order.setStatus(1); // 设置为已支付/待制作状态
+            order.setStatus(OrderStatus.PENDING_MAKING.getCode()); // 设置为已支付/待制作状态
             order.setPayType(1); // 1: 支付宝
             order.setPaymentTime(LocalDateTime.now());
             // 如果 OmsOrder 表有 transaction_id 字段，建议保存支付宝流水号
@@ -169,9 +174,8 @@ public class AliPayServiceImpl implements AliPayService {
 
             if (updateResult) {
                 log.info("订单支付成功，状态更新完成: {}", outTradeNo);
-
-                // 8. 检查是否是咖啡卡订单（虚拟商品），如果是则创建并激活咖啡卡，并将订单状态设为已完成
-                if (order.getDeliveryCompany() != null && "虚拟商品".equals(order.getDeliveryCompany())) {
+                // 8. 检查是否是咖啡卡订单，如果是则创建并激活咖啡卡，并将订单状态设为已完成
+                if (order.getOrderType() != null && order.getOrderType() == 1) {
                     try {
                         giftCardService.activateGiftCardByOrder(order.getId());
                         log.info("咖啡卡创建并激活成功，订单ID: {}", order.getId());
@@ -187,7 +191,7 @@ public class AliPayServiceImpl implements AliPayService {
                 }
                 
                 // 9. 如果使用咖啡卡支付，从咖啡卡余额中扣减
-                if (order.getCoffeeCardId() != null && order.getPayType() == 3) {
+                /*if (order.getCoffeeCardId() != null && order.getPayType() == 3) {
                     try {
                         giftCardService.deductBalance(order.getCoffeeCardId(), order.getPayAmount(), order.getId());
                         log.info("咖啡卡扣减成功，订单ID: {}, 扣减金额: {}", order.getId(), order.getPayAmount());
@@ -195,7 +199,16 @@ public class AliPayServiceImpl implements AliPayService {
                         log.error("咖啡卡扣减失败，订单ID: {}", order.getId(), e);
                         // 咖啡卡扣减失败不影响支付成功，但需要记录日志以便后续处理
                     }
-                }
+                }*/
+
+                // 10. 发送支付成功消息
+                rabbitTemplate.convertAndSend(
+                        RabbitMqConfig.ORDER_EVENT_EXCHANGE,
+                        RabbitMqConfig.ORDER_PAY_KEY,
+                        order.getId() // 发送订单ID
+                );
+                log.info("发送支付成功消息，订单ID: {}", order.getId());
+
 
                 return "success"; // 告诉支付宝处理成功，不要再发通知了
             } else {

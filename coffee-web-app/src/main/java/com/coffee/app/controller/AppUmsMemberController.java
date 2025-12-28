@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 /**
  * C端用户个人中心接口
  */
@@ -87,8 +89,8 @@ public class AppUmsMemberController {
     @GetMapping("/statistics")
     // @PreAuthorize("hasAuthority('app:member:info')")
     @Operation(summary = "获取个人中心统计信息", description = "返回积分、优惠券数量、订单统计、会员等级等信息")
-    public Result<java.util.Map<String, Object>> getStatistics() {
-        java.util.Map<String, Object> statistics = memberService.getProfileStatistics();
+    public Result<Map<String, Object>> getStatistics() {
+        Map<String, Object> statistics = memberService.getProfileStatistics();
         return Result.success(statistics);
     }
 }

@@ -41,6 +41,9 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
     @Autowired
     private UmsMemberIntegrationHistoryService integrationHistoryService;
 
+    @Autowired
+    private SmsCouponMapper couponMapper;
+
     @Override
     public Page<RedeemableCouponVO> listRedeemableCoupons(PageParam pageParam) {
         Long userId = UserContext.getUserId();
@@ -267,6 +270,12 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
                 .set(SmsCouponHistory::getUseStatus, 0)
                 .set(SmsCouponHistory::getUseTime, null)
                 .set(SmsCouponHistory::getOrderId, null));
+
+        // 减少优惠券的使用数量（更新 sms_coupon 表）
+        couponMapper.update(null, new LambdaUpdateWrapper<SmsCoupon>()
+                .eq(SmsCoupon::getId, history.getCouponId())
+                .setSql("use_count = GREATEST(use_count - 1, 0)") // 确保不会小于0
+        );
     }
 
     private String generateCouponCode(Long memberId) {

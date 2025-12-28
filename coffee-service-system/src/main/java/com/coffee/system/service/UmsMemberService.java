@@ -96,9 +96,16 @@ public interface UmsMemberService extends IService<UmsMember> {
     boolean addGrowth(Long userId, Integer growth);
 
     /**
+     * 增加积分 (并清理缓存)
+     */
+    boolean addIntegration(Long userId, Integer integration);
+
+    /**
      * 检查并更新用户会员等级（根据成长值）
      * @param userId 用户ID
      * @return 是否升级
      */
     boolean checkAndUpdateLevel(Long userId);
+
+    void clearUserCache(Long userId);
 }

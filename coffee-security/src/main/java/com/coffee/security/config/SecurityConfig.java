@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 1. 放行登录注册
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/ws/server/**").permitAll()
 
                         // 2. 放行错误页面
                         .requestMatchers("/error").permitAll()

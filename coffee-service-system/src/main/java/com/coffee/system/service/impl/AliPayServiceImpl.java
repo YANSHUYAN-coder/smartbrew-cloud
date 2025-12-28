@@ -209,6 +209,14 @@ public class AliPayServiceImpl implements AliPayService {
                 );
                 log.info("发送支付成功消息，订单ID: {}", order.getId());
 
+                // 发送消息通知管理端有新订单
+                rabbitTemplate.convertAndSend(
+                        RabbitMqConfig.ORDER_EXCHANGE,
+                        RabbitMqConfig.NEW_ORDER_KEY,
+                        order.getId() // 发送订单ID或者简要信息
+                );
+                log.info("发送新订单消息，订单ID: {}", order.getId());
+
 
                 return "success"; // 告诉支付宝处理成功，不要再发通知了
             } else {

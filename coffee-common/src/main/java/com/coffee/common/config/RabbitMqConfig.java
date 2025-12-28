@@ -39,6 +39,11 @@ public class RabbitMqConfig {
     public static final String ERROR_QUEUE = "error.queue";
     public static final String ERROR_KEY = "error.routing.key";
 
+    // 新订单队列
+    public static final String ORDER_EXCHANGE = "order.event.exchange";
+    public static final String NEW_ORDER_KEY = "order.new";
+    public static final String NEW_ORDER_QUEUE = "order.new.queue";
+
     /**
      * 定义延迟交换机
      * 注意：需要安装 rabbitmq_delayed_message_exchange 插件
@@ -121,5 +126,23 @@ public class RabbitMqConfig {
     @Bean
     public MessageRecoverer messageRecoverer(RabbitTemplate rabbitTemplate) {
         return new RepublishMessageRecoverer(rabbitTemplate, ERROR_EXCHANGE, ERROR_KEY);
+    }
+
+    /**
+     * 新订单通知队列
+     */
+    @Bean
+    public Queue newOrderQueue() {
+        return new Queue(NEW_ORDER_QUEUE);
+    }
+
+    /**
+     * 将新订单队列绑定到订单交换机
+     */
+    @Bean
+    public Binding newOrderBinding() {
+        return BindingBuilder.bind(newOrderQueue())
+                .to(orderEventExchange()) // 复用上面的 orderEventExchange
+                .with(NEW_ORDER_KEY);
     }
 }

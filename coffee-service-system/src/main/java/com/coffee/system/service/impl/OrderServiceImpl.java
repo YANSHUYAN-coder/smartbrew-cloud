@@ -540,6 +540,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             );
             log.info("发送支付成功消息，订单ID: {}", order.getId());
             log.info("咖啡卡支付成功，订单ID: {}, 扣减金额: {}", orderId, order.getPayAmount());
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.ORDER_EVENT_EXCHANGE,
+                    RabbitMqConfig.NEW_ORDER_KEY,
+                    order.getId()
+            );
+
+            log.info("咖啡卡支付成功，已通知管理端和积分服务。订单ID: {}", orderId);
         }
 
         return updateResult;

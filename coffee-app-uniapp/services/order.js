@@ -1,7 +1,7 @@
 /**
  * 订单相关 API
  */
-import { get, post } from '@/utils/request.js'
+import {get, post, request} from '@/utils/request.js'
 
 // 创建订单
 export const createOrder = (data) => {
@@ -19,8 +19,15 @@ export const getOrderDetail = (id) => {
 }
 
 // 取消订单
-export const cancelOrder = (id) => {
-  return post(`/app/order/cancel/${id}`)
+export function cancelOrder(orderId, reason) {
+  return request({
+    url: '/app/order/cancel',
+    method: 'POST',
+    data: {
+      orderId,
+      reason
+    }
+  })
 }
 
 // 确认收货

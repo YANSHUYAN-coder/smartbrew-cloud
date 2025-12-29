@@ -69,10 +69,12 @@ public class AppOrderController {
     /**
      * 取消订单（简单将状态置为“已取消”）
      */
-    @PostMapping("/cancel/{id}")
+    @PostMapping("/cancel")
     @Operation(summary = "取消订单", description = "仅允许取消属于当前登录用户且仍在进行中的订单")
     public Result<String> cancel(
-            @Parameter(description = "订单ID") @PathVariable("id") Long id) {
+            @RequestBody Map<String, Object> params) {
+        Long orderId = Long.valueOf(params.get("orderId").toString());
+        String reason = params.get("reason") != null ? params.get("reason").toString() : "用户取消";
 
         // 1. 获取当前登录用户ID
         Long userId = UserContext.getUserId();
@@ -81,7 +83,7 @@ public class AppOrderController {
         }
 
         // 2. 查询订单，校验所有权和状态
-        OmsOrder order = orderService.getById(id);
+        OmsOrder order = orderService.getById(orderId);
         if (order == null) {
             return Result.failed("订单不存在");
         }
@@ -94,7 +96,7 @@ public class AppOrderController {
 
         // 3. 执行取消逻辑
         return orderService.updateStatus(
-                Map.of("id", id, "status", OrderStatus.CANCELLED.getCode()))
+                Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason))
                 ? Result.success("取消成功")
                 : Result.failed("取消失败");
     }

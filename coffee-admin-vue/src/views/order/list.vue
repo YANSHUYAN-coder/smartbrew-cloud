@@ -55,8 +55,8 @@
           <template #default="scope">
             <el-button v-if="scope.row.status === 1" type="primary" size="small" @click="updateStatus(scope.row, 2)">开始制作</el-button>
             <el-button v-if="scope.row.status === 2" type="success" size="small" @click="updateStatus(scope.row, 3)">制作完成</el-button>
-            <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="updateStatus(scope.row, 4)">通知取餐</el-button>
-            <el-button v-if="scope.row.status === 0" type="danger" size="small" @click="updateStatus(scope.row, 5)">取消订单</el-button>
+<!--            <el-button v-if="scope.row.status === 3" type="warning" size="small" @click="updateStatus(scope.row, 4)">通知取餐</el-button>-->
+            <el-button v-if="scope.row.status === 0" type="danger" size="small" @click="openCancelDialog(scope.row)">取消订单</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -74,11 +74,31 @@
         />
       </div>
     </el-card>
+
+    <!-- 取消订单弹窗 -->
+    <el-dialog title="取消订单" v-model="cancelDialogVisible" width="400px">
+      <el-form :model="cancelForm">
+        <el-form-item label="取消原因">
+          <el-input
+              type="textarea"
+              v-model="cancelForm.reason"
+              placeholder="请输入取消原因（例如：缺货、客户要求取消）"
+              rows="3"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelDialogVisible = false">暂不取消</el-button>
+          <el-button type="primary" @click="handleCancelOrder">确认取消</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick,reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { TabsPaneContext } from 'element-plus' // 引入类型
 import { getOrderList, updateOrderStatus } from '@/api/order'
@@ -90,6 +110,13 @@ const total = ref(0)
 const pageParam = ref({
   page: 1,
   pageSize: 10
+})
+
+// 取消弹窗状态
+const cancelDialogVisible = ref(false)
+const cancelForm = reactive({
+  id: 0,
+  reason: ''
 })
 
 // 确保表格数据始终是数组
@@ -171,6 +198,30 @@ const updateStatus = (row: any, newStatus: number) => {
   updateOrderStatus({ id: row.id, status: newStatus }).then(() => {
       ElMessage.success('订单状态更新成功')
       getList()
+  })
+}
+
+// 打开取消弹窗
+const openCancelDialog = (row: any) => {
+  cancelForm.id = row.id
+  cancelForm.reason = ''
+  cancelDialogVisible.value = true
+}
+
+// 确认取消
+const handleCancelOrder = () => {
+  if (!cancelForm.reason) {
+    ElMessage.warning('请填写取消原因')
+    return
+  }
+  updateOrderStatus({
+    id: cancelForm.id,
+    status: 5, // 5 表示已取消
+    cancelReason: cancelForm.reason
+  }).then(() => {
+    ElMessage.success('订单已取消')
+    cancelDialogVisible.value = false
+    getList()
   })
 }
 

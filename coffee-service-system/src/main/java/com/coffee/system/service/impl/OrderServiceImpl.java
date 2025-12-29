@@ -74,9 +74,6 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     private SmsCouponMapper couponMapper;
 
     @Autowired
-    private UmsMemberIntegrationHistoryService integrationHistoryService;
-
-    @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
@@ -162,6 +159,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     public boolean updateStatus(Map<String, Object> params) {
         Long id = Long.valueOf(params.get("id").toString());
         Integer status = Integer.valueOf(params.get("status").toString());
+        String cancelReason = params.get("cancelReason").toString();
 
         // 查询订单信息
         OmsOrder order = this.getById(id);
@@ -172,7 +170,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         // 更新订单状态
         boolean updateResult = this.update(new LambdaUpdateWrapper<OmsOrder>()
                 .eq(OmsOrder::getId, id)
-                .set(OmsOrder::getStatus, status));
+                .set(OmsOrder::getStatus, status)
+                .set(OmsOrder::getCancelReason, cancelReason));
 
         if (updateResult && status == OrderStatus.PENDING_PICKUP.getCode()){
             // 重新查询订单，确保获取最新的数据（包括 pickupCode 等）

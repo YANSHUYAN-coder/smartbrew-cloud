@@ -4,6 +4,8 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
 import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -43,6 +45,13 @@ public class RabbitMqConfig {
     public static final String ORDER_EXCHANGE = "order.event.exchange";
     public static final String NEW_ORDER_KEY = "order.new";
     public static final String NEW_ORDER_QUEUE = "order.new.queue";
+
+    // 通知交换机
+    public static final String NOTIFICATION_EXCHANGE = "coffee.notification.exchange";
+    // 取餐通知路由键
+    public static final String PICKUP_ROUTING_KEY = "notification.pickup";
+    // 取餐通知队列
+    public static final String PICKUP_NOTIFICATION_QUEUE = "coffee.notification.pickup.queue";
 
     /**
      * 定义延迟交换机
@@ -144,5 +153,44 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(newOrderQueue())
                 .to(orderEventExchange()) // 复用上面的 orderEventExchange
                 .with(NEW_ORDER_KEY);
+    }
+
+    /**
+     * 通知主题交换机
+     */
+    @Bean
+    public TopicExchange notificationExchange() {
+        return new TopicExchange(NOTIFICATION_EXCHANGE);
+    }
+
+    /**
+     * 取餐通知队列
+     */
+    @Bean
+    public Queue pickupNotificationQueue() {
+        return new Queue(PICKUP_NOTIFICATION_QUEUE, true); // 持久化队列
+    }
+
+    /**
+     * 绑定取餐通知队列到通知交换机
+     */
+    @Bean
+    public Binding bindingPickupNotification() {
+        return BindingBuilder.bind(pickupNotificationQueue())
+                .to(notificationExchange())
+                .with(PICKUP_ROUTING_KEY);
+    }
+
+    /**
+     * 配置 JSON 消息转换器
+     * 确保消息以 JSON 格式发送和接收，而不是 Java 序列化
+     * Spring Boot 会自动将这个转换器应用到 RabbitTemplate
+     */
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+        // 设置内容类型为 application/json，确保消息格式正确
+        converter.setCreateMessageIds(true);
+        return converter;
     }
 }

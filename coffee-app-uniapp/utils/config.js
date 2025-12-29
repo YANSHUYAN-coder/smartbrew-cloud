@@ -46,4 +46,8 @@ export const config = {
   
   // 其他配置...
 }
+export default {
+  BASE_URL,
+  config
+}
 

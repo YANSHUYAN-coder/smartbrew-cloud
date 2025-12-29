@@ -56,6 +56,18 @@
             <artifactId>alipay-sdk-java</artifactId>
             <version>4.40.560.ALL</version>
         </dependency>
+
+        <!-- 添加 WebSocket 依赖 (修复 javax.websocket 不存在的问题) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

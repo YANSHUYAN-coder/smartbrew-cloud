@@ -148,6 +148,9 @@ export default {
         uni.hideLoading();
         uni.showToast({ title: '登录成功', icon: 'success' });
 
+        // 触发登录成功事件，通知 App.vue 连接 WebSocket
+        uni.$emit('userLoginSuccess')
+
         // 短暂停留后跳转到首页或个人中心
         setTimeout(() => {
           uni.switchTab({ url: '/pages/home/index' });

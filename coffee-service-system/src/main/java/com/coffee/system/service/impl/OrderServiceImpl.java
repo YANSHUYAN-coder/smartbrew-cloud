@@ -43,12 +43,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
 
 @Slf4j
 @Service
@@ -176,6 +174,16 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 .eq(OmsOrder::getId, id)
                 .set(OmsOrder::getStatus, status));
 
+        if (updateResult && status == OrderStatus.PENDING_PICKUP.getCode()){
+            // 重新查询订单，确保获取最新的数据（包括 pickupCode 等）
+            OmsOrder latestOrder = this.getById(id);
+            if (latestOrder != null) {
+                sendPickupNotification(latestOrder);
+            } else {
+                log.warn("订单状态更新为待取餐，但重新查询订单失败，订单ID: {}", id);
+            }
+        }
+
         // 如果订单状态更新为已取消，恢复优惠券和咖啡卡余额
         if (updateResult && status == OrderStatus.CANCELLED.getCode()) {
             // 恢复优惠券
@@ -194,6 +202,33 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             }
         }
         return updateResult;
+    }
+
+    /**
+     * 发送取餐通知消息到 MQ
+     */
+    private void sendPickupNotification(OmsOrder order) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            // 确保 userId 是 String 类型，方便接收端解析
+            message.put("userId", String.valueOf(order.getMemberId()));
+            message.put("orderId", order.getId());
+            message.put("orderSn", order.getOrderSn());
+            message.put("pickupCode", order.getPickupCode()); // 带上取餐码
+            message.put("type", "PICKUP_READY"); // 消息类型
+
+            // 发送到 Notification Exchange (在 RabbitMqConfig 中定义的)
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.NOTIFICATION_EXCHANGE,
+                    RabbitMqConfig.PICKUP_ROUTING_KEY,
+                    message
+            );
+
+            log.info("取餐通知已发送 MQ -> 用户: {}, 订单: {}", order.getMemberId(), order.getOrderSn());
+        } catch (Exception e) {
+            log.error("发送取餐通知 MQ 失败", e);
+            // 这里可以考虑加一个补偿表，或者只是记录日志，不要影响主流程回滚
+        }
     }
 
     /**

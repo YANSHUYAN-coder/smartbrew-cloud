@@ -46,7 +46,7 @@ public class AdminSmsCouponController {
     public Result<Boolean> create(@RequestBody SmsCoupon coupon) {
         coupon.setUseCount(0);
         coupon.setReceiveCount(0);
-        coupon.setPublishCount(0);
+        coupon.setPublishCount(coupon.getCount());
         return Result.success(smsCouponService.save(coupon));
     }
 

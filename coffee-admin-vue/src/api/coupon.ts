@@ -27,6 +27,7 @@ export interface Coupon {
     code?: string
     memberLevel?: number
     validDays?: number
+    points?: number
 }
 
 // 获取优惠券列表

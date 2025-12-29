@@ -25,7 +25,6 @@
     </div>
 
     <el-table :data="list" v-loading="listLoading" border style="width: 100%">
-      <el-table-column prop="id" label="ID" width="80" align="center" />
       <el-table-column prop="name" label="名称" align="center" />
       <el-table-column prop="type" label="类型" width="100" align="center">
         <template #default="scope">
@@ -38,12 +37,15 @@
       <el-table-column prop="minPoint" label="使用门槛" width="120" align="center">
         <template #default="scope">满 {{ scope.row.minPoint }} 元</template>
       </el-table-column>
+      <el-table-column prop="points" label="所需积分" width="100" align="center">
+        <template #default="scope">{{ scope.row.points || 0 }} 分</template>
+      </el-table-column>
       <el-table-column label="有效期" width="320" align="center">
         <template #default="scope">
           {{ formatTime(scope.row.startTime) }} 至 {{ formatTime(scope.row.endTime) }}
         </template>
       </el-table-column>
-      <el-table-column prop="count" label="发行量" width="100" align="center" />
+      <el-table-column prop="count" label="数量" width="100" align="center" />
       <el-table-column label="操作" width="180" align="center">
         <template #default="scope">
           <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
@@ -83,7 +85,11 @@
           <el-input-number v-model="couponForm.minPoint" :min="0" :precision="2" />
           <span style="margin-left: 10px">元 (0为无门槛)</span>
         </el-form-item>
-        <el-form-item label="发行数量" prop="count">
+        <el-form-item label="兑换所需积分" prop="points">
+          <el-input-number v-model="couponForm.points" :min="0" :precision="0" />
+          <span style="margin-left: 10px">分 (0为免费领取)</span>
+        </el-form-item>
+        <el-form-item label="数量" prop="count">
           <el-input-number v-model="couponForm.count" :min="1" />
         </el-form-item>
         <el-form-item label="每人限领" prop="perLimit">
@@ -132,18 +138,19 @@ const listQuery = reactive({
   type: undefined
 })
 
-const timeRange = ref([]) // 用于绑定日期选择器
+const timeRange = ref([])
 
 const defaultForm: Coupon = {
   type: 0,
   name: '',
-  count: 100,
+  count: 0,
   amount: 0,
   perLimit: 1,
   minPoint: 0,
   startTime: '',
   endTime: '',
-  useType: 0
+  useType: 0,
+  points: 0 // ✨ 新增初始化
 }
 
 const couponForm = reactive<Coupon>({ ...defaultForm })
@@ -152,6 +159,10 @@ const rules = {
   name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   count: [{ required: true, message: '请输入数量', trigger: 'blur' }],
+  points: [
+    { required: true, message: '请输入兑换积分', trigger: 'blur' },
+    { type: 'number', min: 1, message: '积分必须大于0', trigger: 'blur' }
+  ], // ✨ 新增校验
 }
 
 onMounted(() => {
@@ -175,6 +186,8 @@ const getList = () => {
     list.value = []
   })
 }
+
+// ... 其他方法保持不变 (handleSearch, resetSearch, handlePageChange) ...
 
 const handleSearch = () => {
   listQuery.pageNum = 1
@@ -230,7 +243,7 @@ const handleConfirm = () => {
       // 处理时间
       if (timeRange.value && timeRange.value.length === 2) {
         couponForm.startTime = timeRange.value[0]
-        couponForm.enableTime = timeRange.value[0]
+        couponForm.enableTime = timeRange.value[0] // 确保 enableTime 也有值
         couponForm.endTime = timeRange.value[1]
       }
 

@@ -73,31 +73,7 @@ public class AppOrderController {
     @Operation(summary = "取消订单", description = "仅允许取消属于当前登录用户且仍在进行中的订单")
     public Result<String> cancel(
             @RequestBody Map<String, Object> params) {
-        Long orderId = Long.valueOf(params.get("orderId").toString());
-        String reason = params.get("reason") != null ? params.get("reason").toString() : "用户取消";
-
-        // 1. 获取当前登录用户ID
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            return Result.failed("请先登录");
-        }
-
-        // 2. 查询订单，校验所有权和状态
-        OmsOrder order = orderService.getById(orderId);
-        if (order == null) {
-            return Result.failed("订单不存在");
-        }
-        if (!order.getMemberId().equals(userId)) {
-            return Result.failed("非法操作：无权取消他人订单");
-        }
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode()) {
-            return Result.failed("当前状态不允许取消（仅待付款订单可手动取消）");
-        }
-
-        // 3. 执行取消逻辑
-        return orderService.updateStatus(
-                Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason))
-                ? Result.success("取消成功")
+        return orderService.cancel(params) ? Result.success("取消成功")
                 : Result.failed("取消失败");
     }
 
@@ -109,29 +85,7 @@ public class AppOrderController {
     @Operation(summary = "确认收货", description = "仅允许当前登录用户对自己的待取餐订单执行确认收货")
     public Result<String> confirm(
             @Parameter(description = "订单ID") @PathVariable("id") Long id) {
-
-        // 1. 获取当前登录用户ID
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            return Result.failed("请先登录");
-        }
-
-        // 2. 查询订单，校验所有权和状态
-        OmsOrder order = orderService.getById(id);
-        if (order == null) {
-            return Result.failed("订单不存在");
-        }
-        if (!order.getMemberId().equals(userId)) {
-            return Result.failed("非法操作：无权操作他人订单");
-        }
-        if (order.getStatus() != OrderStatus.PENDING_PICKUP.getCode()) {
-            return Result.failed("当前状态不允许确认收货（仅待取餐订单可确认收货）");
-        }
-
-        // 3. 执行状态更新为已完成
-        return orderService.updateStatus(
-                Map.of("id", id, "status", OrderStatus.COMPLETED.getCode()))
-                ? Result.success("确认收货成功")
+        return orderService.confirm(id) ? Result.success("确认收货成功")
                 : Result.failed("确认收货失败");
     }
 }

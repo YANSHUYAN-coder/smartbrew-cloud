@@ -181,6 +181,12 @@
 			"style": {
 				"navigationBarTitleText": "帮助中心"
 			}
+		},
+		{
+			"path": "pages/message/list",
+			"style": {
+				"navigationBarTitleText": "消息中心"
+			}
 		}
 	],
 	"globalStyle": {

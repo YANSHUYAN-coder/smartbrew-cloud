@@ -48,5 +48,9 @@ public interface OrderService extends IService<OmsOrder> {
      * @return 支付是否成功
      */
     boolean payByCoffeeCard(Long orderId);
+
+    boolean confirm(Long id);
+
+    boolean cancel(Map<String, Object> params);
 }
 

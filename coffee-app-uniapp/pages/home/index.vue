@@ -8,7 +8,7 @@
 						<text class="location-text">智咖·云</text>
 						<text class="chevron">›</text>
 					</view>
-					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24"></uni-icons>
+					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24" @click="navigateTo('/pages/message/list')"></uni-icons>
 				</view>
 			</view>
 		</view>
@@ -155,9 +155,11 @@
 	} from '@/utils/system.js'
 	import SkuModal from '@/components/SkuModal.vue'
 	import HomeSkeleton from '@/components/HomeSkeleton.vue'
+	import { useUserStore } from '@/store/user.js'
 
 	const cartStore = useCartStore()
 	const statusBarHeight = ref(0)
+	const userStore = useUserStore()
 
 	// 轮播图数据
 	const banners = ref([
@@ -335,6 +337,14 @@
 		} finally {
 			loading.value = false
 		}
+	}
+	
+	const navigateTo = (url) => {
+	  if (!userStore.isLogin) {
+	    handleLogin()
+	    return
+	  }
+	  uni.navigateTo({ url })
 	}
 
 	onPullDownRefresh(async () => {

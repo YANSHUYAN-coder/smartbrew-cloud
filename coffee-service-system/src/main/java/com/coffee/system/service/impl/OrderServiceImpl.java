@@ -1,6 +1,7 @@
 package com.coffee.system.service.impl;
 
 import com.alipay.api.AlipayClient;
+import com.coffee.common.result.Result;
 import com.coffee.system.service.*;
 import org.springframework.amqp.core.Message;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -64,8 +65,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Autowired
     private GiftCardService giftCardService;
     @Autowired
-    @Lazy
-    private UmsMemberService memberService;
+    private SysMessageService sysMessageService;
 
     @Autowired
     private SmsCouponHistoryMapper couponHistoryMapper;
@@ -159,7 +159,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     public boolean updateStatus(Map<String, Object> params) {
         Long id = Long.valueOf(params.get("id").toString());
         Integer status = Integer.valueOf(params.get("status").toString());
-        String cancelReason = params.get("cancelReason").toString();
+        Object reasonObj = params.get("cancelReason");
+        String cancelReason = reasonObj != null ? reasonObj.toString() : null;
 
         // 查询订单信息
         OmsOrder order = this.getById(id);
@@ -173,10 +174,17 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 .set(OmsOrder::getStatus, status)
                 .set(OmsOrder::getCancelReason, cancelReason));
 
-        if (updateResult && status == OrderStatus.PENDING_PICKUP.getCode()){
+        if (updateResult && status == OrderStatus.PENDING_PICKUP.getCode()) {
             // 重新查询订单，确保获取最新的数据（包括 pickupCode 等）
             OmsOrder latestOrder = this.getById(id);
             if (latestOrder != null) {
+                sysMessageService.sendMessage(
+                        order.getMemberId(),
+                        "取餐提醒",
+                        "您的订单 " + order.getOrderSn() + " (取餐码：" + order.getPickupCode() + ") 已制作完成，请及时取餐。",
+                        1, // 1-订单通知
+                        order.getId()
+                );
                 sendPickupNotification(latestOrder);
             } else {
                 log.warn("订单状态更新为待取餐，但重新查询订单失败，订单ID: {}", id);
@@ -185,6 +193,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
         // 如果订单状态更新为已取消，恢复优惠券和咖啡卡余额
         if (updateResult && status == OrderStatus.CANCELLED.getCode()) {
+            sysMessageService.sendMessage(
+                    order.getMemberId(),
+                    "订单取消通知",
+                    "您的订单 " + order.getOrderSn() + " 已取消。原因：" + (cancelReason != null ? cancelReason : "无"),
+                    1, // 1-订单通知
+                    order.getId()
+            );
             // 恢复优惠券
             smsCouponService.releaseCoupon(order.getCouponId());
 
@@ -584,6 +599,59 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         }
 
         return updateResult;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirm(Long id) {
+        // 1. 获取当前登录用户ID
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("请先登录");
+        }
+
+        // 2. 查询订单，校验所有权和状态
+        OmsOrder order = this.getById(id);
+        if (order == null) {
+            throw new RuntimeException("订单不存在");
+        }
+        if (!order.getMemberId().equals(userId)) {
+            throw new RuntimeException("非法操作：无权操作他人订单");
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PICKUP.getCode()) {
+            throw new RuntimeException("当前状态不允许确认收货（仅待取餐订单可确认收货）");
+        }
+        return this.updateStatus(
+                Map.of("id", id, "status", OrderStatus.COMPLETED.getCode()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancel(Map<String, Object> params) {
+        Long orderId = Long.valueOf(params.get("orderId").toString());
+        String reason = params.get("reason") != null ? params.get("reason").toString() : "用户取消";
+
+        // 1. 获取当前登录用户ID
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("请先登录");
+        }
+
+        // 2. 查询订单，校验所有权和状态
+        OmsOrder order = this.getById(orderId);
+        if (order == null) {
+            throw new RuntimeException("订单不存在");
+        }
+        if (!order.getMemberId().equals(userId)) {
+            throw new RuntimeException("非法操作：无权操作他人订单");
+        }
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode()) {
+            throw new RuntimeException("当前状态不允许确认收货（仅待取餐订单可确认收货）");
+        }
+
+        // 3. 执行取消逻辑
+        return this.updateStatus(
+                Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason));
     }
 
     /**

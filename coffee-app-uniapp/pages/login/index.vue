@@ -126,9 +126,16 @@ export default {
           password: this.form.password
         });
 
-        // 根据 request.js 的拦截器，这里的 res 已经是 data.data，包含 { token, user }
-        // 先保存 token（需要用于后续请求）
-        userStore.setUser(res.token, res.user);
+        // 根据 request.js 的拦截器，这里的 res 已经是 data.data，期待结构为：
+        // { token, refreshToken, user }
+        const { token, refreshToken, user } = res || {}
+
+        // 先保存 token / refreshToken / 用户信息（需要用于后续请求与刷新）
+        userStore.setUser({
+          token: token || '',
+          refreshToken: refreshToken || '',
+          userInfo: user || null
+        });
 
         // 登录成功后，立即获取完整的用户信息并更新 store
         // 这样可以确保 store 中的数据是最新且完整的，统一数据来源

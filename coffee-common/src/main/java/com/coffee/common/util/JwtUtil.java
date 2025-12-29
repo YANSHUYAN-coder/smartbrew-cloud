@@ -25,7 +25,7 @@ public class JwtUtil {
     }
 
     // 2. 修改生成 Token 的方法
-    public String generateToken(Long userId,String phone) {
+    public String generateToken(Long userId,String phone,Long expirationTime) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("phone", phone);
@@ -34,11 +34,27 @@ public class JwtUtil {
                 .claims(claims) // 以前是 setClaims，现在直接用 claims
                 .subject(userId.toString()) // 以前是 setSubject，现在也可以用 subject
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + AuthConstants.JWT_EXPIRATION))
+                .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSignInKey(), Jwts.SIG.HS512) // 【重点变化】这里传 Key 对象，算法参数也变了
                 .compact();
     }
 
+    /**
+     * 生成 Access Token
+     */
+    public String generateAccessToken(Long userId,String phone) {
+        return generateToken(userId, phone, AuthConstants.JWT_EXPIRATION);
+    }
+
+    /**
+     * 生成 Refresh Token
+     */
+    public String generateRefreshToken(Long userId,String phone) {
+        Map<String, Object> claims = new HashMap<>();
+        // 可以在 claims 中加一个标记，区分这是 refresh token
+        claims.put("type", "refresh");
+        return generateToken(userId, phone, AuthConstants.REFRESH_EXPIRATION);
+    }
 
     /**
      * 验证Token是否有效

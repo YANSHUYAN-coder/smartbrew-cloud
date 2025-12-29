@@ -1,23 +1,30 @@
 <script setup>
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
-// 1. 正确引入 BASE_URL，而不是 config
 import { BASE_URL } from '@/utils/config.js'
 
 const userStore = useUserStore()
 
-// WebSocket 连接状态
+// WebSocket 状态
 let wsConnected = false
+let isConnecting = false // 新增：正在连接标志位
 let wsReconnectTimer = null
 let wsHeartbeatTimer = null
+let socketTask = null // 保存 socket 任务实例
 
 // 初始化 WebSocket 的函数
 const initWebSocket = () => {
+  // 1. 检查是否已有连接或正在连接
+  if (wsConnected || isConnecting) {
+    console.log('WebSocket 已连接或正在连接中，跳过')
+    return
+  }
+
   // 确保用户信息已加载
   if (!userStore.userInfo) {
     userStore.loadFromStorage()
   }
-  
+
   const userId = userStore.userInfo?.id
 
   if (!userId) {
@@ -25,25 +32,14 @@ const initWebSocket = () => {
     return
   }
 
-  // 确保 userId 是字符串类型（后端期望 String）
   const userIdStr = String(userId)
 
-  // 如果已经连接，不重复连接
-  if (wsConnected) {
-    console.log('WebSocket 已连接，跳过重复连接')
-    return
-  }
+  // 设置连接中标志
+  isConnecting = true
 
-  // 2. 修复 URL 拼接逻辑
-  // BASE_URL 通常格式为 "http://ip:port/api"
-  // 替换 http -> ws 得到 "ws://ip:port/api"
-  // 后端 Endpoint 为 "/ws/app/{userId}"
-  // 最终拼接为 "ws://ip:port/api/ws/app/{userId}"
+  // URL 处理
   let wsBase = BASE_URL;
-
   // #ifdef H5
-  // H5 开发环境下 BASE_URL 可能仅为 "/api" (相对路径)
-  // 需要补全 host 才能建立 WebSocket 连接
   if (wsBase.startsWith('/')) {
     wsBase = window.location.protocol + '//' + window.location.host + wsBase
   }
@@ -52,14 +48,22 @@ const initWebSocket = () => {
   const wsUrl = wsBase.replace('http', 'ws') + '/ws/app/' + userIdStr
   console.log('正在连接 WebSocket:', wsUrl)
 
-  uni.connectSocket({
+  // 关闭旧连接（如果存在）
+  if (socketTask) {
+    try {
+      socketTask.close()
+    } catch(e) {}
+  }
+
+  // 建立新连接
+  socketTask = uni.connectSocket({
     url: wsUrl,
     success: () => {
       console.log('WebSocket 连接请求发送成功')
     },
     fail: (err) => {
       console.error('WebSocket 连接请求失败', err)
-      // 连接失败，5秒后重试
+      isConnecting = false // 失败重置
       scheduleReconnect()
     }
   })
@@ -68,6 +72,8 @@ const initWebSocket = () => {
   uni.onSocketOpen((res) => {
     console.log('✅ WebSocket 连接已打开！')
     wsConnected = true
+    isConnecting = false // 连接成功，重置标志
+
     // 清除重连定时器
     if (wsReconnectTimer) {
       clearTimeout(wsReconnectTimer)
@@ -81,7 +87,7 @@ const initWebSocket = () => {
   uni.onSocketError((res) => {
     console.error('❌ WebSocket 连接打开失败，请检查！', res)
     wsConnected = false
-    // 连接失败，5秒后重试
+    isConnecting = false // 错误重置
     scheduleReconnect()
   })
 
@@ -89,9 +95,10 @@ const initWebSocket = () => {
   uni.onSocketClose((res) => {
     console.log('WebSocket 连接已关闭', res)
     wsConnected = false
-    // 停止心跳
+    isConnecting = false // 关闭重置
     stopHeartbeat()
-    // 如果用户已登录，尝试重连
+
+    // 仅在非主动关闭且登录状态下重连
     if (userStore.isLogin) {
       scheduleReconnect()
     }
@@ -99,17 +106,21 @@ const initWebSocket = () => {
 
   // 监听消息
   uni.onSocketMessage((res) => {
-    console.log('收到服务器消息：', res.data)
+    // console.log('收到服务器消息：', res.data)
     if (res.data === 'pong') return
 
     try {
       const msg = JSON.parse(res.data)
 
+      // 简单防抖：如果有 messageId 可以用来去重
+      // 这里假设没有 id，只处理业务逻辑
+
       if (msg.type === 'PICKUP_READY') {
-        // 震动
         uni.vibrateLong()
 
-        // 弹窗
+        // 检查是否已经在显示 Modal（避免重复弹窗）
+        // UniApp 没有直接 API 查 Modal 状态，通常用全局变量或 Store 控制
+        // 这里简单直接弹窗，因为 connectSocket 修复后消息不应该重复了
         uni.showModal({
           title: '取餐提醒',
           content: `您的订单 ${msg.pickupCode} 号已制作完成，请前往取餐！`,
@@ -132,12 +143,13 @@ const initWebSocket = () => {
 
 // 安排重连
 const scheduleReconnect = () => {
-  if (wsReconnectTimer) return // 避免重复安排
-  
+  if (wsReconnectTimer) return
+
   wsReconnectTimer = setTimeout(() => {
     console.log('尝试重新连接 WebSocket...')
     wsReconnectTimer = null
-    if (userStore.isLogin && !wsConnected) {
+    // 再次检查登录状态和连接状态
+    if (userStore.isLogin && !wsConnected && !isConnecting) {
       initWebSocket()
     }
   }, 5000)
@@ -145,22 +157,21 @@ const scheduleReconnect = () => {
 
 // 启动心跳
 const startHeartbeat = () => {
-  stopHeartbeat() // 先清除旧的定时器
-  
+  stopHeartbeat()
   wsHeartbeatTimer = setInterval(() => {
     if (wsConnected) {
       uni.sendSocketMessage({
         data: 'ping',
         fail: () => {
-          console.warn('心跳发送失败，可能连接已断开')
+          console.warn('心跳发送失败')
           wsConnected = false
+          // 可以选择在这里触发重连
         }
       })
     }
   }, 15000)
 }
 
-// 停止心跳
 const stopHeartbeat = () => {
   if (wsHeartbeatTimer) {
     clearInterval(wsHeartbeatTimer)
@@ -170,31 +181,43 @@ const stopHeartbeat = () => {
 
 onLaunch(() => {
   console.log('App Launch')
-  // 尝试从本地恢复用户信息，防止页面刷新丢失
-  userStore.loadFromStorage && userStore.loadFromStorage()
-  initWebSocket()
-  
-  // 监听登录成功事件，立即连接 WebSocket
+  // 1. 先尝试从 storage 加载
+  const hasUserInfo = userStore.loadFromStorage && userStore.loadFromStorage()
+
+  // 2. 如果加载成功，直接连接
+  if (hasUserInfo) {
+    initWebSocket()
+  }
+
+  // 3. 监听登录成功事件（主要用于：用户刚打开 App 没登录，后来去登录页面登录了）
   uni.$on('userLoginSuccess', () => {
     console.log('收到登录成功事件，尝试连接 WebSocket')
+    // 这里依然保留延迟，为了确保 storage 写入完毕
     setTimeout(() => {
       initWebSocket()
-    }, 500) // 延迟500ms，确保用户信息已保存
+    }, 500)
+  })
+
+  // 4. 监听退出登录，关闭 Socket
+  uni.$on('userLogout', () => {
+    if (socketTask) {
+      socketTask.close()
+    }
+    wsConnected = false
+    stopHeartbeat()
   })
 })
 
 onShow(() => {
-  console.log('App Show')
-  // 如果用户已登录但 WebSocket 未连接，尝试连接
-  if (userStore.isLogin && !wsConnected) {
-    console.log('检测到用户已登录但 WebSocket 未连接，尝试连接...')
+  // 如果用户已登录但 socket 断开，尝试重连
+  if (userStore.isLogin && !wsConnected && !isConnecting) {
+    console.log('App Show: 重新检查 WebSocket 连接')
     initWebSocket()
   }
 })
 
 onHide(() => {
-  console.log('App Hide')
-  // App 隐藏时不断开连接，保持后台接收消息的能力
+  // 不关闭，保持后台接收
 })
 </script>
 

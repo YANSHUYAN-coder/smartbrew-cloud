@@ -440,3 +440,35 @@ public class RabbitMqConfig {
    - **回滚库存**：调用 `SkuStockService.releaseStock` 把占用的库存还回去。
    - **退回优惠券**：调用 `SmsCouponService.releaseCoupon` 把用户用的券还回去。
 4. **确认消息**：最后手动调用 `channel.basicAck` 告诉 MQ 任务完成。
+
+
+
+
+
+### RabbitMQ 取餐通知消息序列化格式不匹配导致消费失败
+
+管理端点击“制作完成”将订单状态更新为“待取餐”时，取餐通知消息未进入 PICKUP_NOTIFICATION_QUEUE，消息被重新发布到错误交换器，NotificationListener 未收到消息，用户未收到取餐通知。
+
+#### 为什么会这样？
+
+1. 缺少 JSON 消息转换器配置
+
+- 未配置 Jackson2JsonMessageConverter
+
+- RabbitMQ 使用默认 Java 序列化，消息体为二进制
+
+- 接收端期望 JSON 字符串，导致解析失败
+
+#### 怎么解决
+
+添加 JSON 消息转换器（核心修复）在 RabbitMqConfig.java 中添加：
+
+```java
+@Bean
+public MessageConverter jsonMessageConverter() {
+    Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
+    converter.setCreateMessageIds(true);
+    return converter;
+}
+```
+

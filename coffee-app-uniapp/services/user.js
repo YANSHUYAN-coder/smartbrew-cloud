@@ -30,6 +30,14 @@ export const getProfileStatistics = () => {
 }
 
 /**
+ * 退出登录
+ * @returns {Promise}
+ */
+export const logout = () => {
+  return post('/auth/logout')
+}
+
+/**
  * 上传头像
  * @param {String} filePath 图片文件路径（临时路径）
  * @returns {Promise} 返回上传结果

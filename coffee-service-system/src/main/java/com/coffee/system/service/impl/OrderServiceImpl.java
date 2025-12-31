@@ -1,7 +1,6 @@
 package com.coffee.system.service.impl;
 
-import com.alipay.api.AlipayClient;
-import com.coffee.common.result.Result;
+import com.coffee.system.domain.entity.*;
 import com.coffee.system.service.*;
 import org.springframework.amqp.core.Message;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -14,38 +13,32 @@ import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.CreateOrderRequest;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.dict.OrderStatus;
-import com.coffee.system.domain.entity.OmsOrder;
-import com.coffee.system.domain.entity.OmsOrderItem;
 import com.coffee.system.domain.vo.OrderVO;
 import com.coffee.system.mapper.OmsOrderMapper;
 import com.coffee.system.mapper.OrderItemMapper;
-import com.coffee.system.domain.entity.SmsCouponHistory;
-import com.coffee.system.domain.entity.SmsCoupon;
 import com.coffee.system.mapper.SmsCouponHistoryMapper;
 import com.coffee.system.mapper.SmsCouponMapper;
-import com.coffee.system.domain.entity.GiftCard;
 import com.coffee.common.dict.GiftCardStatus;
-import com.coffee.system.domain.entity.OmsCartItem;
-import com.coffee.system.domain.entity.UmsMemberReceiveAddress;
-import com.coffee.system.domain.entity.UmsMember;
 import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.MessagePostProcessor;
+import com.coffee.common.util.AMapUtil;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import java.util.concurrent.TimeUnit;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -78,6 +71,20 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
 
     @Autowired
     private SmsCouponService smsCouponService;
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    @Autowired
+    private AMapUtil aMapUtil;
+
+    @Autowired
+    private OmsStoreService storeService;
+
+    /**
+     * 配送范围限制（米）- 兜底值
+     */
+    private static final int DEFAULT_DELIVERY_RADIUS = 5000;
 
     /**
      * 获取所有订单列表（包含商品明细）
@@ -120,6 +127,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 BeanUtils.copyProperties(order, orderVO);
                 // 从分组后的 Map 中获取对应的订单项
                 orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
+                // 填充门店名称
+                if (order.getStoreId() != null) {
+                    OmsStore store = storeService.getById(order.getStoreId());
+                    if (store != null) {
+                        orderVO.setStoreName(store.getName());
+                    }
+                }
                 return orderVO;
             }).collect(Collectors.toList());
 
@@ -145,6 +159,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         OrderVO orderVO = new OrderVO();
         BeanUtils.copyProperties(omsOrder, orderVO);
         orderVO.setOrderItemList(omsOrderItems);
+        // 填充门店名称
+        if (omsOrder.getStoreId() != null) {
+            OmsStore store = storeService.getById(omsOrder.getStoreId());
+            if (store != null) {
+                orderVO.setStoreName(store.getName());
+            }
+        }
         return orderVO;
     }
 
@@ -235,7 +256,8 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             rabbitTemplate.convertAndSend(
                     RabbitMqConfig.NOTIFICATION_EXCHANGE,
                     RabbitMqConfig.PICKUP_ROUTING_KEY,
-                    message
+                    message,
+                    new CorrelationData("pickup-" + order.getOrderSn())
             );
 
             log.info("取餐通知已发送 MQ -> 用户: {}, 订单: {}", order.getMemberId(), order.getOrderSn());
@@ -291,6 +313,13 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                 BeanUtils.copyProperties(order, orderVO);
                 // 从分组后的 Map 中获取对应的订单项
                 orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
+                // 填充门店名称
+                if (order.getStoreId() != null) {
+                    OmsStore store = storeService.getById(order.getStoreId());
+                    if (store != null) {
+                        orderVO.setStoreName(store.getName());
+                    }
+                }
                 return orderVO;
             }).collect(Collectors.toList());
 
@@ -309,21 +338,96 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OmsOrder createOrder(CreateOrderRequest request) {
-        // 1. 生成取餐码 (每日重置)
-        String pickupCode = generatePickupCode();
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new RuntimeException("用户未登录");
         }
 
-        // 1. 根据购物车项ID查询购物车数据
+        // 防重复提交：使用分布式锁，锁的key基于用户ID和购物车项ID的hash
+        String lockKey = "lock:order:create:" + userId + ":" + 
+                        (request.getCartItemIds() != null ? request.getCartItemIds().hashCode() : 0);
+        RLock lock = redissonClient.getLock(lockKey);
+        
+        try {
+            // 尝试加锁，不等待（0秒），锁定 5 秒后自动释放（防止重复提交）
+            if (lock.tryLock(0, 5, TimeUnit.SECONDS)) {
+                try {
+                    return doCreateOrder(request);
+                } catch (Exception e) {
+                    log.error("创建订单失败，用户ID: {}", userId, e);
+                    throw e;
+                }
+            } else {
+                log.warn("订单创建防重复提交：获取锁失败，用户ID: {}", userId);
+                throw new RuntimeException("请勿重复提交订单，请稍后再试");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取订单创建锁被中断，用户ID: {}", userId, e);
+            throw new RuntimeException("操作失败，请重试");
+        } finally {
+            // 释放锁
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * 实际执行订单创建的方法
+     */
+    private OmsOrder doCreateOrder(CreateOrderRequest request) {
+        Long userId = UserContext.getUserId();
+
+        // 0. 验证门店营业状态
+        if (request.getStoreId() == null) {
+            throw new RuntimeException("请选择下单门店");
+        }
+        OmsStore store = storeService.getById(request.getStoreId());
+        if (store == null || store.getOpenStatus() == 0) {
+            throw new RuntimeException("门店休息中，暂不接单");
+        }
+        
+        // 1. 验证并获取购物车项
+        List<OmsCartItem> cartItems = validateAndGetCartItems(request, userId);
+        
+        // 2. 验证并获取收货地址
+        UmsMemberReceiveAddress address = validateAndGetAddress(request, userId);
+        
+        // 3. 计算订单金额（包含配送费计算，使用指定的 store）
+        OrderAmountInfo amountInfo = calculateOrderAmount(request, cartItems, address, store, userId);
+        
+        // 4. 验证优惠券
+        CouponInfo couponInfo = validateCoupon(request, userId, amountInfo.getCouponAmount());
+        
+        // 5. 构建并保存订单
+        OmsOrder order = buildAndSaveOrder(request, userId, address, amountInfo, couponInfo);
+        
+        // 6. 保存订单明细并清理购物车
+        saveOrderItemsAndClearCart(order, cartItems, request.getCartItemIds());
+        
+        // 7. 使用优惠券（带分布式锁）
+        useCouponWithLock(couponInfo, order, amountInfo.getCouponAmount());
+        
+        // 8. 发送延迟消息
+        sendDelayMessage(order.getId());
+        
+        return order;
+    }
+
+    /**
+     * 验证并获取购物车项
+     */
+    private List<OmsCartItem> validateAndGetCartItems(CreateOrderRequest request, Long userId) {
         if (request.getCartItemIds() == null || request.getCartItemIds().isEmpty()) {
             throw new RuntimeException("购物车项不能为空");
         }
+        
         List<OmsCartItem> cartItems = cartService.listByIds(request.getCartItemIds());
         if (cartItems.isEmpty()) {
             throw new RuntimeException("购物车项不存在");
         }
+        
         // 校验购物车项是否属于当前用户
         for (OmsCartItem cartItem : cartItems) {
             if (!cartItem.getMemberId().equals(userId)) {
@@ -331,33 +435,149 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             }
         }
 
-        // 2. 根据地址ID查询收货地址
-        if (request.getAddressId() == null) {
-            throw new RuntimeException("收货地址不能为空");
+        return cartItems;
+    }
+
+    /**
+     * 验证并获取收货地址
+     * 如果是到店取（门店自提），地址可以为空，返回默认地址或null
+     */
+    private UmsMemberReceiveAddress validateAndGetAddress(CreateOrderRequest request, Long userId) {
+        String deliveryCompany = request.getDeliveryCompany();
+        boolean isPickup = deliveryCompany == null || "门店自提".equals(deliveryCompany);
+        
+        // 到店取时，地址可以为空
+        if (isPickup && request.getAddressId() == null) {
+            // 返回一个默认地址对象，用于填充订单的收货人信息（可以填门店信息或用户信息）
+            return createDefaultPickupAddress(userId);
         }
+        
+        // 外卖配送时，地址必须提供
+        if (request.getAddressId() == null) {
+            throw new RuntimeException("外卖配送时，收货地址不能为空");
+        }
+        
         UmsMemberReceiveAddress address = addressService.getById(request.getAddressId());
         if (address == null) {
             throw new RuntimeException("收货地址不存在");
         }
+        
         // 校验地址是否属于当前用户
         if (!address.getMemberId().equals(userId)) {
             throw new RuntimeException("非法操作：收货地址不属于当前用户");
         }
 
-        // 3. 计算订单金额（如果前端传了金额，可以用于校验，但后端以实际计算为准）
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        for (OmsCartItem cartItem : cartItems) {
-            BigDecimal itemTotal = cartItem.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
-            totalAmount = totalAmount.add(itemTotal);
+        return address;
+    }
+
+    /**
+     * 创建默认的到店取地址（使用门店信息或用户信息）
+     */
+    private UmsMemberReceiveAddress createDefaultPickupAddress(Long userId) {
+        UmsMemberReceiveAddress address = new UmsMemberReceiveAddress();
+        // 可以设置为门店地址或用户默认信息
+        // 这里简单设置为门店信息，实际可以根据业务需求调整
+        address.setName("到店自取");
+        address.setPhone(""); // 可以设置为门店电话
+        address.setProvince("广东省");
+        address.setCity("深圳市");
+        address.setRegion("南山区");
+        address.setDetailAddress("智咖·云门店");
+        address.setPostCode("");
+        return address;
+    }
+
+    /**
+     * 订单金额信息
+     */
+    private static class OrderAmountInfo {
+        private BigDecimal totalAmount;
+        private BigDecimal promotionAmount;
+        private BigDecimal couponAmount;
+        private BigDecimal coffeeCardDiscountAmount;
+        private BigDecimal deliveryFee;
+        private BigDecimal payAmount;
+        private Long coffeeCardId;
+        private Integer distance;
+
+        public OrderAmountInfo(BigDecimal totalAmount, BigDecimal promotionAmount, BigDecimal couponAmount,
+                              BigDecimal coffeeCardDiscountAmount, BigDecimal deliveryFee, BigDecimal payAmount, 
+                              Long coffeeCardId, Integer distance) {
+            this.totalAmount = totalAmount;
+            this.promotionAmount = promotionAmount;
+            this.couponAmount = couponAmount;
+            this.coffeeCardDiscountAmount = coffeeCardDiscountAmount;
+            this.deliveryFee = deliveryFee;
+            this.payAmount = payAmount;
+            this.coffeeCardId = coffeeCardId;
+            this.distance = distance;
         }
+
+        public BigDecimal getTotalAmount() { return totalAmount; }
+        public BigDecimal getPromotionAmount() { return promotionAmount; }
+        public BigDecimal getCouponAmount() { return couponAmount; }
+        public BigDecimal getCoffeeCardDiscountAmount() { return coffeeCardDiscountAmount; }
+        public BigDecimal getDeliveryFee() { return deliveryFee; }
+        public BigDecimal getPayAmount() { return payAmount; }
+        public Long getCoffeeCardId() { return coffeeCardId; }
+        public Integer getDistance() { return distance; }
+    }
+
+    /**
+     * 计算订单金额
+     */
+    private OrderAmountInfo calculateOrderAmount(CreateOrderRequest request, List<OmsCartItem> cartItems, 
+                                                 UmsMemberReceiveAddress address, OmsStore store, Long userId) {
+        // 计算商品总金额
+        BigDecimal totalAmount = cartItems.stream()
+                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
         BigDecimal promotionAmount = defaultIfNull(request.getPromotionAmount());
         BigDecimal couponAmount = defaultIfNull(request.getCouponAmount());
+        
+        // 配送费计算
+        BigDecimal deliveryFee = BigDecimal.ZERO;
+        Integer distance = 0;
+        String deliveryCompany = request.getDeliveryCompany();
+        if ("外送配送".equals(deliveryCompany) || "外卖配送".equals(deliveryCompany)) {
+            if (store.getDeliveryStatus() == 0) {
+                throw new RuntimeException("该门店暂不支持外送服务");
+            }
+
+            // 校验经纬度是否存在
+            if (address.getLongitude() == null || address.getLatitude() == null) {
+                throw new RuntimeException("所选地址缺少坐标信息，请重新编辑地址或在地图上选择");
+            }
+            
+            String destination = address.getLongitude() + "," + address.getLatitude();
+            String storeLoc = store.getLongitude() + "," + store.getLatitude();
+            distance = aMapUtil.getDistance(storeLoc, destination);
+            
+            if (distance == -1) {
+                log.error("计算配送距离失败，单号：{}，地址坐标：{}", request.getCartItemIds(), destination);
+                // 降级处理：给个基础运费
+                deliveryFee = store.getBaseDeliveryFee() != null ? store.getBaseDeliveryFee() : new BigDecimal("5.00"); 
+            } else {
+                int radius = store.getDeliveryRadius() != null ? store.getDeliveryRadius() : DEFAULT_DELIVERY_RADIUS;
+                if (distance > radius) {
+                    throw new RuntimeException("超出配送范围，该门店仅支持周边 " + (radius / 1000) + "km 配送");
+                }
+                
+                BigDecimal baseFee = store.getBaseDeliveryFee() != null ? store.getBaseDeliveryFee() : new BigDecimal("5.00");
+                if (distance <= 3000) {
+                    deliveryFee = baseFee;
+                } else {
+                    int extraKm = (int) Math.ceil((distance - 3000) / 1000.0);
+                    deliveryFee = baseFee.add(new BigDecimal(extraKm * 2));
+                }
+            }
+        }
 
         // 咖啡卡折扣计算（9折，即0.9倍）
         BigDecimal coffeeCardDiscountAmount = BigDecimal.ZERO;
         Long coffeeCardId = request.getCoffeeCardId();
         if (coffeeCardId != null && request.getPayType() != null && request.getPayType() == 3) {
-            // 使用咖啡卡支付，享受9折优惠
             GiftCard coffeeCard = giftCardService.getById(coffeeCardId);
             if (coffeeCard == null) {
                 throw new RuntimeException("咖啡卡不存在");
@@ -373,132 +593,187 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             coffeeCardDiscountAmount = amountAfterPromotionAndCoupon.multiply(new BigDecimal("0.1"));
         }
 
-        BigDecimal payAmount = totalAmount.subtract(promotionAmount).subtract(couponAmount).subtract(coffeeCardDiscountAmount);
+        // 最终支付金额 = 商品总价 - 促销 - 优惠券 - 咖啡卡折扣 + 配送费
+        BigDecimal payAmount = totalAmount.subtract(promotionAmount).subtract(couponAmount)
+                .subtract(coffeeCardDiscountAmount).add(deliveryFee);
+        
         if (payAmount.compareTo(BigDecimal.ZERO) < 0) {
             payAmount = BigDecimal.ZERO;
         }
 
-        // 4. 处理优惠券（如果使用）- 验证并保存优惠券历史记录对象，后续更新时使用
+        return new OrderAmountInfo(totalAmount, promotionAmount, couponAmount, 
+                                  coffeeCardDiscountAmount, deliveryFee, payAmount, coffeeCardId, distance);
+    }
+
+    /**
+     * 优惠券信息
+     */
+    private static class CouponInfo {
+        private Long couponHistoryId;
+        private SmsCouponHistory couponHistory;
+        private Long couponId;
+
+        public CouponInfo(Long couponHistoryId, SmsCouponHistory couponHistory, Long couponId) {
+            this.couponHistoryId = couponHistoryId;
+            this.couponHistory = couponHistory;
+            this.couponId = couponId;
+        }
+
+        public Long getCouponHistoryId() { return couponHistoryId; }
+        public SmsCouponHistory getCouponHistory() { return couponHistory; }
+        public Long getCouponId() { return couponId; }
+    }
+
+    /**
+     * 验证优惠券
+     */
+    private CouponInfo validateCoupon(CreateOrderRequest request, Long userId, BigDecimal couponAmount) {
         Long couponHistoryId = request.getCouponHistoryId();
-        SmsCouponHistory couponHistoryForUpdate = null; // 保存验证通过的优惠券历史记录，后续更新时使用
-        Long couponId = null; // 保存优惠券模板ID，用于订单记录
-        if (couponHistoryId != null && couponAmount.compareTo(BigDecimal.ZERO) > 0) {
-            // 直接根据优惠券历史记录ID查询，验证是否属于当前用户且未使用
-            couponHistoryForUpdate = couponHistoryMapper.selectOne(
+        if (couponHistoryId == null || couponAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return new CouponInfo(null, null, null);
+        }
+        
+        SmsCouponHistory couponHistory = couponHistoryMapper.selectOne(
                     new LambdaQueryWrapper<SmsCouponHistory>()
                             .eq(SmsCouponHistory::getId, couponHistoryId)
                             .eq(SmsCouponHistory::getMemberId, userId)
                             .eq(SmsCouponHistory::getUseStatus, 0) // 未使用
             );
-            if (couponHistoryForUpdate == null) {
+        
+        if (couponHistory == null) {
                 throw new RuntimeException("优惠券不存在或已被使用");
             }
-            couponId = couponHistoryForUpdate.getCouponId(); // 获取优惠券模板ID，用于订单记录
+        
+        Long couponId = couponHistory.getCouponId();
+        return new CouponInfo(couponHistoryId, couponHistory, couponId);
         }
 
-        // 5. 构建订单基础信息
+    /**
+     * 构建并保存订单
+     */
+    private OmsOrder buildAndSaveOrder(CreateOrderRequest request, Long userId, 
+                                       UmsMemberReceiveAddress address, 
+                                       OrderAmountInfo amountInfo, CouponInfo couponInfo) {
         OmsOrder order = new OmsOrder();
-        order.setMemberId(userId);
-        order.setOrderSn(generateOrderSn(userId));
-        order.setPickupCode(pickupCode);
-        order.setTotalAmount(totalAmount);
-        order.setPromotionAmount(promotionAmount);
-        order.setCouponAmount(couponAmount);
-        order.setCouponId(couponId); // 保存优惠券ID
-        order.setCoffeeCardId(coffeeCardId);
-        order.setCoffeeCardDiscountAmount(coffeeCardDiscountAmount);
-        order.setPayAmount(payAmount);
-        order.setPayType(request.getPayType() == null ? 0 : request.getPayType());
-        // 商品订单
-        order.setOrderType(0);
-
-        // 所有支付方式，订单初始状态都为待支付（包括咖啡卡支付）
-        order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
-
-        order.setDeliveryCompany(request.getDeliveryCompany() != null ? request.getDeliveryCompany() : "门店自提");
-
-        // 6. 填充收货人信息（从地址对象拷贝）
-        order.setReceiverName(address.getName());
-        order.setReceiverPhone(address.getPhone());
-        order.setReceiverProvince(address.getProvince());
-        order.setReceiverCity(address.getCity());
-        order.setReceiverRegion(address.getRegion());
-        order.setReceiverDetailAddress(address.getDetailAddress());
-        order.setReceiverPostCode(address.getPostCode());
-
-        order.setNote(request.getRemark());
-
         LocalDateTime now = LocalDateTime.now();
+        
+        // 基础信息
+        order.setMemberId(userId);
+        order.setStoreId(request.getStoreId()); // 保存门店ID
+        order.setOrderSn(generateOrderSn(userId));
+        order.setPickupCode(generatePickupCode());
+        order.setTotalAmount(amountInfo.getTotalAmount());
+        order.setPromotionAmount(amountInfo.getPromotionAmount());
+        order.setCouponAmount(amountInfo.getCouponAmount());
+        order.setCouponId(couponInfo.getCouponId());
+        order.setCoffeeCardId(amountInfo.getCoffeeCardId());
+        order.setCoffeeCardDiscountAmount(amountInfo.getCoffeeCardDiscountAmount());
+        order.setPayAmount(amountInfo.getPayAmount());
+        order.setPayType(request.getPayType() == null ? 0 : request.getPayType());
+        order.setOrderType(0); // 商品订单
+        order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
+        order.setDeliveryCompany(request.getDeliveryCompany() != null ? request.getDeliveryCompany() : "门店自提");
+        order.setDeliveryFee(amountInfo.getDeliveryFee());
+        order.setDeliveryDistance(amountInfo.getDistance());
+        
+        // 收货人信息（字段名不完全匹配，手动设置）
+        copyAddressToOrder(address, order);
+        
+        // 备注和时间
+        order.setNote(request.getRemark());
         order.setCreateTime(now);
         order.setUpdateTime(now);
-
-        // 7. 保存订单
+        
+        // 保存订单
         this.save(order);
+        
+        return order;
+    }
 
-        // 8. 保存订单明细（从购物车项转换）
+    /**
+     * 保存订单明细并清理购物车
+     */
+    private void saveOrderItemsAndClearCart(OmsOrder order, List<OmsCartItem> cartItems, List<Long> cartItemIds) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 保存订单明细（使用对象拷贝，然后手动设置不匹配的字段）
         for (OmsCartItem cartItem : cartItems) {
             OmsOrderItem item = new OmsOrderItem();
+            // 拷贝匹配的字段（productId, productPic, productName, productSkuId, productSkuCode）
+            BeanUtils.copyProperties(cartItem, item);
+            // 设置订单相关信息
             item.setOrderId(order.getId());
             item.setOrderSn(order.getOrderSn());
-            item.setProductId(cartItem.getProductId());
-            item.setProductPic(cartItem.getProductPic());
-            item.setProductName(cartItem.getProductName());
+            // 设置不匹配的字段
             item.setProductPrice(cartItem.getPrice());
             item.setProductQuantity(cartItem.getQuantity());
-            item.setProductSkuId(cartItem.getProductSkuId());
-            item.setProductSkuCode(cartItem.getProductSkuCode());
-            // 规格属性，存成字符串
             item.setProductAttr(cartItem.getProductSubTitle());
             item.setCreateTime(now);
-
             orderItemMapper.insert(item);
         }
 
-        // 9. 删除已下单的购物车项
-        cartService.removeByIds(request.getCartItemIds());
+        // 删除已下单的购物车项
+        cartService.removeByIds(cartItemIds);
+    }
 
-        // 10. 如果使用优惠券，更新优惠券状态（使用之前验证时保存的对象）
-        if (couponHistoryId != null && couponAmount.compareTo(BigDecimal.ZERO) > 0 && couponHistoryForUpdate != null) {
+    /**
+     * 使用优惠券（带分布式锁保护）
+     */
+    private void useCouponWithLock(CouponInfo couponInfo, OmsOrder order, BigDecimal couponAmount) {
+        if (couponInfo.getCouponHistoryId() == null || 
+            couponAmount.compareTo(BigDecimal.ZERO) <= 0 || 
+            couponInfo.getCouponHistory() == null) {
+            return;
+        }
+        
+        String lockKey = "lock:coupon:use:" + couponInfo.getCouponHistoryId();
+        RLock lock = redissonClient.getLock(lockKey);
+        
+        try {
+            if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
             try {
-                // 再次确认优惠券状态（防止并发问题）
-                SmsCouponHistory currentHistory = couponHistoryMapper.selectById(couponHistoryForUpdate.getId());
+                    // 在锁内再次确认优惠券状态（双重检查）
+                    SmsCouponHistory currentHistory = couponHistoryMapper.selectById(couponInfo.getCouponHistory().getId());
                 if (currentHistory != null && currentHistory.getUseStatus() == 0) {
                     // 更新优惠券历史记录为已使用
-                    couponHistoryForUpdate.setUseStatus(1); // 已使用
-                    couponHistoryForUpdate.setUseTime(now);
-                    couponHistoryForUpdate.setOrderId(order.getId());
-                    couponHistoryForUpdate.setOrderSn(order.getOrderSn());
-                    couponHistoryMapper.updateById(couponHistoryForUpdate);
+                        LocalDateTime now = LocalDateTime.now();
+                        couponInfo.getCouponHistory().setUseStatus(1);
+                        couponInfo.getCouponHistory().setUseTime(now);
+                        couponInfo.getCouponHistory().setOrderId(order.getId());
+                        couponInfo.getCouponHistory().setOrderSn(order.getOrderSn());
+                        couponHistoryMapper.updateById(couponInfo.getCouponHistory());
 
-                    // 更新优惠券的使用数量（更新 sms_coupon 表）
+                        // 更新优惠券的使用数量
                     couponMapper.update(null, new LambdaUpdateWrapper<SmsCoupon>()
-                            .eq(SmsCoupon::getId, couponId)
+                                .eq(SmsCoupon::getId, couponInfo.getCouponId())
                             .setSql("use_count = use_count + 1")
                     );
 
                     log.info("优惠券使用成功，订单ID: {}, 优惠券ID: {}, 优惠券历史ID: {}",
-                            order.getId(), couponId, couponHistoryForUpdate.getId());
+                                order.getId(), couponInfo.getCouponId(), couponInfo.getCouponHistoryId());
                 } else {
                     log.warn("优惠券状态已变更，无法更新。订单ID: {}, 优惠券ID: {}, 当前状态: {}",
-                            order.getId(), couponId, currentHistory != null ? currentHistory.getUseStatus() : "null");
+                                order.getId(), couponInfo.getCouponId(), 
+                                currentHistory != null ? currentHistory.getUseStatus() : "null");
                     throw new RuntimeException("优惠券已被使用，无法重复使用");
                 }
             } catch (Exception e) {
-                log.error("优惠券状态更新失败，订单ID: {}, 优惠券ID: {}", order.getId(), couponId, e);
+                    log.error("优惠券状态更新失败，订单ID: {}, 优惠券ID: {}", order.getId(), couponInfo.getCouponId(), e);
                 throw new RuntimeException("优惠券状态更新失败: " + e.getMessage());
             }
+            } else {
+                log.warn("获取优惠券使用锁失败，订单ID: {}, 优惠券历史ID: {}", order.getId(), couponInfo.getCouponHistoryId());
+                throw new RuntimeException("系统繁忙，请稍后重试");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取优惠券使用锁被中断，订单ID: {}, 优惠券历史ID: {}", order.getId(), couponInfo.getCouponHistoryId(), e);
+            throw new RuntimeException("操作失败，请重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-
-        // 注意：咖啡卡支付不再在创建订单时立即扣减，改为在支付时扣减
-        // 优惠券在创建订单时已经使用，如果订单取消需要恢复
-
-        // 假设订单创建成功，orderId 为新生成的订单ID
-        Long orderId = order.getId();
-
-        // 【新增】发送延迟消息，15分钟后检查订单是否支付
-        sendDelayMessage(orderId);
-
-        return order;
     }
 
     /**
@@ -520,9 +795,23 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
                         message.getMessageProperties().setDelay(delayTime);
                         return message;
                     }
-                }
+                },
+                new CorrelationData("timeout-" + orderId)
         );
         log.info("订单创建成功，发送延迟取消消息。OrderId: {}, Delay: {}ms", orderId, delayTime);
+    }
+
+    /**
+     * 将地址信息拷贝到订单（字段名不完全匹配，需要手动映射）
+     */
+    private void copyAddressToOrder(UmsMemberReceiveAddress address, OmsOrder order) {
+        order.setReceiverName(address.getName());
+        order.setReceiverPhone(address.getPhone());
+        order.setReceiverProvince(address.getProvince());
+        order.setReceiverCity(address.getCity());
+        order.setReceiverRegion(address.getRegion());
+        order.setReceiverDetailAddress(address.getDetailAddress());
+        order.setReceiverPostCode(address.getPostCode());
     }
 
     @Override
@@ -585,14 +874,16 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
             rabbitTemplate.convertAndSend(
                     RabbitMqConfig.ORDER_EVENT_EXCHANGE,
                     RabbitMqConfig.ORDER_PAY_KEY,
-                    order.getId() // 发送订单ID
+                    order.getId(),
+                    new CorrelationData("card-pay-" + order.getOrderSn())
             );
             log.info("发送支付成功消息，订单ID: {}", order.getId());
             log.info("咖啡卡支付成功，订单ID: {}, 扣减金额: {}", orderId, order.getPayAmount());
             rabbitTemplate.convertAndSend(
                     RabbitMqConfig.ORDER_EVENT_EXCHANGE,
                     RabbitMqConfig.NEW_ORDER_KEY,
-                    order.getId()
+                    order.getId(),
+                    new CorrelationData("card-new-" + order.getOrderSn())
             );
 
             log.info("咖啡卡支付成功，已通知管理端和积分服务。订单ID: {}", orderId);
@@ -706,4 +997,5 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         return value == null ? BigDecimal.ZERO : value;
     }
 }
+
 

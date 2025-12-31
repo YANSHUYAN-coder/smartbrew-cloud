@@ -29,7 +29,7 @@
 
 .skeleton-category-list {
 	width: 200rpx;
-	background: #f5f5f5;
+	background: var(--bg-secondary);
 	padding: 24rpx 0;
 }
 
@@ -41,7 +41,7 @@
 .skeleton-product-list {
 	flex: 1;
 	padding: 24rpx;
-	background: white;
+	background: var(--bg-primary);
 }
 
 .skeleton-product-item {
@@ -53,7 +53,7 @@
 	width: 180rpx;
 	height: 180rpx;
 	border-radius: 16rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 	margin-right: 24rpx;
@@ -69,7 +69,7 @@
 
 .skeleton-line {
 	height: 32rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	border-radius: 8rpx;
 	animation: skeleton-loading 1.5s ease-in-out infinite;

@@ -40,14 +40,14 @@
 
 <style lang="scss" scoped>
 .order-list-skeleton {
-	background: #f7f8fa;
+	background: var(--bg-secondary);
 	min-height: 100vh;
 }
 
 .skeleton-tabs {
 	display: flex;
 	padding: 24rpx 32rpx;
-	background: white;
+	background: var(--bg-primary);
 	gap: 32rpx;
 	overflow-x: auto;
 }
@@ -61,7 +61,7 @@
 }
 
 .skeleton-order-card {
-	background: white;
+	background: var(--bg-primary);
 	border-radius: 24rpx;
 	padding: 32rpx;
 	margin-bottom: 24rpx;
@@ -91,7 +91,7 @@
 	width: 120rpx;
 	height: 120rpx;
 	border-radius: 12rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 	margin-right: 24rpx;
@@ -110,12 +110,12 @@
 	justify-content: space-between;
 	align-items: center;
 	padding-top: 24rpx;
-	border-top: 1rpx solid #f0f0f0;
+	border-top: 1rpx solid var(--border-light);
 }
 
 .skeleton-line {
 	height: 32rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	border-radius: 8rpx;
 	animation: skeleton-loading 1.5s ease-in-out infinite;

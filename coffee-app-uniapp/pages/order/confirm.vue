@@ -10,8 +10,25 @@
 		</view>
 
 		<scroll-view scroll-y class="content-scroll" :style="{ height: scrollHeight }">
-			<!-- 收货地址 -->
-			<view class="address-section" @click="selectAddress">
+			<!-- 配送方式显示 (不再提供选择，由前序页面决定) -->
+			<view class="delivery-display-section">
+				<view class="section-row">
+					<text class="section-label">配送方式</text>
+					<view class="section-right">
+						<uni-icons 
+							:type="deliveryType === 'pickup' ? 'shop' : 'location'" 
+							size="18" 
+							color="#6f4e37"
+						></uni-icons>
+						<text class="delivery-name-text">
+							{{ deliveryType === 'pickup' ? '到店取' : '外卖配送' }}
+						</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- 收货地址（仅外卖时显示） -->
+			<view class="address-section" v-if="deliveryType === 'delivery'" @click="selectAddress">
 				<view v-if="selectedAddress" class="address-info">
 					<view class="address-header">
 						<text class="receiver-name">{{ selectedAddress.name }}</text>
@@ -19,6 +36,12 @@
 					</view>
 					<view class="address-detail">
 						{{ selectedAddress.province }}{{ selectedAddress.city }}{{ selectedAddress.region }} {{ selectedAddress.detailAddress }}
+					</view>
+					<!-- 距离提醒 -->
+					<view class="distance-info" v-if="distanceInfo.distanceText">
+						<text class="distance-tag" :class="{ 'out-of-range': distanceInfo.isOutOfRange }">
+							{{ distanceInfo.isOutOfRange ? '超出配送范围' : `距离门店 ${distanceInfo.distanceText}` }}
+						</text>
 					</view>
 				</view>
 				<view v-else class="address-empty">
@@ -179,8 +202,9 @@
 				<text class="total-symbol">¥</text>
 				<text class="total-price">{{ finalPrice.toFixed(2) }}</text>
 			</view>
-			<button class="submit-btn" @click="submitOrder" :disabled="submitting">
-				{{ submitting ? '提交中...' : '提交订单' }}
+			<button class="submit-btn" @click="submitOrder" :disabled="isSubmitDisabled">
+				<text v-if="distanceInfo.isOutOfRange">超出范围</text>
+				<text v-else>{{ submitting ? '提交中...' : '提交订单' }}</text>
 			</button>
 		</view>
 		
@@ -233,15 +257,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCartStore } from '@/store/cart.js'
 import { useUserStore } from '@/store/user.js'
+import { useAppStore } from '@/store/app.js'
 import { formatDate } from '@/utils/date.js'
 import { createOrder } from '@/services/order.js'
 import { getGiftCardList } from '@/services/giftcard.js'
 import { getMyCoupons } from '@/services/promotion.js'
 import { payByCoffeeCard } from '@/services/pay.js'
+import { getDistance } from '@/services/common.js'
 import { get } from '@/utils/request.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 
@@ -249,10 +275,35 @@ import { getStatusBarHeight } from '@/utils/system.js'
 const statusBarHeight = ref(0)
 const cartStore = useCartStore()
 const userStore = useUserStore()
+const appStore = useAppStore()
 const selectedAddress = ref(null)
 const remark = ref('')
 const submitting = ref(false)
 const deliveryFee = ref(0)
+const distanceInfo = ref({
+	distance: 0,
+	distanceText: '',
+	isOutOfRange: false
+})
+let isUnmounted = false
+
+onUnmounted(() => {
+	isUnmounted = true
+})
+
+const deliveryType = computed({
+	get: () => appStore.orderType,
+	set: (val) => appStore.setOrderType(val)
+}) // pickup: 到店取, delivery: 外卖配送
+
+// 按钮禁用逻辑
+const isSubmitDisabled = computed(() => {
+	if (submitting.value) return true
+	if (deliveryType.value === 'delivery') {
+		return !selectedAddress.value || distanceInfo.value.isOutOfRange
+	}
+	return false
+})
 
 // ========== 优惠券相关 ==========
 const selectedCoupon = ref(null)
@@ -370,6 +421,7 @@ const loadAvailableCoupons = async () => {
 	
 	try {
 		const res = await getMyCoupons(0)
+		if (isUnmounted) return
 		const list = res.data || res || []
 		
 		// 过滤可用优惠券：未使用且满足使用门槛
@@ -396,15 +448,16 @@ const loadAvailableCoupons = async () => {
 		}
 	} catch (e) {
 		console.error('加载优惠券失败', e)
-		availableCoupons.value = []
+		if (!isUnmounted) availableCoupons.value = []
 	} finally {
-		loadingCoupons.value = false
+		if (!isUnmounted) loadingCoupons.value = false
 	}
 }
 
 const loadCoffeeCards = async () => {
 	try {
 		const res = await getGiftCardList({ page: 1, pageSize: 100 })
+		if (isUnmounted) return
 		const cards = res.data?.records || res.records || res.data || []
 		coffeeCards.value = cards
 			.filter(card => card.status === 1 && parseFloat(card.balance || 0) > 0)
@@ -414,13 +467,14 @@ const loadCoffeeCards = async () => {
 		}
 	} catch (error) {
 		console.error('加载咖啡卡列表失败', error)
-		coffeeCards.value = []
+		if (!isUnmounted) coffeeCards.value = []
 	}
 }
 
 const loadDefaultAddress = async () => {
 	try {
 		const res = await get('/app/address/list')
+		if (isUnmounted) return
 		const addressList = res.data || res || []
 		if (addressList.length > 0) {
 			const defaultAddr = addressList.find(addr => addr.defaultStatus === 1) || addressList[0]
@@ -430,6 +484,27 @@ const loadDefaultAddress = async () => {
 		console.error('加载地址失败', error)
 	}
 }
+
+const loadStoreInfo = async () => {
+	try {
+		const currentId = appStore.currentStore?.id
+		const res = await getStoreInfo(currentId)
+		const store = res.data || res
+		if (store && !isUnmounted) {
+			appStore.setStore(store)
+		}
+	} catch (e) {
+		console.error('确认页加载门店信息失败', e)
+	}
+}
+
+// 监听配送方式变化
+watch(deliveryType, (newType) => {
+	// 如果切换到外卖，且没有地址，尝试加载默认地址
+	if (newType === 'delivery' && !selectedAddress.value) {
+		loadDefaultAddress()
+	}
+})
 
 // ========== 订单提交 ==========
 const submitOrder = async () => {
@@ -449,8 +524,8 @@ const submitOrder = async () => {
 		return
 	}
 
-	// 验证地址
-	if (!selectedAddress.value) {
+	// 验证地址（仅外卖时需要）
+	if (deliveryType.value === 'delivery' && !selectedAddress.value) {
 		uni.showToast({
 			title: '请选择收货地址',
 			icon: 'none'
@@ -504,9 +579,10 @@ const submitOrder = async () => {
 	// 构建订单数据
 	const orderData = {
 		cartItemIds: cartItemIds,
-		addressId: selectedAddress.value.id,
+		addressId: deliveryType.value === 'delivery' ? selectedAddress.value.id : null,
+		storeId: appStore.currentStore?.id, // 【新增】传递门店ID
 		remark: remark.value || '',
-		deliveryCompany: '门店自提',
+		deliveryCompany: deliveryType.value === 'pickup' ? '门店自提' : '外卖配送',
 		payType: payType.value,
 		coffeeCardId: payType.value === 3 ? selectedCoffeeCardId.value : null,
 		totalAmount: totalPrice.value,
@@ -520,6 +596,7 @@ const submitOrder = async () => {
 		submitting.value = true
 		
 		const result = await createOrder(orderData)
+		if (isUnmounted) return
 		const orderId = result.id || result.orderId || result.data?.id || result.data?.orderId
 		
 		if (!orderId) {
@@ -530,12 +607,14 @@ const submitOrder = async () => {
 		if (payType.value === 3) {
 			try {
 				await payByCoffeeCard(orderId)
+				if (isUnmounted) return
 				uni.showToast({
 					title: '支付成功',
 					icon: 'success'
 				})
 			} catch (payError) {
 				console.error('咖啡卡支付失败', payError)
+				if (isUnmounted) return
 				uni.showToast({
 					title: payError.message || '支付失败，请前往订单详情重新支付',
 					icon: 'none',
@@ -543,6 +622,7 @@ const submitOrder = async () => {
 				})
 				// 支付失败也跳转到订单详情页，用户可以重新支付
 				setTimeout(() => {
+					if (isUnmounted) return
 					uni.redirectTo({
 						url: `/pages/order/detail?id=${orderId}`
 					}).catch(() => {
@@ -560,9 +640,11 @@ const submitOrder = async () => {
 			})
 		}
 		
+		if (isUnmounted) return
 		await cartStore.syncCart()
 		
 		setTimeout(() => {
+			if (isUnmounted) return
 			uni.redirectTo({
 				url: `/pages/order/detail?id=${orderId}`
 			}).catch(() => {
@@ -574,18 +656,23 @@ const submitOrder = async () => {
 		
 	} catch (error) {
 		console.error('创建订单失败', error)
-		uni.showToast({
-			title: error.message || '创建订单失败，请重试',
-			icon: 'none',
-			duration: 2000
-		})
+		if (!isUnmounted) {
+			uni.showToast({
+				title: error.message || '创建订单失败，请重试',
+				icon: 'none',
+				duration: 2000
+			})
+		}
 	} finally {
-		submitting.value = false
+		if (!isUnmounted) submitting.value = false
 	}
 }
 
 // ========== 生命周期 ==========
 onShow(() => {
+	// 刷新门店状态
+	loadStoreInfo()
+
 	const selectedAddr = uni.getStorageSync('selectedAddress')
 	if (selectedAddr) {
 		selectedAddress.value = selectedAddr
@@ -596,7 +683,46 @@ onShow(() => {
 	
 	// 重新加载优惠券（可能已使用或过期）
 	loadAvailableCoupons()
+	
+	// 如果是外卖，且选了地址，重新计算距离
+	if (deliveryType.value === 'delivery' && selectedAddress.value) {
+		calculateDistance()
+	}
 })
+
+// 计算地址距离
+const calculateDistance = async () => {
+	if (!selectedAddress.value || !appStore.currentStore) return
+	
+	try {
+		const userLoc = `${selectedAddress.value.longitude},${selectedAddress.value.latitude}`
+		const res = await getDistance(userLoc, appStore.currentStore.id)
+		const data = res.data || res
+		
+		if (data) {
+			distanceInfo.value = {
+				distance: data.distance,
+				distanceText: data.distanceText,
+				isOutOfRange: data.distance > (appStore.currentStore.deliveryRadius || 5000)
+			}
+			
+			// 如果在范围内，同步更新配送费
+			if (!distanceInfo.value.isOutOfRange) {
+				const baseFee = parseFloat(appStore.currentStore.baseDeliveryFee || 5)
+				if (data.distance <= 3000) {
+					deliveryFee.value = baseFee
+				} else {
+					const extraKm = Math.ceil((data.distance - 3000) / 1000)
+					deliveryFee.value = baseFee + extraKm * 2
+				}
+			} else {
+				deliveryFee.value = 0
+			}
+		}
+	} catch (e) {
+		console.error('确认页计算距离失败', e)
+	}
+}
 
 onMounted(() => {
 	statusBarHeight.value = getStatusBarHeight()
@@ -670,6 +796,22 @@ $bg-color: #f7f8fa;
 	flex: 1;
 }
 
+/* 配送方式显示 */
+.delivery-display-section {
+	background-color: white;
+	margin: 24rpx 32rpx;
+	padding: 32rpx;
+	border-radius: 24rpx;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.delivery-name-text {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+	margin-left: 8rpx;
+}
+
 /* 收货地址 */
 .address-section {
 	background-color: white;
@@ -701,6 +843,25 @@ $bg-color: #f7f8fa;
 .receiver-phone {
 	font-size: 28rpx;
 	color: #666;
+}
+
+.distance-info {
+	margin-top: 12rpx;
+}
+
+.distance-tag {
+	font-size: 22rpx;
+	color: #666;
+	background-color: #f5f5f5;
+	padding: 4rpx 16rpx;
+	border-radius: 20rpx;
+	
+	&.out-of-range {
+		background-color: #fff1f0;
+		color: #ff4d4f;
+		font-weight: bold;
+		border: 1rpx solid #ffa39e;
+	}
 }
 
 .address-detail {

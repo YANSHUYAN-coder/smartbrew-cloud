@@ -57,11 +57,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import {request} from '@/utils/request.js'
-import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh, onLoad } from '@dcloudio/uni-app'
 
 const addressList = ref([])
 const refreshing = ref(false) // 下拉刷新状态
 const isSelectMode = ref(false) // 是否为选择模式
+
+// onLoad 获取参数更可靠
+onLoad((options) => {
+  if (options && options.select === 'true') {
+    isSelectMode.value = true
+  }
+})
 
 // 获取地址列表
 const fetchList = async () => {
@@ -126,15 +133,8 @@ onShow(() => {
   fetchList()
 })
 
-// 页面加载时检查是否为选择模式
+// onLoad 已经处理了选择模式，这里可以移除
 onMounted(() => {
-  // 检查 URL 参数
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const options = currentPage.options || {}
-  if (options.select === 'true') {
-    isSelectMode.value = true
-  }
 })
 </script>
 

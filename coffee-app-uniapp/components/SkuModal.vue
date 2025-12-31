@@ -1,5 +1,5 @@
 <template>
-	<view class="sku-modal-mask" v-if="show" @click="closeModal">
+	<view class="sku-modal-mask" v-if="show" @click="closeModal" :class="themeClass">
 		<view class="sku-modal" @click.stop>
 			<!-- 头部 -->
 			<view class="modal-header">
@@ -44,11 +44,11 @@
 				<view class="action-box">
 					<!-- 简单的加减器 -->
 					<view class="stepper" v-if="currentTempCount > 0">
-						<view class="step-btn minus" @click="updateTempCount(-1)">-</view>
+						<view class="step-btn minus" @click="updateTempCount(-1, $event)">-</view>
 						<text class="step-num">{{ currentTempCount }}</text>
-						<view class="step-btn plus" @click="updateTempCount(1)">+</view>
+						<view class="step-btn plus" @click="updateTempCount(1, $event)">+</view>
 					</view>
-					<view class="add-cart-btn" v-else @click="updateTempCount(1)">
+					<view class="add-cart-btn" v-else @click="updateTempCount(1, $event)">
 						加入购物车
 					</view>
 				</view>
@@ -58,25 +58,32 @@
 </template>
 
 <script setup>
-	import { ref, watch } from 'vue'
+	import { ref, watch, computed } from 'vue'
 	import { getProductDetail } from '@/services/product.js'
 	import { useCartStore } from '@/store/cart.js'
+	import { useUserStore } from '@/store/user.js'
+	import { useAppStore } from '@/store/app.js'
 
 	const props = defineProps({
 		show: Boolean,
 		product: Object
 	})
 
-	const emit = defineEmits(['update:show', 'close'])
+	const emit = defineEmits(['update:show', 'close', 'add-to-cart-anim'])
 
 	const cartStore = useCartStore()
+	const userStore = useUserStore()
+	const appStore = useAppStore()
 	const skuList = ref([])
 	const specGroups = ref([])
 	const selectedSpecs = ref({})
 	const selectedSku = ref(null)
 	const currentTempCount = ref(0)
 
+	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+
 	watch(() => props.show, (newVal) => {
+		console.log('SkuModal show status:', newVal, 'Product ID:', props.product?.id)
 		if (newVal && props.product.id) {
 			initData()
 		}
@@ -177,7 +184,13 @@
 		currentTempCount.value = cartItem ? cartItem.quantity : 0
 	}
 
-	const updateTempCount = (delta) => {
+	const updateTempCount = (delta, event) => {
+		// 校验门店营业状态
+		if (appStore.currentStore && appStore.currentStore.openStatus === 0) {
+			uni.showToast({ title: '门店休息中，暂不接单', icon: 'none' })
+			return
+		}
+
 		if (skuList.value.length > 0 && !selectedSku.value) {
 			uni.showToast({ title: '请先选择规格', icon: 'none' })
 			return
@@ -197,6 +210,11 @@
 		
 		currentTempCount.value = newCount
 		if (delta > 0) {
+			// 触发动画事件
+			if (event) {
+				emit('add-to-cart-anim', event)
+			}
+			
 			cartStore.addToCart(productWithSku, 1).then(() => {
 				uni.showToast({ title: '已加入购物车', icon: 'success', duration: 1000 })
 				// 只在第一次加入购物车时关闭弹框
@@ -249,10 +267,11 @@
 
 	.sku-modal {
 		width: 100%;
-		background-color: white;
+		background-color: var(--bg-primary);
 		border-radius: 32rpx 32rpx 0 0;
 		padding: 32rpx;
 		animation: slideUp 0.3s ease-out;
+		transition: background-color 0.3s;
 	}
 
 	@keyframes slideUp {
@@ -282,11 +301,12 @@
 		font-weight: bold;
 		display: block;
 		margin-bottom: 8rpx;
+		color: var(--text-primary);
 	}
 
 	.modal-desc {
 		font-size: 24rpx;
-		color: #999;
+		color: var(--text-tertiary);
 	}
 
 	.close-btn {
@@ -295,7 +315,7 @@
 		right: 0;
 		padding: 10rpx;
 		font-size: 40rpx;
-		color: #999;
+		color: var(--text-tertiary);
 		line-height: 1;
 	}
 
@@ -310,7 +330,7 @@
 
 	.spec-title {
 		font-size: 26rpx;
-		color: #666;
+		color: var(--text-secondary);
 		margin-bottom: 16rpx;
 		display: block;
 	}
@@ -323,11 +343,12 @@
 
 	.spec-opt {
 		padding: 10rpx 30rpx;
-		background-color: #f5f5f5;
+		background-color: var(--bg-secondary);
 		border-radius: 8rpx;
 		font-size: 24rpx;
-		color: #333;
+		color: var(--text-primary);
 		border: 2rpx solid transparent;
+		transition: all 0.2s;
 	}
 
 	.spec-opt.active {
@@ -340,7 +361,7 @@
 	.no-spec-tip {
 		text-align: center;
 		padding: 40rpx;
-		color: #999;
+		color: var(--text-tertiary);
 		font-size: 24rpx;
 	}
 
@@ -348,7 +369,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		border-top: 1rpx solid #eee;
+		border-top: 1rpx solid var(--border-light);
 		padding-top: 20rpx;
 	}
 
@@ -376,7 +397,7 @@
 
 	.selected-spec {
 		font-size: 20rpx;
-		color: #999;
+		color: var(--text-tertiary);
 		margin-top: 4rpx;
 	}
 
@@ -412,8 +433,8 @@
 	}
 
 	.step-btn.minus {
-		border: 2rpx solid #ddd;
-		color: #666;
+		border: 2rpx solid var(--border-color);
+		color: var(--text-secondary);
 	}
 
 	.step-btn.plus {
@@ -424,6 +445,7 @@
 	.step-num {
 		font-size: 28rpx;
 		font-weight: bold;
+		color: var(--text-primary);
 	}
 </style>
 

@@ -134,16 +134,18 @@ public class AuthController {
                 return Result.failed("Refresh Token 已失效，请重新登录");
             }
 
-            // 3. 生成新的 Access Token
-            String newAccessToken = jwtUtil.generateAccessToken(userId,phone);
+            // 3. 生成新的 Access Token 和新的 Refresh Token (实现轮换机制)
+            String newAccessToken = jwtUtil.generateAccessToken(userId, phone);
+            String newRefreshToken = jwtUtil.generateRefreshToken(userId, phone);
 
-            // 4. (可选) 刷新 Redis 中 Refresh Token 的过期时间
-            redisTemplate.expire(redisKey, 7, TimeUnit.DAYS);
+            // 4. 更新 Redis 中的 Refresh Token (替换旧的，并重新设置 7 天有效期)
+            redisTemplate.opsForValue().set(redisKey, newRefreshToken, 7, TimeUnit.DAYS);
 
             Map<String, String> result = new HashMap<>();
             result.put("token", newAccessToken);
-            // 这里可以决定是否同时返回新的 refreshToken (轮换机制)，暂时只返回 accessToken
+            result.put("refreshToken", newRefreshToken); // 返回新的刷新令牌
 
+            log.info("用户 {} 成功刷新令牌", phone);
             return Result.success(result);
 
         } catch (Exception e) {

@@ -13,6 +13,11 @@
 
       <el-table :data="safeTableData" border style="width: 100%" v-loading="loading">
         <el-table-column prop="orderSn" label="订单号" width="180" />
+        <el-table-column label="门店" width="150">
+          <template #default="scope">
+            <el-tag size="small" effect="plain">{{ scope.row.storeName || '未知门店' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="下单时间" width="180" />
         <el-table-column prop="payAmount" label="总金额" width="100">
           <template #default="scope">¥{{ scope.row.payAmount }}</template>

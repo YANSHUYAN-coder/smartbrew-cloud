@@ -1,5 +1,5 @@
 <template>
-  <view class="order-detail-page">
+  <view class="order-detail-page" :class="themeClass">
     <!-- 顶部导航 -->
     <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-back" @click="goBack">
@@ -204,18 +204,27 @@
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, onMounted, onUnmounted, computed} from 'vue'
 import {onLoad} from '@dcloudio/uni-app'
 import {getOrderDetail, cancelOrder as apiCancelOrder} from '@/services/order.js' // 直接引入 API
 import {getStatusBarHeight} from '@/utils/system.js'
 import {formatDateTime} from '@/utils/date.js'
 import {useOrderActions} from '@/composables/useOrderActions.js'
+import { useUserStore } from '@/store/user.js'
 
 const {handleConfirmReceive, handlePayOrder} = useOrderActions() // 移除 handleCancelOrder，改用本地实现
+const userStore = useUserStore()
 
 const statusBarHeight = ref(0)
 const orderDetail = ref({})
 const orderId = ref(null)
+let isUnmounted = false
+
+onUnmounted(() => {
+  isUnmounted = true
+})
+
+const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
 
 // 获取订单状态文本
 const getStatusText = (status) => {
@@ -317,6 +326,7 @@ const loadOrderDetail = async () => {
       icon: 'none'
     })
     setTimeout(() => {
+      if (isUnmounted) return
       uni.navigateBack()
     }, 1500)
     return
@@ -327,18 +337,22 @@ const loadOrderDetail = async () => {
       title: '加载中...'
     })
     const result = await getOrderDetail(orderId.value)
+    if (isUnmounted) return
     orderDetail.value = result || {}
   } catch (error) {
     console.error('加载订单详情失败', error)
-    uni.showToast({
-      title: error.message || '加载失败',
-      icon: 'none'
-    })
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 1500)
+    if (!isUnmounted) {
+      uni.showToast({
+        title: error.message || '加载失败',
+        icon: 'none'
+      })
+      setTimeout(() => {
+        if (isUnmounted) return
+        uni.navigateBack()
+      }, 1500)
+    }
   } finally {
-    uni.hideLoading()
+    if (!isUnmounted) uni.hideLoading()
   }
 }
 
@@ -362,13 +376,16 @@ const doCancelOrder = async (reason) => {
     // 注意：你需要确保 services/order.js 中的 cancelOrder 支持传 reason
     // 如果原本只传 orderId，现在需要改成传 { orderId, reason } 或者直接复用 cancelOrder(orderId, reason)
     await apiCancelOrder(orderId.value, reason)
+    if (isUnmounted) return
 
     uni.showToast({title: '订单已取消', icon: 'success'})
     loadOrderDetail() // 刷新详情
   } catch (e) {
-    uni.showToast({title: e.message || '取消失败', icon: 'none'})
+    if (!isUnmounted) {
+      uni.showToast({title: e.message || '取消失败', icon: 'none'})
+    }
   } finally {
-    uni.hideLoading()
+    if (!isUnmounted) uni.hideLoading()
   }
 }
 
@@ -398,18 +415,18 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 $primary: #6f4e37;
-$bg-color: #f7f8fa;
 
 .order-detail-page {
   min-height: 100vh;
-  background-color: $bg-color;
+  background-color: var(--bg-secondary);
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s;
 }
 
 /* 顶部导航 */
 .nav-bar {
-  background-color: white;
+  background-color: var(--bg-primary);
   padding-bottom: 20rpx;
   padding-left: 32rpx;
   padding-right: 32rpx;
@@ -419,7 +436,7 @@ $bg-color: #f7f8fa;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+  box-shadow: 0 2rpx 10rpx var(--shadow-color);
 }
 
 .nav-back {
@@ -433,7 +450,7 @@ $bg-color: #f7f8fa;
 .page-title {
   font-size: 36rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* 内容区域 */
@@ -446,11 +463,11 @@ $bg-color: #f7f8fa;
 
 /* 订单状态卡片 */
 .status-card-new {
-  background-color: white;
+  background-color: var(--bg-primary);
   margin: 24rpx 32rpx;
   padding: 40rpx 32rpx;
   border-radius: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8rpx 24rpx var(--shadow-color);
   overflow: hidden;
   position: relative;
   border: 2rpx solid transparent;
@@ -459,7 +476,7 @@ $bg-color: #f7f8fa;
 
 /* 咖啡卡订单状态卡片样式 */
 .status-card-new.gift-card-status {
-  background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
   border: 2rpx solid #d4af37 !important;
   box-shadow: 0 8rpx 24rpx rgba(212, 175, 55, 0.15) !important;
 }
@@ -481,18 +498,18 @@ $bg-color: #f7f8fa;
 .status-title {
   font-size: 44rpx;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 12rpx;
 }
 
 .status-desc-text {
   font-size: 26rpx;
-  color: #999;
+  color: var(--text-tertiary);
   margin-bottom: 24rpx;
 }
 
 .pickup-code-box {
-  background-color: #f7f8fa;
+  background-color: var(--bg-secondary);
   padding: 12rpx 24rpx;
   border-radius: 12rpx;
   display: inline-flex;
@@ -502,7 +519,7 @@ $bg-color: #f7f8fa;
 
 .code-label {
   font-size: 24rpx;
-  color: #666;
+  color: var(--text-secondary);
   margin-right: 12rpx;
 }
 
@@ -547,7 +564,7 @@ $bg-color: #f7f8fa;
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  background-color: #e0e0e0;
+  background-color: var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -562,7 +579,7 @@ $bg-color: #f7f8fa;
 
 .step-label {
   font-size: 22rpx;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .step-item.active .step-label {
@@ -573,7 +590,7 @@ $bg-color: #f7f8fa;
 .step-line {
   flex: 1;
   height: 4rpx;
-  background-color: #f0f0f0;
+  background-color: var(--border-light);
   margin: 0 12rpx;
   margin-bottom: 30rpx; /* 对齐圆圈中心 */
   border-radius: 2rpx;
@@ -590,18 +607,18 @@ $bg-color: #f7f8fa;
 .price-section,
 .remark-section,
 .gift-card-info-section {
-  background-color: white;
+  background-color: var(--bg-primary);
   margin: 24rpx 32rpx;
   padding: 32rpx;
   border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4rpx 16rpx var(--shadow-color);
   border: 2rpx solid transparent;
   transition: all 0.3s;
 }
 
 /* 咖啡卡订单费用明细样式 */
 .price-section.gift-card-price {
-  background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
   border: 2rpx solid #d4af37 !important;
   box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
 }
@@ -630,7 +647,7 @@ $bg-color: #f7f8fa;
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 24rpx;
 }
 
@@ -650,17 +667,17 @@ $bg-color: #f7f8fa;
 .receiver-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .receiver-phone {
   font-size: 28rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .address-detail {
   font-size: 26rpx;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -670,7 +687,7 @@ $bg-color: #f7f8fa;
   justify-content: space-between;
   align-items: center;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--border-light);
 }
 
 .info-item:last-child {
@@ -679,7 +696,7 @@ $bg-color: #f7f8fa;
 
 /* 咖啡卡订单信息区块样式 */
 .order-info-section.gift-card-info {
-  background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%) !important;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
   border: 2rpx solid #d4af37 !important;
   box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
 }
@@ -690,12 +707,12 @@ $bg-color: #f7f8fa;
 
 .info-label {
   font-size: 28rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #333;
+  color: var(--text-primary);
 }
 
 /* 商品列表 */
@@ -714,7 +731,7 @@ $bg-color: #f7f8fa;
   width: 160rpx;
   height: 160rpx;
   border-radius: 16rpx;
-  background-color: #f9f9f9;
+  background-color: var(--bg-tertiary);
   margin-right: 24rpx;
 }
 
@@ -729,7 +746,7 @@ $bg-color: #f7f8fa;
 .goods-name {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 8rpx;
 }
 
@@ -739,8 +756,8 @@ $bg-color: #f7f8fa;
 
 .spec-text {
   font-size: 24rpx;
-  color: #999;
-  background-color: #f7f8fa;
+  color: var(--text-tertiary);
+  background-color: var(--bg-secondary);
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
@@ -766,7 +783,7 @@ $bg-color: #f7f8fa;
 
 .goods-quantity {
   font-size: 26rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 /* 费用明细 */
@@ -779,18 +796,18 @@ $bg-color: #f7f8fa;
 
 .price-item.total {
   padding-top: 24rpx;
-  border-top: 1rpx solid #f0f0f0;
+  border-top: 1rpx solid var(--border-light);
   margin-top: 16rpx;
 }
 
 .price-label {
   font-size: 28rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .price-value {
   font-size: 28rpx;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .price-value.discount {
@@ -805,16 +822,16 @@ $bg-color: #f7f8fa;
 
 /* 备注 */
 .remark-section {
-  background-color: white;
+  background-color: var(--bg-primary);
   margin: 24rpx 32rpx;
   padding: 32rpx;
   border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4rpx 16rpx var(--shadow-color);
 }
 
 .remark-text {
   font-size: 26rpx;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -829,7 +846,7 @@ $bg-color: #f7f8fa;
   display: flex;
   align-items: flex-start;
   padding: 12rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--border-light);
 }
 
 .remark-item:last-child {
@@ -838,14 +855,14 @@ $bg-color: #f7f8fa;
 
 .remark-label {
   font-size: 26rpx;
-  color: #666;
+  color: var(--text-secondary);
   min-width: 120rpx;
   flex-shrink: 0;
 }
 
 .remark-value {
   font-size: 26rpx;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
   flex: 1;
 }
@@ -856,10 +873,10 @@ $bg-color: #f7f8fa;
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: white;
+  background-color: var(--bg-primary);
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -2rpx 10rpx var(--shadow-color);
   z-index: 40;
 }
 
@@ -884,8 +901,8 @@ $bg-color: #f7f8fa;
 
 .cancel-btn {
   background-color: transparent;
-  color: #666;
-  border: 2rpx solid #ddd;
+  color: var(--text-secondary);
+  border: 2rpx solid var(--border-color);
 }
 
 .pay-btn,

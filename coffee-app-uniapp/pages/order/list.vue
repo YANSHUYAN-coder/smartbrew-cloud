@@ -1,5 +1,5 @@
 <template>
-    <view class="order-list-page">
+    <view class="order-list-page" :class="themeClass">
         <!-- 顶部导航 -->
         <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="nav-back" @click="goBack">
@@ -60,6 +60,10 @@
                     <!-- 订单头部 -->
                     <view class="order-header">
                         <view class="order-info">
+                            <view class="store-row">
+                                <uni-icons type="shop" size="14" color="#333"></uni-icons>
+                                <text class="store-name">{{ order.storeName || '智咖·云' }}</text>
+                            </view>
                             <text class="order-sn">订单号：{{ order.orderSn }}</text>
                             <text class="order-time">{{ formatTime(order.createTime) }}</text>
                         </view>
@@ -159,17 +163,25 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrderList } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
+import { useUserStore } from '@/store/user.js'
 import OrderListSkeleton from '@/components/OrderListSkeleton.vue'
 
 const { handleCancelOrder, handleConfirmReceive } = useOrderActions()
+const userStore = useUserStore()
 
 const statusBarHeight = ref(0)
+const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+let isUnmounted = false
+
+onUnmounted(() => {
+    isUnmounted = true
+})
 const currentStatus = ref(null) // null 表示全部
 const orderList = ref([])
 const refreshing = ref(false)
@@ -306,7 +318,7 @@ const loadOrderList = async (reset = false) => {
         const result = await getOrderList(params)
         
         // 关键：如果本次请求 ID 不等于最后一次发出的 ID，说明有新请求发起了，丢弃旧结果
-        if (requestId !== lastRequestId.value) return
+        if (requestId !== lastRequestId.value || isUnmounted) return
         
         // 处理分页数据
         const records = result.records || result.data?.records || result.list || []
@@ -348,6 +360,8 @@ const loadOrderList = async (reset = false) => {
 const onRefresh = async () => {
     refreshing.value = true
     await loadOrderList(true)
+    if (isUnmounted) return
+    refreshing.value = false
 }
 
 // 刷新恢复
@@ -413,20 +427,20 @@ onShow(() => {
 
 <style lang="scss" scoped>
 $primary: #6f4e37;
-$bg-color: #f7f8fa;
 
 .order-list-page {
     /* 关键修复：使用 Flex 布局撑满屏幕，去掉 calc 计算 */
     height: 100vh;
-    background-color: $bg-color;
+    background-color: var(--bg-secondary);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: background-color 0.3s;
 }
 
 /* 顶部导航 */
 .nav-bar {
-    background-color: white;
+    background-color: var(--bg-primary);
     padding-bottom: 20rpx;
     padding-left: 32rpx;
     padding-right: 32rpx;
@@ -449,14 +463,14 @@ $bg-color: #f7f8fa;
 .page-title {
     font-size: 36rpx;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 /* 状态筛选标签 */
 .tabs-container {
-    background-color: white;
+    background-color: var(--bg-primary);
     width: 100%;
-    box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+    box-shadow: 0 2rpx 10rpx var(--shadow-color);
     z-index: 49;
     flex-shrink: 0; /* 防止被压缩 */
 }
@@ -475,7 +489,7 @@ $bg-color: #f7f8fa;
 .tab-item {
     padding: 12rpx 24rpx;
     border-radius: 30rpx;
-    background-color: #f5f5f5;
+    background-color: var(--bg-secondary);
     transition: all 0.3s;
     flex-shrink: 0;
 }
@@ -486,7 +500,7 @@ $bg-color: #f7f8fa;
 
 .tab-text {
     font-size: 26rpx;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .tab-item.active .tab-text {
@@ -507,18 +521,18 @@ $bg-color: #f7f8fa;
 }
 
 .order-card {
-    background-color: white;
+    background-color: var(--bg-primary);
     border-radius: 24rpx;
     padding: 32rpx;
     margin-bottom: 24rpx;
-    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+    box-shadow: 0 4rpx 16rpx var(--shadow-color);
     border: 2rpx solid transparent;
     transition: all 0.3s;
 }
 
 /* 咖啡卡订单特殊样式 */
 .order-card.gift-card-order {
-    background: linear-gradient(135deg, #fff9f0 0%, #ffffff 100%);
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
     border: 2rpx solid #d4af37;
     box-shadow: 0 6rpx 20rpx rgba(212, 175, 55, 0.15);
 }
@@ -529,7 +543,7 @@ $bg-color: #f7f8fa;
     align-items: center;
     margin-bottom: 24rpx;
     padding-bottom: 24rpx;
-    border-bottom: 1rpx solid #f0f0f0;
+    border-bottom: 1rpx solid var(--border-light);
 }
 
 /* 咖啡卡订单头部样式 */
@@ -543,15 +557,28 @@ $bg-color: #f7f8fa;
     gap: 8rpx;
 }
 
+.store-row {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    margin-bottom: 4rpx;
+}
+
+.store-name {
+    font-size: 26rpx;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
 .order-sn {
     font-size: 28rpx;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .order-time {
     font-size: 24rpx;
-    color: #999;
+    color: var(--text-tertiary);
 }
 
 .order-status {
@@ -566,7 +593,7 @@ $bg-color: #f7f8fa;
 .status-making { color: #1890ff; }
 .status-pickup { color: #52c41a; }
 .status-completed { color: #52c41a;  }
-.status-cancelled { color: #999; }
+.status-cancelled { color: var(--text-tertiary); }
 
 .order-goods {
     margin-bottom: 24rpx;
@@ -620,7 +647,7 @@ $bg-color: #f7f8fa;
     width: 120rpx;
     height: 120rpx;
     border-radius: 12rpx;
-    background-color: #f9f9f9;
+    background-color: var(--bg-tertiary);
     margin-right: 20rpx;
 }
 
@@ -635,7 +662,7 @@ $bg-color: #f7f8fa;
 .goods-name {
     font-size: 28rpx;
     font-weight: 500;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 8rpx;
 }
 
@@ -645,8 +672,8 @@ $bg-color: #f7f8fa;
 
 .spec-text {
     font-size: 22rpx;
-    color: #999;
-    background-color: #f7f8fa;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
     padding: 4rpx 12rpx;
     border-radius: 8rpx;
 }
@@ -665,23 +692,23 @@ $bg-color: #f7f8fa;
 
 .goods-quantity {
     font-size: 24rpx;
-    color: #999;
+    color: var(--text-tertiary);
 }
 
 .more-goods {
     padding-top: 16rpx;
-    border-top: 1rpx solid #f0f0f0;
+    border-top: 1rpx solid var(--border-light);
     text-align: center;
 }
 
 .more-text {
     font-size: 24rpx;
-    color: #999;
+    color: var(--text-tertiary);
 }
 
 .order-footer {
     padding-top: 24rpx;
-    border-top: 1rpx solid #f0f0f0;
+    border-top: 1rpx solid var(--border-light);
 }
 
 /* 咖啡卡订单底部样式 */
@@ -698,7 +725,7 @@ $bg-color: #f7f8fa;
 
 .total-label {
     font-size: 26rpx;
-    color: #666;
+    color: var(--text-secondary);
     margin-right: 8rpx;
 }
 
@@ -728,8 +755,8 @@ $bg-color: #f7f8fa;
 
 .cancel-btn {
     background-color: transparent;
-    color: #666;
-    border: 1rpx solid #ddd;
+    color: var(--text-secondary);
+    border: 1rpx solid var(--border-color);
 }
 
 .pay-btn {
@@ -750,7 +777,7 @@ $bg-color: #f7f8fa;
 
 .load-text {
     font-size: 24rpx;
-    color: #999;
+    color: var(--text-tertiary);
 }
 
 /* 空状态 */
@@ -772,18 +799,18 @@ $bg-color: #f7f8fa;
 .empty-text {
     font-size: 32rpx;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 12rpx;
 }
 
 .empty-sub {
     font-size: 26rpx;
-    color: #999;
+    color: var(--text-tertiary);
     margin-bottom: 48rpx;
 }
 
 .go-shop-btn {
-    background-color: white;
+    background-color: var(--bg-primary);
     color: $primary;
     border: 2rpx solid $primary;
     padding: 0 64rpx;

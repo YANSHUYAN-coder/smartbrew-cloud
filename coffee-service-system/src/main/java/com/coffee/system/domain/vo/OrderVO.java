@@ -22,6 +22,11 @@ public class OrderVO extends OmsOrder {
     private String pickupCode;
 
     /**
+     * 门店名称
+     */
+    private String storeName;
+
+    /**
      * 订单内的商品明细列表
      * 前端遍历这个列表来展示：
      * - 商品图片 (productPic)

@@ -3,10 +3,12 @@ package com.coffee.system.service.impl;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.domain.AlipayTradeAppPayModel;
+import com.alipay.api.domain.AlipayTradeQueryModel;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradeAppPayRequest;
-import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeQueryRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
+import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.coffee.common.config.RabbitMqConfig;
 import com.coffee.common.dict.OrderStatus;
@@ -16,6 +18,7 @@ import com.coffee.system.service.AliPayService;
 import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -117,8 +120,6 @@ public class AliPayServiceImpl implements AliPayService {
             // 2. 获取核心业务参数
             // out_trade_no: 商户订单号 (对应我们系统的 OrderSn)
             String outTradeNo = params.get("out_trade_no");
-            // trade_no: 支付宝交易号 (流水号)
-            String tradeNo = params.get("trade_no");
             // trade_status: 交易状态
             String tradeStatus = params.get("trade_status");
             // total_amount: 支付金额
@@ -163,61 +164,9 @@ public class AliPayServiceImpl implements AliPayService {
             }
 
             // 7. 更新订单状态
-            // 这是一个事务操作
-            order.setStatus(OrderStatus.PENDING_MAKING.getCode()); // 设置为已支付/待制作状态
-            order.setPayType(1); // 1: 支付宝
-            order.setPaymentTime(LocalDateTime.now());
-            // 如果 OmsOrder 表有 transaction_id 字段，建议保存支付宝流水号
-            // order.setTransactionId(tradeNo);
-
-            boolean updateResult = orderService.updateById(order);
+            boolean updateResult = completeOrderPayment(order);
 
             if (updateResult) {
-                log.info("订单支付成功，状态更新完成: {}", outTradeNo);
-                // 8. 检查是否是咖啡卡订单，如果是则创建并激活咖啡卡，并将订单状态设为已完成
-                if (order.getOrderType() != null && order.getOrderType() == 1) {
-                    try {
-                        giftCardService.activateGiftCardByOrder(order.getId());
-                        log.info("咖啡卡创建并激活成功，订单ID: {}", order.getId());
-                        
-                        // 咖啡卡是虚拟商品，支付成功后直接设为已完成
-                        order.setStatus(OrderStatus.COMPLETED.getCode());
-                        orderService.updateById(order);
-                        log.info("咖啡卡订单状态已更新为已完成，订单ID: {}", order.getId());
-                    } catch (Exception e) {
-                        log.error("咖啡卡创建失败，订单ID: {}", order.getId(), e);
-                        // 咖啡卡创建失败不影响支付成功，但需要记录日志以便后续处理
-                    }
-                }
-                
-                // 9. 如果使用咖啡卡支付，从咖啡卡余额中扣减
-                /*if (order.getCoffeeCardId() != null && order.getPayType() == 3) {
-                    try {
-                        giftCardService.deductBalance(order.getCoffeeCardId(), order.getPayAmount(), order.getId());
-                        log.info("咖啡卡扣减成功，订单ID: {}, 扣减金额: {}", order.getId(), order.getPayAmount());
-                    } catch (Exception e) {
-                        log.error("咖啡卡扣减失败，订单ID: {}", order.getId(), e);
-                        // 咖啡卡扣减失败不影响支付成功，但需要记录日志以便后续处理
-                    }
-                }*/
-
-                // 10. 发送支付成功消息
-                rabbitTemplate.convertAndSend(
-                        RabbitMqConfig.ORDER_EVENT_EXCHANGE,
-                        RabbitMqConfig.ORDER_PAY_KEY,
-                        order.getId() // 发送订单ID
-                );
-                log.info("发送支付成功消息，订单ID: {}", order.getId());
-
-                // 发送消息通知管理端有新订单
-                rabbitTemplate.convertAndSend(
-                        RabbitMqConfig.ORDER_EXCHANGE,
-                        RabbitMqConfig.NEW_ORDER_KEY,
-                        order.getId() // 发送订单ID或者简要信息
-                );
-                log.info("发送新订单消息，订单ID: {}", order.getId());
-
-
                 return "success"; // 告诉支付宝处理成功，不要再发通知了
             } else {
                 log.error("订单状态更新失败: {}", outTradeNo);
@@ -231,5 +180,101 @@ public class AliPayServiceImpl implements AliPayService {
             log.error("处理支付宝回调系统异常", e);
             return "failure";
         }
+    }
+
+    /**
+     * 主动查询支付宝订单支付状态
+     */
+    @Override
+    public boolean checkPaymentStatus(String outTradeNo) {
+        log.info("开始主动查询支付宝订单状态，商户单号: {}", outTradeNo);
+        AlipayTradeQueryRequest request = new AlipayTradeQueryRequest();
+        AlipayTradeQueryModel model = new AlipayTradeQueryModel();
+        model.setOutTradeNo(outTradeNo);
+        request.setBizModel(model);
+
+        try {
+            AlipayTradeQueryResponse response = alipayClient.execute(request);
+            if (response.isSuccess()) {
+                String tradeStatus = response.getTradeStatus();
+                log.info("支付宝查询返回状态: {}", tradeStatus);
+                // TRADE_SUCCESS: 支付成功, TRADE_FINISHED: 交易结束（不可退款）
+                return "TRADE_SUCCESS".equals(tradeStatus) || "TRADE_FINISHED".equals(tradeStatus);
+            }
+        } catch (AlipayApiException e) {
+            log.error("调用支付宝查询接口异常, outTradeNo: {}", outTradeNo, e);
+        }
+        return false;
+    }
+
+    /**
+     * 手动同步订单支付状态
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean syncPaymentStatus(Long orderId) {
+        OmsOrder order = orderService.getById(orderId);
+        if (order == null) return false;
+
+        // 如果订单已经不是待支付状态，直接返回 true
+        if (!OrderStatus.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
+            return true;
+        }
+
+        // 主动查支付宝
+        boolean isPaid = checkPaymentStatus(order.getOrderSn());
+        if (isPaid) {
+            log.info("主动查询确认订单 {} 已支付，执行状态同步逻辑", order.getOrderSn());
+            return completeOrderPayment(order);
+        }
+        
+        return false;
+    }
+
+    /**
+     * 抽取公共的支付成功处理逻辑
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean completeOrderPayment(OmsOrder order) {
+        // 幂等性检查
+        if (order.getStatus() > 0) {
+            return true;
+        }
+
+        order.setStatus(OrderStatus.PENDING_MAKING.getCode()); // 设置为待制作状态
+        order.setPayType(1); // 1: 支付宝
+        order.setPaymentTime(LocalDateTime.now());
+
+        boolean updateResult = orderService.updateById(order);
+
+        if (updateResult) {
+            log.info("订单支付成功处理完成，订单号: {}", order.getOrderSn());
+            
+            // 处理咖啡卡逻辑
+            if (order.getOrderType() != null && order.getOrderType() == 1) {
+                try {
+                    giftCardService.activateGiftCardByOrder(order.getId());
+                    order.setStatus(OrderStatus.COMPLETED.getCode());
+                    orderService.updateById(order);
+                } catch (Exception e) {
+                    log.error("咖啡卡激活失败", e);
+                }
+            }
+
+            // 发送 MQ 消息 (增加 CorrelationData 用于消息确认)
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.ORDER_EVENT_EXCHANGE,
+                    RabbitMqConfig.ORDER_PAY_KEY,
+                    order.getId(),
+                    new CorrelationData("pay-" + order.getOrderSn())
+            );
+            rabbitTemplate.convertAndSend(
+                    RabbitMqConfig.ORDER_EXCHANGE,
+                    RabbitMqConfig.NEW_ORDER_KEY,
+                    order.getId(),
+                    new CorrelationData("new-" + order.getOrderSn())
+            );
+        }
+        return updateResult;
     }
 }

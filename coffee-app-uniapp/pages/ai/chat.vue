@@ -132,7 +132,7 @@ const inputText = ref('')
 const isLoading = ref(false)
 const isTyping = ref(false)
 const inputFocus = ref(false)
-const userStore = new useUserStore()
+const userStore = useUserStore()
 const userInfo = userStore.userInfo
 
 

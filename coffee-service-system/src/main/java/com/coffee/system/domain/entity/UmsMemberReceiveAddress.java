@@ -17,4 +17,14 @@ public class UmsMemberReceiveAddress extends BaseEntity {
     private String city;
     private String region;
     private String detailAddress;
+
+    /**
+     * 经度
+     */
+    private Double longitude;
+
+    /**
+     * 纬度
+     */
+    private Double latitude;
 }

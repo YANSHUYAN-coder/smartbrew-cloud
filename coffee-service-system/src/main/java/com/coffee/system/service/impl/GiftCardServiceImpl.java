@@ -15,18 +15,23 @@ import com.coffee.system.mapper.GiftCardMapper;
 import com.coffee.system.mapper.GiftCardTxnMapper;
 import com.coffee.system.service.GiftCardService;
 import com.coffee.system.service.OrderService;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 咖啡卡业务实现
  */
+@Slf4j
 @Service
 public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> implements GiftCardService {
 
@@ -36,6 +41,9 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
     @Autowired
     @Lazy
     private OrderService orderService;
+
+    @Autowired
+    private RedissonClient redissonClient;
 
     @Override
     public Page<GiftCard> listCurrent(PageParam pageParam) {
@@ -268,6 +276,7 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
 
     /**
      * 从咖啡卡余额中扣减（用于支付订单）
+     * 使用分布式锁保护，防止并发扣减导致余额错误
      *
      * @param cardId 咖啡卡ID
      * @param amount 扣减金额
@@ -276,6 +285,14 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deductBalance(Long cardId, BigDecimal amount, Long orderId) {
+        String lockKey = "lock:giftcard:balance:" + cardId;
+        RLock lock = redissonClient.getLock(lockKey);
+        
+        try {
+            // 尝试加锁，最多等待 3 秒，锁定 10 秒后自动释放（防止死锁）
+            if (lock.tryLock(3, 10, TimeUnit.SECONDS)) {
+                try {
+                    // 在锁内执行余额扣减
         GiftCard card = this.getById(cardId);
         if (card == null) {
             throw new RuntimeException("咖啡卡不存在");
@@ -303,6 +320,26 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
         txn.setOrderId(orderId);
         txn.setRemark("订单支付 (订单号: " + orderId + ")");
         giftCardTxnMapper.insert(txn);
+                    
+                    log.info("咖啡卡余额扣减成功，卡ID: {}, 扣减金额: {}, 订单ID: {}", cardId, amount, orderId);
+                } catch (Exception e) {
+                    log.error("咖啡卡余额扣减失败，卡ID: {}, 订单ID: {}", cardId, orderId, e);
+                    throw e;
+                }
+            } else {
+                log.warn("获取咖啡卡余额扣减锁失败，卡ID: {}, 订单ID: {}", cardId, orderId);
+                throw new RuntimeException("系统繁忙，请稍后重试");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取咖啡卡余额扣减锁被中断，卡ID: {}, 订单ID: {}", cardId, orderId, e);
+            throw new RuntimeException("操作失败，请重试");
+        } finally {
+            // 释放锁（必须判断是否是当前线程持有的锁）
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     /**

@@ -5,19 +5,42 @@ import { getUserInfo, getProfileStatistics, logout as apiLogout } from '@/servic
 const TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
 const USER_INFO_KEY = 'userInfo'
+const THEME_MODE_KEY = 'themeMode'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: uni.getStorageSync(TOKEN_KEY) || '',
     refreshToken: uni.getStorageSync(REFRESH_TOKEN_KEY) || '',
-    userInfo: uni.getStorageSync(USER_INFO_KEY) || null
+    userInfo: uni.getStorageSync(USER_INFO_KEY) || null,
+    themeMode: uni.getStorageSync(THEME_MODE_KEY) || 'auto' // 'light', 'dark', 'auto'
   }),
 
   getters: {
-    isLogin: (state) => !!state.token
+    isLogin: (state) => !!state.token,
+    isDarkMode: (state) => {
+      if (state.themeMode === 'auto') {
+        // 返回系统主题判定
+        const systemInfo = uni.getSystemInfoSync()
+        return systemInfo.theme === 'dark'
+      }
+      return state.themeMode === 'dark'
+    }
   },
 
   actions: {
+    setThemeMode(mode) {
+      this.themeMode = mode
+      uni.setStorageSync(THEME_MODE_KEY, mode)
+      
+      // H5 端额外处理
+      // #ifdef H5
+      if (mode === 'dark' || (mode === 'auto' && uni.getSystemInfoSync().theme === 'dark')) {
+        document.documentElement.classList.add('theme-dark')
+      } else {
+        document.documentElement.classList.remove('theme-dark')
+      }
+      // #endif
+    },
     /**
      * 设置/更新用户状态并持久化
      */

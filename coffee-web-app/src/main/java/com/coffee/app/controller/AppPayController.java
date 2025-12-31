@@ -32,8 +32,12 @@ public class AppPayController {
     }
 
     @Operation(summary = "支付宝异步回调", description = "接收支付宝服务端的支付结果通知")
-    @PostMapping("/notify")
+    @RequestMapping(value = "/notify", method = {RequestMethod.POST, RequestMethod.GET})
     public String alipayNotify(HttpServletRequest request) {
+        // 如果是 GET 请求，直接返回 success，用于方便手动访问跳过穿透工具的警告页
+        if ("GET".equalsIgnoreCase(request.getMethod())) {
+            return "Target reached! Now cpolar will allow POST requests from Alipay.";
+        }
         // 1. 解析请求参数
         Map<String, String> params = new HashMap<>();
         Map<String, String[]> requestParams = request.getParameterMap();
@@ -51,6 +55,14 @@ public class AppPayController {
 
         // 2. 交给 Service 处理验签和业务
         return aliPayService.handleAlipayNotify(params);
+    }
+
+    @Operation(summary = "同步支付状态", description = "前端支付成功后主动触发状态同步")
+    @PostMapping("/sync")
+    public Result<String> syncStatus(@RequestParam Long orderId) {
+        log.info("收到前端同步请求，订单ID: {}", orderId);
+        boolean success = aliPayService.syncPaymentStatus(orderId);
+        return success ? Result.success("状态同步成功") : Result.failed("状态同步失败，可能尚未支付或查询异常");
     }
 
     @Operation(summary = "咖啡卡支付", description = "使用咖啡卡余额支付订单")

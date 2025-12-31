@@ -1,11 +1,13 @@
 <template>
-	<view class="home-page">
+	<view class="home-page" :class="themeClass">
 		<!-- 顶部定位（包含状态栏占位） -->
 		<view class="header-container" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<view class="header-bar">
 				<view class="header-top">
 					<view class="location-info" @click="handleLocationClick">
-						<text class="location-text">智咖·云</text>
+						<text class="location-text">{{ storeInfo?.name || '智咖·云' }}</text>
+						<text class="distance-badge" v-if="distanceText">{{ distanceText }}</text>
+						<text class="status-tag resting" v-if="storeInfo && storeInfo.openStatus === 0">休息中</text>
 						<text class="chevron">›</text>
 					</view>
 					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24" @click="navigateTo('/pages/message/list')"></uni-icons>
@@ -18,6 +20,7 @@
 
 		<!-- 实际内容 -->
 		<template v-else>
+			<view class="fade-in">
 			<!-- 沉浸式 Banner 轮播图 -->
 			<view class="banner-container">
 			<swiper 
@@ -45,7 +48,7 @@
 		</view>
 
 		<!-- AI 智能助手卡片 -->
-		<view class="ai-assistant-card" @click="handleSearchClick">
+			<view class="ai-assistant-card click-active" @click="handleSearchClick">
 			<view class="ai-card-content">
 				<view class="ai-icon-box">
 					<text class="ai-icon">🤖</text>
@@ -60,7 +63,7 @@
 
 		<!-- 功能金刚区 -->
 		<view class="function-grid">
-			<view v-for="(item, index) in functions" :key="index" class="function-item"
+				<view v-for="(item, index) in functions" :key="index" class="function-item click-active"
 				@click="handleFunctionClick(item)">
 				<!-- <view class="function-icon">{{ item.icon }}</view> -->
 				<uni-icons custom-prefix="iconfont" :type="item.icon" size="28"></uni-icons>
@@ -88,7 +91,7 @@
 						</view>
 						<text class="new-name">{{ product.name }}</text>
 						<text class="new-price">¥{{ product.price }}</text>
-						<view class="new-add-btn" @click.stop="handleAddToCart(product)">+</view>
+							<view class="new-add-btn click-active" @click.stop="handleAddToCart(product, $event)">+</view>
 					</view>
 				</view>
 			</scroll-view>
@@ -118,8 +121,9 @@
 						<text class="product-desc">{{ product.desc }}</text>
 						<view class="product-footer">
 							<text class="product-price">¥{{ product.price }}</text>
-							<view class="add-btn" @click.stop="handleAddToCart(product)">
+								<view class="add-btn click-active" @click.stop="handleAddToCart(product, $event)">
 								<text class="add-icon">+</text>
+								</view>
 							</view>
 						</view>
 					</view>
@@ -129,7 +133,10 @@
 		</template>
 
 		<!-- 规格选择弹窗 -->
-		<SkuModal v-model:show="showSkuModal" :product="selectedProduct" />
+		<SkuModal :show="showSkuModal" @update:show="showSkuModal = $event" :product="selectedProduct" @add-to-cart-anim="handleAddToCartAnim" />
+
+		<!-- 抛物线动画 -->
+		<FlyCart ref="flyCartRef" />
 	</view>
 </template>
 
@@ -137,29 +144,90 @@
 	import {
 		ref,
 		computed,
-		onMounted
+		onMounted,
+		onUnmounted
 	} from 'vue'
 	import {
 		onLoad,
 		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 	import { convertImageUrl } from '@/utils/image.js'
-	import {
-		getMenuVO
-	} from '@/services/product.js'
+	import { getMenuVO } from '@/services/product.js'
+	import { getStoreInfo } from '@/services/store.js'
 	import {
 		useCartStore
 	} from '@/store/cart.js'
+	import {
+		useAppStore
+	} from '@/store/app.js'
+	import {
+		getRegions, regeo, getDistance
+	} from '@/services/common.js'
 	import {
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import SkuModal from '@/components/SkuModal.vue'
 	import HomeSkeleton from '@/components/HomeSkeleton.vue'
+	import FlyCart from '@/components/FlyCart.vue'
 	import { useUserStore } from '@/store/user.js'
 
 	const cartStore = useCartStore()
+	const appStore = useAppStore()
 	const statusBarHeight = ref(0)
 	const userStore = useUserStore()
+	const flyCartRef = ref(null)
+	const distanceText = ref('')
+	// 改为计算属性，从全局 store 获取
+	const storeInfo = computed(() => appStore.currentStore)
+	let isUnmounted = false
+
+	onUnmounted(() => {
+		isUnmounted = true
+	})
+
+	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+
+	// 获取用户距离门店的真实距离
+	const fetchUserDistance = (storeId) => {
+		// #ifdef APP-PLUS || MP-WEIXIN || H5
+		uni.getLocation({
+			type: 'gcj02',
+			success: async (res) => {
+				if (isUnmounted) return
+				try {
+					const userLoc = `${res.longitude},${res.latitude}`
+					const distanceRes = await getDistance(userLoc, storeId)
+					if (isUnmounted) return
+					const data = distanceRes.data || distanceRes
+					if (data.distanceText) {
+						distanceText.value = data.distanceText
+					}
+				} catch (e) {
+					console.error('获取距离失败', e)
+				}
+			}
+		})
+		// #endif
+	}
+
+	const loadStoreInfo = async () => {
+		try {
+			// 获取当前门店 ID（如果没有则获取默认门店）
+			const currentId = appStore.currentStore?.id
+			
+			const res = await getStoreInfo(currentId) // 修改接口支持传 ID
+			const store = res.data || res
+			
+			if (store) {
+				// 更新全局 Store 中的门店信息（保持最新的营业状态）
+				appStore.setStore(store)
+				fetchUserDistance(store.id)
+			}
+		} catch (e) {
+			console.error('加载门店信息失败', e)
+			fetchUserDistance(appStore.currentStore?.id)
+		}
+	}
 
 	// 轮播图数据
 	const banners = ref([
@@ -180,7 +248,7 @@
 		{
 			image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop',
 			badge: 'SPECIAL',
-			title: '焦糖玛奇朵',
+			title: '焦 caramel 玛奇朵',
 			desc: '甜蜜与咖啡的完美融合',
 			productId: null
 		}
@@ -215,10 +283,40 @@
 		},
 	]
 
+	// 抛物线动画处理
+	const handleAddToCartAnim = (e) => {
+		if (!flyCartRef.value) return
+		
+		// 获取点击坐标
+		let startX, startY
+		if (e.touches && e.touches.length > 0) {
+			startX = e.touches[0].clientX
+			startY = e.touches[0].clientY
+		} else if (e.detail && (e.detail.x || e.detail.clientX)) {
+			startX = e.detail.x || e.detail.clientX
+			startY = e.detail.y || e.detail.clientY
+		} else {
+			startX = e.clientX
+			startY = e.clientY
+		}
+
+		// 目标点：底部 TabBar 购物车位置
+		const systemInfo = uni.getSystemInfoSync()
+		const endX = systemInfo.windowWidth * 0.625
+		const endY = systemInfo.windowHeight - 30
+		
+		flyCartRef.value.startAnimation({
+			startX,
+			startY,
+			endX,
+			endY,
+			image: selectedProduct.value.image
+		})
+	}
+
 	const handleLocationClick = () => {
-		uni.showToast({
-			title: '选择门店',
-			icon: 'none'
+		uni.navigateTo({
+			url: '/pages/store/list'
 		})
 	}
 
@@ -252,13 +350,13 @@
 	const handleFunctionClick = (item) => {
 		switch (item.name) {
 			case '到店取':
-				uni.setStorageSync('orderType', 'pickup');
+				appStore.setOrderType('pickup');
 				uni.switchTab({
 					url: '/pages/menu/index'
 				});
 				break;
 			case '外卖':
-				uni.setStorageSync('orderType', 'delivery');
+				appStore.setOrderType('delivery');
 				uni.switchTab({
 					url: '/pages/menu/index'
 				});
@@ -297,13 +395,30 @@
 	}
 
 	const handleProductClick = (product) => {
-		selectedProduct.value = product
+		if (storeInfo.value && storeInfo.value.openStatus === 0) {
+			uni.showToast({ title: '门店休息中，暂不接单', icon: 'none' })
+			return
+		}
+		console.log('点击商品详情:', product.name)
+		selectedProduct.value = { ...product }
 		showSkuModal.value = true
 	}
 
-	const handleAddToCart = (product) => {
-		selectedProduct.value = product
+	const handleAddToCart = (product, event) => {
+		if (storeInfo.value && storeInfo.value.openStatus === 0) {
+			uni.showToast({ title: '门店休息中，暂不接单', icon: 'none' })
+			return
+		}
+		console.log('点击首页+号:', product.name)
+		selectedProduct.value = { ...product }
+		// 首页点击+号统一打开规格选择框，确保用户可以选择规格
 		showSkuModal.value = true
+	}
+
+	const handleLogin = () => {
+		uni.navigateTo({
+			url: '/pages/login/index'
+		})
 	}
 
 	const loadHomeData = async () => {
@@ -348,12 +463,16 @@
 	}
 
 	onPullDownRefresh(async () => {
-		await loadHomeData()
+		await Promise.all([
+			loadStoreInfo(),
+			loadHomeData()
+		])
 		uni.stopPullDownRefresh()
 	})
 
 	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
+		loadStoreInfo()
 		loadHomeData()
 	})
 </script>
@@ -362,19 +481,21 @@
 	/* ... (前置样式保持不变) ... */
 	.home-page {
 		min-height: 100vh;
-		background-color: #f5f5f5;
+		background-color: var(--bg-secondary);
 		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+		transition: background-color 0.3s;
 	}
 
 	.header-container {
 		position: sticky;
 		top: 0;
 		z-index: 40;
-		background-color: rgba(255, 255, 255, 0.95);
+		background-color: var(--bg-primary);
+		opacity: 0.95;
 		backdrop-filter: blur(10rpx);
 		-webkit-backdrop-filter: blur(10rpx);
-		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-		transition: box-shadow 0.3s;
+		box-shadow: 0 2rpx 12rpx var(--shadow-color);
+		transition: background-color 0.3s, box-shadow 0.3s;
 	}
 
 	.header-bar {
@@ -397,6 +518,31 @@
 		font-size: 40rpx;
 		font-weight: bold;
 		color: #333;
+	}
+
+	.distance-badge {
+		font-size: 24rpx;
+		color: #6f4e37;
+		background-color: #fdf6ec;
+		padding: 4rpx 12rpx;
+		border-radius: 20rpx;
+		margin-left: 12rpx;
+		font-weight: 500;
+	}
+
+	.status-tag {
+		font-size: 20rpx;
+		padding: 4rpx 16rpx;
+		border-radius: 20rpx;
+		margin-left: 12rpx;
+		font-weight: bold;
+		box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
+		
+		&.resting {
+			background-color: #fff1f0;
+			color: #ff4d4f;
+			border: 1rpx solid #ffa39e;
+		}
 	}
 
 	.chevron {
@@ -494,6 +640,7 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
+		align-items: flex-start; // 强制左对齐
 		padding: 48rpx;
 		color: white;
 	}
@@ -525,11 +672,11 @@
 	.banner-btn {
 		background-color: white;
 		color: #6f4e37;
-		padding: 16rpx 32rpx;
 		border-radius: 50rpx;
 		font-size: 28rpx;
 		font-weight: bold;
 		width: fit-content;
+		margin: 0; // 移除默认边距
 		border: none;
 		transition: transform 0.2s, box-shadow 0.2s;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);

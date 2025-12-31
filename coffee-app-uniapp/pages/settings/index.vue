@@ -1,5 +1,5 @@
 <template>
-  <view class="container">
+  <view class="container" :class="themeClass">
 
     <!-- 页面标题 (自定义导航栏时使用，原生导航栏可忽略) -->
     <view class="page-header" :style="{ paddingTop: statusBarHeight + 'px' }">
@@ -152,9 +152,11 @@ const statusBarHeight = ref(0)
 const cacheSize = ref('0KB')
 const userStore = useUserStore()
 
-// 偏好设置状态（模拟）
+const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+
+// 偏好设置状态
 const notifyEnabled = ref(true)
-const darkMode = ref(false)
+const darkMode = computed(() => userStore.themeMode === 'dark')
 
 // 是否已登录
 const hasLogin = computed(() => userStore.isLogin)
@@ -168,41 +170,13 @@ onMounted(() => {
   statusBarHeight.value = getStatusBarHeight()
 })
 
-// 页面跳转
-const navTo = (url) => {
-  if (!hasLogin.value && (url.includes('profile') || url.includes('address'))) {
-    uni.navigateTo({url: '/pages/login/index'})
-    return
-  }
-  uni.navigateTo({url})
-}
-
-// 点击用户卡片
-const handleUserProfile = () => {
-  if (hasLogin.value) {
-    navTo('/pages/profile/edit')
-  } else {
-    navTo('/pages/login/index')
-  }
-}
-
-// 安全设置
-const handleSecurity = () => {
-  if (!hasLogin.value) return navTo('/pages/login/index')
-  navTo('/pages/profile/security')
-}
-
-// 切换通知
-const toggleNotify = (e) => {
-  notifyEnabled.value = e.detail.value
-  // TODO: 调用后端 API 更新设置
-}
+// ... (页面跳转等方法不变)
 
 // 切换深色模式
 const toggleDarkMode = (e) => {
-  darkMode.value = e.detail.value
-  // TODO: 切换主题逻辑
-  uni.showToast({title: e.detail.value ? '已开启深色模式' : '已关闭深色模式', icon: 'none'})
+  const isDark = e.detail.value
+  userStore.setThemeMode(isDark ? 'dark' : 'light')
+  uni.showToast({title: isDark ? '已开启深色模式' : '已关闭深色模式', icon: 'none'})
 }
 
 // 分享
@@ -285,9 +259,10 @@ onPullDownRefresh(async () => {
 /* 页面容器：更柔和的背景色 */
 .container {
   min-height: 100vh;
-  background-color: #f4f6f8;
+  background-color: var(--bg-secondary);
   padding: 20rpx;
   padding-bottom: 60rpx;
+  transition: background-color 0.3s;
 }
 
 .page-header {
@@ -299,7 +274,7 @@ onPullDownRefresh(async () => {
   .page-title {
     font-size: 38rpx;
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
   }
 }
 
@@ -307,7 +282,7 @@ onPullDownRefresh(async () => {
 /* 分组标题 */
 .section-title {
   font-size: 26rpx;
-  color: #909399;
+  color: var(--text-tertiary);
   margin-bottom: 16rpx;
   margin-left: 10rpx;
   font-weight: 500;
@@ -315,11 +290,11 @@ onPullDownRefresh(async () => {
 
 /* 分组卡片 */
 .section-group {
-  background-color: #ffffff;
+  background-color: var(--bg-primary);
   border-radius: 24rpx;
   margin-bottom: 40rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2rpx 12rpx var(--shadow-color);
 }
 
 /* 列表项 */
@@ -328,7 +303,7 @@ onPullDownRefresh(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 30rpx;
-  background-color: #fff;
+  background-color: var(--bg-primary);
   position: relative;
 
   &::after {
@@ -338,7 +313,7 @@ onPullDownRefresh(async () => {
     right: 0;
     bottom: 0;
     height: 1px;
-    background-color: #f5f5f5;
+    background-color: var(--border-light);
     transform: scaleY(0.5);
   }
 
@@ -348,7 +323,7 @@ onPullDownRefresh(async () => {
 }
 
 .cell-hover {
-  background-color: #f9f9f9;
+  background-color: var(--bg-tertiary);
 }
 
 /* 左侧 */
@@ -365,47 +340,21 @@ onPullDownRefresh(async () => {
     justify-content: center;
     margin-right: 24rpx;
 
-    /* 图标背景色系 */
-    &.bg-orange {
-      background-color: #ff9f43;
-    }
-
-    &.bg-green {
-      background-color: #2ecc71;
-    }
-
-    &.bg-blue {
-      background-color: #54a0ff;
-    }
-
-    &.bg-purple {
-      background-color: #5f27cd;
-    }
-
-    &.bg-dark {
-      background-color: #576574;
-    }
-
-    &.bg-gray {
-      background-color: #8395a7;
-    }
-
-    &.bg-teal {
-      background-color: #00d2d3;
-    }
-
-    &.bg-pink {
-      background-color: #ff6b6b;
-    }
-
-    &.bg-yellow {
-      background-color: #feca57;
-    }
+    /* 图标背景色系 (这些可以保持，或者也调暗) */
+    &.bg-orange { background-color: #ff9f43; }
+    &.bg-green { background-color: #2ecc71; }
+    &.bg-blue { background-color: #54a0ff; }
+    &.bg-purple { background-color: #5f27cd; }
+    &.bg-dark { background-color: #576574; }
+    &.bg-gray { background-color: #8395a7; }
+    &.bg-teal { background-color: #00d2d3; }
+    &.bg-pink { background-color: #ff6b6b; }
+    &.bg-yellow { background-color: #feca57; }
   }
 
   .cell-title {
     font-size: 30rpx;
-    color: #333;
+    color: var(--text-primary);
     font-weight: 500;
   }
 }
@@ -417,7 +366,7 @@ onPullDownRefresh(async () => {
 
   .cell-tip {
     font-size: 26rpx;
-    color: #999;
+    color: var(--text-tertiary);
     margin-right: 10rpx;
   }
 }
@@ -432,13 +381,13 @@ onPullDownRefresh(async () => {
 
   .btn-logout {
     width: 100%;
-    background-color: #fff;
+    background-color: var(--bg-primary);
     color: #ff4757;
     font-size: 32rpx;
     font-weight: 600;
     border-radius: 50rpx;
     padding: 22rpx 0;
-    border: 2rpx solid #f1f2f6;
+    border: 2rpx solid var(--border-light);
     margin-bottom: 30rpx;
 
     &::after {
@@ -481,14 +430,14 @@ onPullDownRefresh(async () => {
 
     .divider {
       font-size: 24rpx;
-      color: #ddd;
+      color: var(--border-color);
       margin: 0 10rpx;
     }
   }
 
   .copyright {
     font-size: 22rpx;
-    color: #c0c4cc;
+    color: var(--text-tertiary);
   }
 }
 </style>

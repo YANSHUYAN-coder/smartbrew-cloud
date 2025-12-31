@@ -2,12 +2,14 @@ package com.coffee.common.config;
 
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.boot.autoconfigure.amqp.RabbitTemplateCustomizer;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
 import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
@@ -19,8 +21,34 @@ import org.springframework.amqp.core.Queue;
  * RabbitMQ 延迟队列配置
  * 用于处理订单超时自动取消
  */
+@Slf4j
 @Configuration
 public class RabbitMqConfig {
+
+    /**
+     * 【核心修复】使用 Customizer 替代 @PostConstruct 注入
+     * 这样可以打破 RabbitTemplate 和 RabbitMqConfig 之间的循环依赖
+     */
+    @Bean
+    public RabbitTemplateCustomizer rabbitTemplateCustomizer() {
+        return rabbitTemplate -> {
+            // 设置确认回调
+            rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
+                if (ack) {
+                    log.debug("MQ 消息发送成功: correlationData={}", correlationData);
+                } else {
+                    log.error("MQ 消息发送失败: correlationData={}, 原因={}", correlationData, cause);
+                }
+            });
+
+            // 设置退回回调
+            rabbitTemplate.setReturnsCallback(returned -> {
+                log.error("MQ 消息被退回: message={}, replyCode={}, replyText={}, exchange={}, routingKey={}",
+                        returned.getMessage(), returned.getReplyCode(), returned.getReplyText(),
+                        returned.getExchange(), returned.getRoutingKey());
+            });
+        };
+    }
 
     // 延迟交换机名称
     public static final String DELAY_EXCHANGE_NAME = "order.delay.exchange";

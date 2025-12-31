@@ -2,8 +2,49 @@
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user.js'
 import { BASE_URL } from '@/utils/config.js'
+import { watch, onMounted } from 'vue'
 
 const userStore = useUserStore()
+
+const updateNativeTheme = (isDark) => {
+  // 【安全检查】如果当前没有页面活跃，跳过原生 UI 设置
+  const pages = getCurrentPages()
+  if (!pages || pages.length === 0) return
+
+  const frontColor = isDark ? '#ffffff' : '#000000'
+  const bgColor = isDark ? '#121212' : '#ffffff'
+  
+  uni.setNavigationBarColor({
+    frontColor: frontColor,
+    backgroundColor: bgColor,
+    animation: { duration: 300, timingFunc: 'easeIn' }
+  }).catch(() => {}) // 忽略非原生导航栏页面的报错
+
+  uni.setTabBarStyle({
+    backgroundColor: bgColor,
+    color: isDark ? '#aaaaaa' : '#999999',
+    selectedColor: '#6f4e37',
+    borderStyle: isDark ? 'black' : 'white'
+  }).catch(() => {})
+}
+
+// 统一监听主题变化，注入全局类名 (H5端) 并更新原生组件颜色
+watch(() => userStore.isDarkMode, (isDark) => {
+  // #ifdef H5
+  if (isDark) {
+    document.documentElement.classList.add('theme-dark')
+    document.documentElement.classList.remove('theme-light')
+  } else {
+    document.documentElement.classList.add('theme-light')
+    document.documentElement.classList.remove('theme-dark')
+  }
+  // #endif
+
+  // 延迟执行原生主题更新，避开实例初始化高峰
+  setTimeout(() => {
+    updateNativeTheme(isDark)
+  }, 300)
+})
 
 // WebSocket 状态
 let wsConnected = false
@@ -181,6 +222,12 @@ const stopHeartbeat = () => {
 
 onLaunch(() => {
   console.log('App Launch')
+  
+  // 启动时延迟同步主题，确保第一个页面已渲染
+  setTimeout(() => {
+    updateNativeTheme(userStore.isDarkMode)
+  }, 500)
+
   // 1. 先尝试从 storage 加载
   const hasUserInfo = userStore.loadFromStorage && userStore.loadFromStorage()
 
@@ -204,7 +251,15 @@ onLaunch(() => {
       socketTask.close()
     }
     wsConnected = false
+    isConnecting = false // 重置连接状态
     stopHeartbeat()
+    
+    // 【核心修复】清除重连定时器，防止静默重连
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer)
+      wsReconnectTimer = null
+    }
+    console.log('已清理 WebSocket 所有连接和定时器')
   })
 })
 
@@ -225,6 +280,7 @@ onHide(() => {
 /* 每个页面公共css */
 @import '@/uni_modules/uni-scss/index.scss';
 @import '@/static/iconfont.css';
+@import '@/styles/theme.scss';
 
 /* 引入字体图标 */
 @font-face {
@@ -245,10 +301,25 @@ view, text, image, scroll-view {
 }
 
 page {
-  background-color: #f5f5f5;
+  background-color: var(--bg-secondary);
   font-size: 28rpx;
-  color: #333;
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* 适配微信小程序等不支持 :root 的环境 */
+.theme-dark {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #252525;
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaaaaa;
+  --text-tertiary: #777777;
+  --border-color: #333333;
+  --border-light: #2a2a2a;
+  --card-bg: #1e1e1e;
+  --shadow-color: rgba(0, 0, 0, 0.2);
 }
 
 /* 隐藏滚动条 */

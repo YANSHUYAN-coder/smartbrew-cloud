@@ -69,7 +69,7 @@
 .skeleton-banner {
 	height: 384rpx;
 	border-radius: 32rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 	position: relative;
@@ -119,7 +119,7 @@
 	display: flex;
 	align-items: center;
 	padding: 32rpx;
-	background: white;
+	background: var(--bg-primary);
 	border-radius: 24rpx;
 	margin-bottom: 24rpx;
 }
@@ -128,7 +128,7 @@
 	width: 80rpx;
 	height: 80rpx;
 	border-radius: 20rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 	margin-right: 24rpx;
@@ -156,7 +156,7 @@
 	width: 80rpx;
 	height: 80rpx;
 	border-radius: 50%;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 }
@@ -191,7 +191,7 @@
 	width: 200rpx;
 	height: 200rpx;
 	border-radius: 16rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 }
@@ -211,14 +211,14 @@
 	width: 100%;
 	height: 300rpx;
 	border-radius: 16rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
 .skeleton-line {
 	height: 32rpx;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+	background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--border-light) 50%, var(--bg-tertiary) 75%);
 	background-size: 200% 100%;
 	border-radius: 8rpx;
 	animation: skeleton-loading 1.5s ease-in-out infinite;

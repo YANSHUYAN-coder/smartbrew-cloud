@@ -7,14 +7,14 @@ import cn.hutool.json.JSONUtil;
 import com.coffee.common.dict.GenderStatus;
 import com.coffee.common.dict.OrderStatus;
 import com.coffee.common.result.Result;
+import com.coffee.common.util.AMapUtil;
+import com.coffee.system.domain.entity.OmsStore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,9 +33,58 @@ import java.util.Map;
 @Tag(name = "通用字典接口", description = "提供静态枚举字典、动态数据库字典")
 public class CommonDictController {
 
+    @Autowired
+    private AMapUtil aMapUtil;
+
     // 注入高德地图 Key (默认使用你提供的值)
     @Value("${amap.key}")
     private String amapKey;
+
+    /**
+     * 3. 逆地理编码
+     * 根据经纬度获取省市区信息
+     */
+    @GetMapping("/regeo")
+    @Operation(summary = "逆地理编码", description = "根据经纬度获取省市区信息")
+    public Result<JSONObject> regeo(@RequestParam String location) {
+        JSONObject addressComponent = aMapUtil.getAddressComponent(location);
+        return addressComponent != null ? Result.success(addressComponent) : Result.failed("解析地址失败");
+    }
+
+    @Autowired
+    private com.coffee.system.service.OmsStoreService storeService;
+
+    /**
+     * 4. 计算用户与门店的距离
+     * @param userLocation 用户当前经纬度 "lng,lat"
+     */
+    @GetMapping("/distance")
+    @Operation(summary = "计算距离", description = "计算用户当前位置与门店的距离")
+    public Result<Map<String, Object>> getStoreDistance(@RequestParam String userLocation, @RequestParam(required = false) Long storeId) {
+        // 获取门店信息
+        OmsStore store;
+        if (storeId != null) {
+            store = storeService.getById(storeId);
+        } else {
+            store = storeService.getDefaultStore();
+        }
+        
+        if (store == null) return Result.failed("未找到门店信息");
+
+        String storeLocation = store.getLongitude() + "," + store.getLatitude();
+        int distance = aMapUtil.getDistance(storeLocation, userLocation);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("distance", distance); // 米
+        // 格式化展示文字
+        if (distance < 1000) {
+            result.put("distanceText", distance + "m");
+        } else {
+            result.put("distanceText", String.format("%.1fkm", distance / 1000.0));
+        }
+        
+        return Result.success(result);
+    }
 
     // 简单的内存缓存，防止频繁调用高德接口导致 QPS 超限
     // 只有重启服务器后，第一次请求会去调高德，之后都读内存，速度极快

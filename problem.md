@@ -472,3 +472,142 @@ public MessageConverter jsonMessageConverter() {
 }
 ```
 
+
+
+### 分布式锁
+
+#### 咖啡卡余额扣减
+
+**保护场景：**
+
+\- 防止用户同时支付多个订单时，余额被重复扣减
+
+\- 防止多服务实例部署时的并发问题
+
+**实现方式：**
+- 锁的 Key：`lock:giftcard:balance:{cardId}`
+- 锁等待时间：3秒
+- 锁自动释放时间：10秒（防止死锁）
+- 在锁内执行余额查询、扣减、状态更新、流水记录
+
+#### 优惠券使用
+
+**保护场景：**
+- 防止同一张优惠券被多个订单同时使用
+- 防止优惠券重复使用
+
+**实现方式：**
+- 锁的 Key：`lock:coupon:use:{couponHistoryId}`
+- 锁等待时间：3秒
+- 锁自动释放时间：10秒
+- 在锁内进行双重检查，确保优惠券状态正确
+
+#### 订单创建防重复提交
+
+**保护场景：**
+- 防止用户快速点击导致重复下单
+- 防止网络延迟导致的重复提交
+
+**实现方式：**
+- 锁的 Key：`lock:order:create:{userId}:{cartItemIdsHash}`
+- 锁等待时间：0秒（不等待，立即返回）
+- 锁自动释放时间：5秒（短时间锁，防止重复提交）
+- 将原有订单创建逻辑提取到 `doCreateOrder()` 方法中
+
+#### 锁的使用模式
+
+```xml
+<dependency>
+    <groupId>org.redisson</groupId>
+    <artifactId>redisson-spring-boot-starter</artifactId>
+    <version>3.24.3</version>
+</dependency>
+```
+
+```java
+package com.coffee.common.config;
+
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Redisson 分布式锁配置
+ * 用于保护关键业务操作，防止并发问题
+ */
+@Configuration
+public class RedissonConfig {
+
+    @Value("${spring.data.redis.host:localhost}")
+    private String redisHost;
+
+    @Value("${spring.data.redis.port:6379}")
+    private int redisPort;
+
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
+
+    @Value("${spring.data.redis.database:0}")
+    private int redisDatabase;
+
+    @Bean
+    public RedissonClient redissonClient() {
+        Config config = new Config();
+        
+        // 单机模式配置
+        String address = "redis://" + redisHost + ":" + redisPort;
+        config.useSingleServer()
+                .setAddress(address)
+                .setDatabase(redisDatabase);
+        
+        // 如果有密码，设置密码
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            config.useSingleServer().setPassword(redisPassword);
+        }
+        
+        // 连接池配置
+        config.useSingleServer()
+                .setConnectionPoolSize(10)  // 连接池大小
+                .setConnectionMinimumIdleSize(5)  // 最小空闲连接数
+                .setIdleConnectionTimeout(10000)  // 空闲连接超时时间
+                .setConnectTimeout(3000)  // 连接超时时间
+                .setTimeout(3000)  // 命令超时时间
+                .setRetryAttempts(3)  // 重试次数
+                .setRetryInterval(1500);  // 重试间隔
+        
+        return Redisson.create(config);
+    }
+}
+```
+
+```java
+String lockKey = "lock:业务:操作:" + uniqueId;
+RLock lock = redissonClient.getLock(lockKey);
+
+try {
+    // 尝试加锁，最多等待 waitTime 秒，锁定 leaseTime 秒后自动释放
+    if (lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS)) {
+        try {
+            // 业务逻辑
+        } catch (Exception e) {
+            // 业务异常处理
+            throw e;
+        }
+    } else {
+        // 获取锁失败的处理
+        throw new RuntimeException("系统繁忙，请稍后重试");
+    }
+} catch (InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new RuntimeException("操作失败，请重试");
+} finally {
+    // 释放锁（必须判断是否是当前线程持有的锁）
+    if (lock.isHeldByCurrentThread()) {
+        lock.unlock();
+    }
+}
+```
+

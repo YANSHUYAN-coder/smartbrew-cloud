@@ -67,6 +67,8 @@ public class SecurityConfig {
 
                         // 3.5. 放行图片代理接口（无需认证，允许直接访问）
                         .requestMatchers("/app/image/**").permitAll()
+                        // 3.6. 放行门店公开信息接口
+                        .requestMatchers("/app/store/**").permitAll()
 
                         // 4. 放行 Knife4j / Swagger 静态资源
                         .requestMatchers(

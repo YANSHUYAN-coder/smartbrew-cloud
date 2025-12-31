@@ -1,5 +1,5 @@
 <template>
-	<view class="cart-page">
+	<view class="cart-page" :class="themeClass">
 		<!-- 1. 顶部导航 -->
 		<view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<text class="page-title">购物车</text>
@@ -122,13 +122,19 @@
 		useCartStore
 	} from '@/store/cart.js'
 	import {
+		useUserStore
+	} from '@/store/user.js'
+	import {
 		getStatusBarHeight
 	} from '@/utils/system.js'
 
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()
+	const userStore = useUserStore()
 	const isManageMode = ref(false) // 管理模式开关
 	const refreshing = ref(false) // 下拉刷新状态
+
+	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
 
 	// --- 计算属性 ---
 	const cartItems = computed(() => cartStore.items)
@@ -292,19 +298,19 @@
 
 <style lang="scss" scoped>
 	$primary: #6f4e37;
-	$bg-color: #f7f8fa;
 	$red: #ff4d4f;
 
 	.cart-page {
 		min-height: 100vh;
-		background-color: $bg-color;
+		background-color: var(--bg-secondary);
 		display: flex;
 		flex-direction: column;
+		transition: background-color 0.3s;
 	}
 
 	/* --- 1. 顶部导航 --- */
 	.nav-bar {
-		background-color: white;
+		background-color: var(--bg-primary);
 		padding-bottom: 20rpx;
 		padding-left: 32rpx;
 		padding-right: 32rpx;
@@ -314,18 +320,18 @@
 		position: sticky;
 		top: 0;
 		z-index: 50;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+		box-shadow: 0 2rpx 10rpx var(--shadow-color);
 	}
 
 	.page-title {
 		font-size: 36rpx;
 		font-weight: bold;
-		color: #333;
+		color: var(--text-primary);
 	}
 
 	.manage-btn {
 		font-size: 28rpx;
-		color: #666;
+		color: var(--text-secondary);
 	}
 
 	/* --- 2. 列表区域 --- */
@@ -347,14 +353,14 @@
 	.shop-name {
 		font-size: 28rpx;
 		font-weight: bold;
-		color: #333;
+		color: var(--text-primary);
 		margin-left: 16rpx;
 		margin-right: 8rpx;
 	}
 
 	.shop-arrow {
 		font-size: 24rpx;
-		color: #999;
+		color: var(--text-tertiary);
 	}
 
 	.cart-item-wrapper {
@@ -362,12 +368,12 @@
 	}
 
 	.cart-card {
-		background-color: white;
+		background-color: var(--bg-primary);
 		border-radius: 24rpx;
 		padding: 24rpx;
 		display: flex;
 		align-items: center;
-		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+		box-shadow: 0 4rpx 16rpx var(--shadow-color);
 	}
 
 	/* 复选框样式 */
@@ -380,7 +386,7 @@
 		width: 40rpx;
 		height: 40rpx;
 		border-radius: 50%;
-		border: 2rpx solid #ddd;
+		border: 2rpx solid var(--border-color);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -402,7 +408,7 @@
 		width: 160rpx;
 		height: 160rpx;
 		border-radius: 16rpx;
-		background-color: #f9f9f9;
+		background-color: var(--bg-tertiary);
 		margin-left: 8rpx;
 		margin-right: 24rpx;
 	}
@@ -424,12 +430,12 @@
 	.prod-name {
 		font-size: 30rpx;
 		font-weight: bold;
-		color: #333;
+		color: var(--text-primary);
 	}
 
 	.delete-icon {
 		font-size: 36rpx;
-		color: #ccc;
+		color: var(--text-tertiary);
 		padding: 0 10rpx;
 		line-height: 1;
 	}
@@ -440,8 +446,8 @@
 
 	.spec-tag {
 		font-size: 22rpx;
-		color: #999;
-		background-color: #f7f8fa;
+		color: var(--text-secondary);
+		background-color: var(--bg-secondary);
 		padding: 4rpx 12rpx;
 		border-radius: 8rpx;
 	}
@@ -453,7 +459,7 @@
 	}
 
 	.price-box {
-		color: #333;
+		color: var(--text-primary);
 		font-weight: bold;
 	}
 
@@ -469,7 +475,7 @@
 	.stepper {
 		display: flex;
 		align-items: center;
-		background-color: #f7f8fa;
+		background-color: var(--bg-secondary);
 		border-radius: 30rpx;
 		padding: 2rpx;
 	}
@@ -481,7 +487,7 @@
 		align-items: center;
 		justify-content: center;
 		font-size: 32rpx;
-		color: #333;
+		color: var(--text-primary);
 		font-weight: bold;
 	}
 
@@ -490,7 +496,7 @@
 		text-align: center;
 		font-size: 26rpx;
 		font-weight: bold;
-		color: #333;
+		color: var(--text-primary);
 	}
 
 	/* --- 3. 底部结算栏 --- */
@@ -501,10 +507,10 @@
 		left: 32rpx;
 		right: 32rpx;
 		height: 110rpx;
-		background-color: rgba(255, 255, 255, 0.9);
+		background-color: var(--card-bg);
 		backdrop-filter: blur(20rpx);
 		border-radius: 60rpx;
-		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.1);
+		box-shadow: 0 8rpx 32rpx var(--shadow-color);
 		display: flex;
 		justify-content: center;
 		padding: 8rpx;
@@ -529,7 +535,7 @@
 
 	.select-all-text {
 		font-size: 26rpx;
-		color: #666;
+		color: var(--text-secondary);
 	}
 
 	.right-section {
@@ -540,7 +546,7 @@
 
 	.total-label {
 		font-size: 24rpx;
-		color: #333;
+		color: var(--text-primary);
 	}
 
 	.total-symbol {
@@ -601,18 +607,18 @@
 	.empty-text {
 		font-size: 32rpx;
 		font-weight: bold;
-		color: #333;
+		color: var(--text-primary);
 		margin-bottom: 12rpx;
 	}
 
 	.empty-sub {
 		font-size: 26rpx;
-		color: #999;
+		color: var(--text-tertiary);
 		margin-bottom: 48rpx;
 	}
 
 	.go-shop-btn {
-		background-color: white;
+		background-color: var(--bg-primary);
 		color: $primary;
 		border: 2rpx solid $primary;
 		padding: 0 64rpx;

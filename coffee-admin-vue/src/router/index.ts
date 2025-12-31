@@ -53,6 +53,19 @@ const router = createRouter({
           ]
         },
         {
+          path: 'store',
+          name: 'store',
+          meta: { title: '门店管理', icon: 'Shop' },
+          children: [
+            {
+              path: 'list',
+              name: 'storeList',
+              component: () => import('@/views/store/list.vue'),
+              meta: { title: '门店列表' }
+            }
+          ]
+        },
+        {
           path: 'order',
           name: 'order',
           meta: { title: '订单管理', icon: 'List' },

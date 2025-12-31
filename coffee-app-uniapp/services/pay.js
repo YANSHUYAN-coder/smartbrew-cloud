@@ -12,3 +12,8 @@ export const alipay = (orderId) => {
 export const payByCoffeeCard = (orderId) => {
   return post(`/app/pay/coffee-card?orderId=${orderId}`)
 }
+
+// 同步支付状态
+export const syncPaymentStatus = (orderId) => {
+  return post(`/app/pay/sync?orderId=${orderId}`)
+}

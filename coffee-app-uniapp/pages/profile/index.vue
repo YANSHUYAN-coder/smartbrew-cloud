@@ -1,5 +1,5 @@
 <template>
-	<view class="profile-page">
+	<view class="profile-page" :class="themeClass">
 		<!-- 头部卡片（包含状态栏占位） -->
 		<view class="profile-header" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<view class="header-bg">
@@ -88,8 +88,9 @@
 	import { getProfileStatistics } from '@/services/user.js'
 
 	const statusBarHeight = ref(0)
-	const userStore=new useUserStore()
-	const userInfo =ref({})
+	const userStore = useUserStore()
+	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+	const userInfo = ref({})
 	const profileStats = ref({
 		integration: 0,
 		couponCount: 0,
@@ -347,8 +348,9 @@
 <style lang="scss" scoped>
 	.profile-page {
 		min-height: 100vh;
-		background-color: #f5f5f5;
+		background-color: var(--bg-secondary);
 		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+		transition: background-color 0.3s;
 	}
 
 	.profile-header {
@@ -452,12 +454,13 @@
 
 	.order-card {
 		margin: -96rpx 32rpx 0;
-		background-color: white;
+		background-color: var(--bg-primary);
 		border-radius: 32rpx;
 		padding: 32rpx;
-		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+		box-shadow: 0 8rpx 24rpx var(--shadow-color);
 		position: relative;
 		z-index: 20;
+		transition: background-color 0.3s;
 	}
 
 	.card-header {
@@ -537,10 +540,11 @@
 
 	.function-list {
 		margin: 32rpx;
-		background-color: white;
+		background-color: var(--bg-primary);
 		border-radius: 32rpx;
 		overflow: hidden;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+		box-shadow: 0 2rpx 8rpx var(--shadow-color);
+		transition: background-color 0.3s;
 	}
 
 	.function-item {

@@ -25,6 +25,11 @@ public class CreateOrderRequest {
     private Long addressId;
 
     /**
+     * 门店ID
+     */
+    private Long storeId;
+
+    /**
      * 订单备注（可选）
      */
     private String remark;

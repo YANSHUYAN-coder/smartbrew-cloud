@@ -122,4 +122,22 @@ public class OmsOrder extends BaseEntity implements Serializable {
     @TableField("receive_time")
     private LocalDateTime receiveTime;
 
+    /**
+     * 门店ID
+     */
+    @TableField("store_id")
+    private Long storeId;
+
+    /**
+     * 配送费
+     */
+    @TableField("delivery_fee")
+    private BigDecimal deliveryFee;
+
+    /**
+     * 配送距离（米）
+     */
+    @TableField("delivery_distance")
+    private Integer deliveryDistance;
+
 }

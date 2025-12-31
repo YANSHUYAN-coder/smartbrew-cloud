@@ -26,6 +26,11 @@
       <span>分类管理</span>
     </el-menu-item>
 
+    <el-menu-item index="/store/list">
+      <el-icon><Shop /></el-icon>
+      <span>门店管理</span>
+    </el-menu-item>
+
     <el-menu-item index="/order/list">
       <el-icon><List /></el-icon>
       <span>订单管理</span>

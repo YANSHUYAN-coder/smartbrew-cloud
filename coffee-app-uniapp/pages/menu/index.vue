@@ -1,5 +1,5 @@
 <template>
-	<view class="menu-page">
+	<view class="menu-page" :class="themeClass">
 		<!-- 1. 顶部 Header (固定) -->
 		<view class="header-wrapper" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<!-- 搜索与切换行 -->
@@ -21,11 +21,13 @@
 			<!-- 门店/地址提示 -->
 			<view class="shop-info">
 				<view class="shop-name-row">
-					<text class="shop-name">智咖·云</text>
-					<text class="distance">距您 120m</text>
+					<text class="shop-name">{{ storeInfo?.name || '智咖·云' }}</text>
+					<text class="distance">{{ distanceText }}</text>
+					<text class="status-tag resting" v-if="storeInfo && storeInfo.openStatus === 0">休息中</text>
 				</view>
-				<text class="shop-desc" v-if="orderType === 'pickup'">营业中 07:30-22:00 · 制作约3分钟</text>
-				<text class="shop-desc" v-else>免配送费 · 预计30分钟送达</text>
+				<text class="shop-desc" :class="{ 'warning-text': (orderType === 'delivery' && rawDistance > (storeInfo?.deliveryRadius || 5000)) || (storeInfo?.openStatus === 0) }">
+					{{ deliveryDesc }}
+				</text>
 			</view>
 		</view>
 
@@ -34,10 +36,10 @@
 		<MenuSkeleton v-if="loading" />
 
 		<!-- 实际内容 -->
-		<view v-else class="menu-container">
+		<view v-else class="menu-container fade-in">
 			<!-- 左侧分类栏 -->
 			<scroll-view class="category-sidebar" scroll-y :scroll-into-view="leftScrollId" scroll-with-animation>
-				<view v-for="(cat, index) in categories" :key="cat.id" :id="'cat-left-' + index" class="category-item"
+				<view v-for="(cat, index) in categories" :key="cat.id" :id="'cat-left-' + index" class="category-item click-active"
 					:class="{ active: activeCategoryIndex === index }" @click="handleCategoryClick(index)">
 					<!-- <image :src="cat.icon" class="category-icon" v-if="cat.icon">{{ cat.icon }}</image> -->
 					<text class="category-name">{{ cat.name }}</text>
@@ -72,7 +74,7 @@
 						<!-- 逻辑：如果是 'new' 分类，展示所有新品(模拟前2个)；否则展示对应分类商品 -->
 						<view
 							v-for="prod in getDisplayProducts(cat)"
-							:key="prod.id" class="product-item" @click="openSkuModal(prod)">
+							:key="prod.id" class="product-item click-active" @click="openSkuModal(prod)">
 							<image :src="prod.image" mode="aspectFill" class="prod-img" lazy-load />
 							<view class="prod-info">
 								<view class="prod-header">
@@ -89,7 +91,7 @@
 								<view class="prod-footer">
 									<text class="price">¥<text class="price-num">{{ prod.price }}</text></text>
 									<!-- 选规格按钮 -->
-									<view class="add-btn-wrapper" @click.stop="openSkuModal(prod)">
+									<view class="add-btn-wrapper click-active" @click.stop="openSkuModal(prod)">
 										<text class="spec-btn">选规格</text>
 										<!-- 如果有数量，显示角标 -->
 										<view class="badge" v-if="getCartCountById(prod.id) > 0">
@@ -131,7 +133,10 @@
 		</view>
 
 		<!-- 4. 规格选择弹窗 -->
-		<SkuModal v-model:show="showModal" :product="currentProduct" />
+		<SkuModal v-model:show="showModal" :product="currentProduct" @add-to-cart-anim="handleAddToCartAnim" />
+
+		<!-- 5. 抛物线动画 -->
+		<FlyCart ref="flyCartRef" />
 
 	</view>
 </template>
@@ -141,6 +146,7 @@
 		ref,
 		computed,
 		onMounted,
+		onUnmounted,
 		nextTick,
 		watch
 	} from 'vue'
@@ -150,17 +156,111 @@
 	import {
 		useCartStore
 	} from '@/store/cart.js'
+	import {
+		useUserStore
+	} from '@/store/user.js'
+	import {
+		useAppStore
+	} from '@/store/app.js'
+	import { getDistance } from '@/services/common.js'
 	import { convertImageUrl } from '@/utils/image.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
+	import { getStoreInfo } from '@/services/store.js'
 	import SkuModal from '@/components/SkuModal.vue'
 	import MenuSkeleton from '@/components/MenuSkeleton.vue'
+	import FlyCart from '@/components/FlyCart.vue'
 
 
 	const statusBarHeight = ref(0)
 	const cartStore = useCartStore()
+	const flyCartRef = ref(null)
+	const userStore = useUserStore()
+	const appStore = useAppStore()
+	const distanceText = ref('计算中...')
+	const rawDistance = ref(0) // 存储原始米数
+	// 改为计算属性，从全局 store 获取
+	const storeInfo = computed(() => appStore.currentStore)
+	let isUnmounted = false
+
+	onUnmounted(() => {
+		isUnmounted = true
+	})
+
+	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
+
+	// 配送描述逻辑
+	const deliveryDesc = computed(() => {
+		if (storeInfo.value && storeInfo.value.openStatus === 0) {
+			return '门店休息中，暂不接单'
+		}
+
+		if (orderType.value === 'pickup') {
+			return `营业中 ${storeInfo.value?.businessHours || '07:30-22:00'} · 制作约3分钟`
+		}
+		
+		if (rawDistance.value === 0) return '正在获取定位...'
+		
+		if (rawDistance.value > (storeInfo.value?.deliveryRadius || 5000)) {
+			return '抱歉，当前地址已超出配送范围'
+		}
+		
+		const baseFee = storeInfo.value?.baseDeliveryFee || 5
+		return `配送费约 ¥${baseFee}起 · 预计30-45分钟送达`
+	})
+
+	// 获取用户距离门店的真实距离
+	const fetchUserDistance = (storeId) => {
+		// #ifdef APP-PLUS || MP-WEIXIN || H5
+		uni.getLocation({
+			type: 'gcj02',
+			success: async (res) => {
+				if (isUnmounted) return
+				try {
+					const userLoc = `${res.longitude},${res.latitude}`
+					const distanceRes = await getDistance(userLoc, storeId)
+					if (isUnmounted) return
+					const data = distanceRes.data || distanceRes
+					if (data.distanceText) {
+						distanceText.value = `距您 ${data.distanceText}`
+						rawDistance.value = data.distance || 0
+					}
+				} catch (e) {
+					console.error('获取距离失败', e)
+					if (!isUnmounted) distanceText.value = '距您 120m'
+				}
+			},
+			fail: (err) => {
+				console.warn('获取定位失败', err)
+				if (!isUnmounted) distanceText.value = '定位失败'
+			}
+		})
+		// #endif
+	}
+
+	const loadStoreInfo = async () => {
+		try {
+			// 获取当前门店 ID（如果没有则获取默认门店）
+			const currentId = appStore.currentStore?.id
+			
+			const res = await getStoreInfo(currentId)
+			const store = res.data || res
+			
+			if (store) {
+				// 更新全局 Store 中的门店信息（保持最新的营业状态）
+				appStore.setStore(store)
+				fetchUserDistance(store.id)
+			}
+		} catch (e) {
+			console.error('加载门店信息失败', e)
+			fetchUserDistance(appStore.currentStore?.id)
+		}
+	}
 
 	// 状态管理
-	const orderType = ref('pickup') // pickup | delivery
+	const orderType = computed({
+		get: () => appStore.orderType,
+		set: (val) => appStore.setOrderType(val)
+	})
 	const activeCategoryIndex = ref(0)
 	const leftScrollId = ref('cat-left-0')
 	const rightScrollId = ref('')
@@ -168,6 +268,37 @@
 	const currentProduct = ref({})
 	const refreshing = ref(false) // 下拉刷新状态
 	const loading = ref(true) // 页面加载状态
+
+	// 抛物线动画处理
+	const handleAddToCartAnim = (e) => {
+		if (!flyCartRef.value) return
+		
+		// 获取点击坐标
+		let startX, startY
+		if (e.touches && e.touches.length > 0) {
+			startX = e.touches[0].clientX
+			startY = e.touches[0].clientY
+		} else if (e.detail && (e.detail.x || e.detail.clientX)) {
+			startX = e.detail.x || e.detail.clientX
+			startY = e.detail.y || e.detail.clientY
+		} else {
+			startX = e.clientX
+			startY = e.clientY
+		}
+
+		// 目标点：购物车图标位置
+		const systemInfo = uni.getSystemInfoSync()
+		const endX = 80
+		const endY = systemInfo.windowHeight - 60
+		
+		flyCartRef.value.startAnimation({
+			startX,
+			startY,
+			endX,
+			endY,
+			image: currentProduct.value.image
+		})
+	}
 
 	// --- 左右联动相关变量 ---
 	const categoryTops = ref([]) // 存储右侧每个分类 section 的 top 值
@@ -190,6 +321,7 @@
 		
 		// 动画结束后重置标识位
 		setTimeout(() => {
+			if (isUnmounted) return
 			isClickScroll = false
 		}, 500)
 	}
@@ -226,6 +358,7 @@
 		loadingMore.value = true
 		// 模拟加载延迟，让用户看到加载效果
 		setTimeout(() => {
+			if (isUnmounted) return
 			const newCount = displayedProductCount.value + productPerPage.value
 			// 计算所有分类中商品最多的分类的商品数量
 			const maxProductsPerCategory = Math.max(
@@ -271,6 +404,10 @@
 
 	// --- 弹窗逻辑 ---
 	const openSkuModal = (product) => {
+		if (storeInfo.value && storeInfo.value.openStatus === 0) {
+			uni.showToast({ title: '门店休息中，暂不接单', icon: 'none' })
+			return
+		}
 		currentProduct.value = product
 		showModal.value = true
 	}
@@ -378,9 +515,13 @@
 	// 下拉刷新处理
 	const onRefresh = async () => {
 		refreshing.value = true
-		await loadMenuData()
+		await Promise.all([
+			loadStoreInfo(),
+			loadMenuData()
+		])
 		// 延迟一下，让用户看到刷新效果
 		setTimeout(() => {
+			if (isUnmounted) return
 			refreshing.value = false
 		}, 300)
 	}
@@ -392,6 +533,7 @@
 
 	onMounted(async () => {
 		statusBarHeight.value = getStatusBarHeight()
+		loadStoreInfo()
 		await loadMenuData()
 	})
 </script>
@@ -405,14 +547,16 @@
 		height: 100vh;
 		display: flex;
 		flex-direction: column;
-		background-color: white;
+		background-color: var(--bg-primary);
+		transition: background-color 0.3s;
 	}
 
 	/* --- 1. Header 样式 --- */
 	.header-wrapper {
-		background-color: white;
+		background-color: var(--bg-primary);
 		z-index: 50;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
+		box-shadow: 0 2rpx 10rpx var(--shadow-color);
+		transition: background-color 0.3s, box-shadow 0.3s;
 	}
 
 	.header-content {
@@ -492,9 +636,29 @@
 		color: #999;
 	}
 
+	.status-tag {
+		font-size: 20rpx;
+		padding: 4rpx 16rpx;
+		border-radius: 20rpx;
+		margin-left: 12rpx;
+		font-weight: bold;
+		box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
+		
+		&.resting {
+			background-color: #fff1f0;
+			color: #ff4d4f;
+			border: 1rpx solid #ffa39e;
+		}
+	}
+
 	.shop-desc {
 		font-size: 22rpx;
 		color: #666;
+	}
+
+	.warning-text {
+		color: #ff4d4f !important;
+		font-weight: bold;
 	}
 
 	/* --- 2. 主体容器 --- */
@@ -507,8 +671,9 @@
 	/* 左侧分类 */
 	.category-sidebar {
 		width: 180rpx;
-		background-color: #f7f8fa;
+		background-color: var(--bg-secondary);
 		height: 100%;
+		transition: background-color 0.3s;
 	}
 
 	.category-item {
@@ -555,7 +720,8 @@
 	.product-list {
 		flex: 1;
 		height: 100%;
-		background-color: white;
+		background-color: var(--bg-primary);
+		transition: background-color 0.3s;
 	}
 
 	.category-section {

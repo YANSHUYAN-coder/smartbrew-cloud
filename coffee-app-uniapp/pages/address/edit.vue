@@ -32,7 +32,13 @@
       </view>
       <view class="form-item align-top">
         <text class="label">详细地址</text>
-        <textarea class="textarea" v-model="form.detailAddress" placeholder="街道、楼牌号等" placeholder-class="placeholder" />
+        <view class="textarea-container">
+          <textarea class="textarea" v-model="form.detailAddress" placeholder="街道、楼牌号等" placeholder-class="placeholder" />
+          <view class="map-btn" @click="chooseLocation">
+            <uni-icons type="location-filled" size="20" color="#6f4e37"></uni-icons>
+            <text class="map-btn-text">地图选择</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -53,16 +59,21 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { request } from '@/utils/request.js'
-import { getRegions } from '@/services/common.js'
+import { getRegions, regeo } from '@/services/common.js'
 
 const isEdit = ref(false)
 const regionStr = ref('')
 const regionData = ref([])
 const multiArray = ref([[], [], []])
 const multiIndex = ref([0, 0, 0])
+let isUnmounted = false
+
+onUnmounted(() => {
+  isUnmounted = true
+})
 
 const form = reactive({
   id: null,
@@ -72,8 +83,55 @@ const form = reactive({
   city: '',
   region: '',
   detailAddress: '',
-  defaultStatus: 0
+  defaultStatus: 0,
+  longitude: null,
+  latitude: null
 })
+
+// 唤起地图选择位置
+const chooseLocation = () => {
+  uni.chooseLocation({
+    success: async (res) => {
+      // res 包含：name(地点名), address(详细地址), longitude(经度), latitude(纬度)
+      form.detailAddress = res.name || res.address
+      form.longitude = res.longitude
+      form.latitude = res.latitude
+      
+      // 调用逆地理编码接口，自动填充省市区
+      try {
+        const locationStr = `${res.longitude},${res.latitude}`
+        const regeoRes = await regeo(locationStr)
+        
+        // 【安全检查】如果页面已经关闭，不再更新状态
+        if (isUnmounted) return
+
+        // 兼容不同的数据返回格式
+        const component = regeoRes.data || regeoRes
+        
+        if (component) {
+          form.province = component.province || ''
+          form.city = typeof component.city === 'string' ? component.city : (component.province || '')
+          form.region = component.district || ''
+          regionStr.value = `${form.province} ${form.city} ${form.region}`.trim()
+          
+          uni.showToast({ title: '已同步省市区', icon: 'none' })
+        }
+      } catch (e) {
+        console.error('逆地理编码失败', e)
+      }
+    },
+    fail: (err) => {
+      console.log('地图选择失败', err)
+      if (err.errMsg && (err.errMsg.includes('auth deny') || err.errMsg.includes('auth fail'))) {
+        uni.showModal({
+          title: '提示',
+          content: '请在系统设置中开启位置信息权限',
+          showCancel: false
+        })
+      }
+    }
+  })
+}
 
 // 加载地区数据
 const loadRegionsData = async () => {
@@ -268,12 +326,35 @@ const handleDelete = () => {
   transition: transform 0.2s;
 }
 
-.textarea {
+.textarea-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.textarea {
+  width: 100%;
   height: 120rpx;
   font-size: 28rpx;
   color: #333;
   line-height: 1.5;
+  margin-bottom: 16rpx;
+}
+
+.map-btn {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  padding: 12rpx 24rpx;
+  background-color: #fdf6ec;
+  border-radius: 30rpx;
+  border: 1rpx solid #faecd8;
+}
+
+.map-btn-text {
+  font-size: 24rpx;
+  color: #6f4e37;
+  margin-left: 8rpx;
 }
 
 .placeholder {

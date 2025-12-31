@@ -1,5 +1,5 @@
 import { cancelOrder as cancelOrderApi, confirmReceiveOrder as confirmReceiveOrderApi } from '@/services/order.js'
-import { alipay, payByCoffeeCard } from '@/services/pay.js'
+import { alipay, payByCoffeeCard, syncPaymentStatus } from '@/services/pay.js'
 
 /**
  * 订单相关通用操作逻辑
@@ -46,7 +46,14 @@ export function useOrderActions() {
         uni.requestPayment({
           provider: 'alipay',
           orderInfo: orderStr,
-          success: (res) => {
+          success: async (res) => {
+            console.log('支付宝支付成功回调:', res)
+            try {
+              // 【核心优化】前端支付成功后，立即通知后端同步一次状态
+              await syncPaymentStatus(orderId)
+            } catch (e) {
+              console.warn('同步支付状态失败，等待系统后台自动同步:', e)
+            }
             uni.showToast({ title: '支付成功', icon: 'success' })
             if (onSuccess) onSuccess()
           },

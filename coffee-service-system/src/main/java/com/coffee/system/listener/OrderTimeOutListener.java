@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.coffee.common.config.RabbitMqConfig;
 import com.coffee.common.dict.OrderStatus;
 import com.coffee.system.domain.entity.OmsOrder;
+import com.coffee.system.service.AliPayService;
 import com.coffee.system.service.OrderService;
 import com.coffee.system.service.SkuStockService;
 import com.coffee.system.service.SmsCouponService;
@@ -23,6 +24,9 @@ public class OrderTimeOutListener {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private AliPayService aliPayService;
 
     @Autowired
     private SkuStockService skuStockService;
@@ -45,6 +49,17 @@ public class OrderTimeOutListener {
             // 2. 只有“待支付”状态的订单才需要取消
             if (order != null && order.getStatus() == OrderStatus.PENDING_PAYMENT.getCode()) {
                 
+                // 【核心优化】补偿机制：关闭订单前，主动向支付宝查询一次支付状态
+                // 解决：异步回调失败/网络波动导致的“误杀”订单问题
+                boolean isPaid = aliPayService.checkPaymentStatus(order.getOrderSn());
+                if (isPaid) {
+                    log.info("补偿机制生效：发现订单 {} 已支付，执行状态同步而不取消。OrderId: {}", order.getOrderSn(), orderId);
+                    aliPayService.completeOrderPayment(order);
+                    // 确认消息，流程结束
+                    channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+                    return;
+                }
+
                 // 2.1 修改订单状态为“已取消”
                 order.setStatus(OrderStatus.CANCELLED.getCode());
                 order.setCancelReason("订单超时未支付，自动取消");

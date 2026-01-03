@@ -151,6 +151,11 @@
 		watch
 	} from 'vue'
 	import {
+		onLoad,
+		onShow,
+		onPullDownRefresh
+	} from '@dcloudio/uni-app'
+	import {
 		getStatusBarHeight
 	} from '@/utils/system.js'
 	import {
@@ -165,7 +170,7 @@
 	import { getDistance } from '@/services/common.js'
 	import { convertImageUrl } from '@/utils/image.js'
 	import { getMenuVO, getProductDetail } from '@/services/product.js'
-	import { getStoreInfo } from '@/services/store.js'
+	import { getStoreInfo, getStoreList } from '@/services/store.js'
 	import SkuModal from '@/components/SkuModal.vue'
 	import MenuSkeleton from '@/components/MenuSkeleton.vue'
 	import FlyCart from '@/components/FlyCart.vue'
@@ -209,7 +214,8 @@
 	})
 
 	// 获取用户距离门店的真实距离
-	const fetchUserDistance = (storeId) => {
+	const fetchUserDistance = () => {
+		const storeId = appStore.currentStore?.id
 		// #ifdef APP-PLUS || MP-WEIXIN || H5
 		uni.getLocation({
 			type: 'gcj02',
@@ -239,20 +245,45 @@
 
 	const loadStoreInfo = async () => {
 		try {
-			// 获取当前门店 ID（如果没有则获取默认门店）
-			const currentId = appStore.currentStore?.id
+			// 1. 获取定位
+			let userCoords = null
+			try {
+				const location = await new Promise((resolve, reject) => {
+					uni.getLocation({
+						type: 'gcj02',
+						success: resolve,
+						fail: reject
+					})
+				})
+				userCoords = { longitude: location.longitude, latitude: location.latitude }
+			} catch (e) {
+				console.warn('点单页获取定位失败')
+			}
+
+			// 2. 获取按距离排序的门店列表
+			const res = await getStoreList(userCoords)
+			const stores = res.data || res || []
 			
-			const res = await getStoreInfo(currentId)
-			const store = res.data || res
-			
-			if (store) {
-				// 更新全局 Store 中的门店信息（保持最新的营业状态）
-				appStore.setStore(store)
-				fetchUserDistance(store.id)
+			if (stores.length > 0) {
+				// 3. 自动选中最近门店或更新当前门店
+				if (!appStore.hasAutoSelected && userCoords) {
+					appStore.setStore(stores[0])
+					appStore.markAutoSelected()
+					console.log('App启动：已自动为您切换至最近门店:', stores[0].name)
+				} else {
+					const currentId = appStore.currentStore?.id
+					const latestInfo = stores.find(s => s.id === currentId)
+					if (latestInfo) {
+						appStore.setStore(latestInfo)
+					} else if (!appStore.currentStore) {
+						appStore.setStore(stores[0])
+					}
+				}
+				fetchUserDistance()
 			}
 		} catch (e) {
 			console.error('加载门店信息失败', e)
-			fetchUserDistance(appStore.currentStore?.id)
+			fetchUserDistance()
 		}
 	}
 
@@ -404,10 +435,32 @@
 
 	// --- 弹窗逻辑 ---
 	const openSkuModal = (product) => {
+		// 1. 拦截休息中
 		if (storeInfo.value && storeInfo.value.openStatus === 0) {
 			uni.showToast({ title: '门店休息中，暂不接单', icon: 'none' })
 			return
 		}
+
+		// 2. 【核心修复】拦截外送超范围
+		if (orderType.value === 'delivery') {
+			const radius = storeInfo.value?.deliveryRadius || 5000
+			if (rawDistance.value > radius) {
+				uni.showModal({
+					title: '超出配送范围',
+					content: '当前位置距离门店较远，暂不支持配送。您可以切换至“自提”模式到店取餐。',
+					confirmText: '切换自提',
+					cancelText: '取消',
+					confirmColor: '#6f4e37',
+					success: (res) => {
+						if (res.confirm) {
+							orderType.value = 'pickup'
+						}
+					}
+				})
+				return
+			}
+		}
+
 		currentProduct.value = product
 		showModal.value = true
 	}
@@ -530,6 +583,21 @@
 	const onRefreshRestore = () => {
 		refreshing.value = false
 	}
+
+	onShow(() => {
+		// 核心修复：返回点单页时，同步门店最新状态与距离
+		if (appStore.currentStore && !isUnmounted) {
+			console.log('点单页显示：同步最新距离')
+			loadStoreInfo()
+		}
+	})
+
+	// 监听门店变化，实现自动测距同步
+	watch(() => appStore.currentStore?.id, (newId) => {
+		if (newId && !isUnmounted) {
+			fetchUserDistance()
+		}
+	})
 
 	onMounted(async () => {
 		statusBarHeight.value = getStatusBarHeight()

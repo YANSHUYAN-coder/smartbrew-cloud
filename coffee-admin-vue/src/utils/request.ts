@@ -2,94 +2,127 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
+// 刷新相关状态
+let isRefreshing = false
+let pendingQueue: any[] = []
+
+// 触发退出登录
+const forceLogout = (message?: string) => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('refreshToken')
+  localStorage.removeItem('user')
+  
+  ElMessage({
+    message: message || '登录已过期，请重新登录',
+    type: 'warning',
+    duration: 3 * 1000
+  })
+  
+  router.push('/login')
+}
+
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_APP_BASE_API || '/api', // url = base url + request url
-  timeout: 5000 // request timeout
+  baseURL: import.meta.env.VITE_APP_BASE_API || '/api',
+  timeout: 10000 // 增加一点超时时间
 })
 
 // 请求拦截器
 service.interceptors.request.use(
   config => {
-    // 在发送请求之前做些什么
-    // 例如：config.headers['Authorization'] = 'Bearer ' + getToken()
     const token = localStorage.getItem('token')
     if (token) {
-        // 后端 JwtAuthenticationFilter 明确检查了 startsWith(AuthConstants.TOKEN_PREFIX) 即 "Bearer "
-        // 且登录接口返回的 token 只是 raw token 字符串，所以前端必须手动拼接 Bearer
-        config.headers['Authorization'] = 'Bearer ' + token
-      }
-    // 如果是 FormData，让浏览器自动设置 Content-Type（包含 boundary）
+      config.headers['Authorization'] = 'Bearer ' + token
+    }
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
     }
     return config
   },
   error => {
-    // 请求错误已在响应拦截器中处理
     return Promise.reject(error)
   }
 )
 
 // 响应拦截器
 service.interceptors.response.use(
-  response => {
+  async response => {
     const res = response.data
+    const originalConfig = response.config
+
     // 这里根据后端 Result 结构判断
-    // 假设后端返回结构: { code: 200, message: 'success', data: ... }
-    if (res.code !== 200) {
-      // 如果是 401 未授权错误（token 过期）
-      if (res.code === 401) {
-        // 清除本地存储
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        // 提示用户
-        ElMessage({
-          message: res.message || '登录已过期，请重新登录',
-          type: 'warning',
-          duration: 3 * 1000
-        })
-        // 跳转到登录页
-        router.push('/login')
-        return Promise.reject(new Error(res.message || '登录已过期'))
-      }
-      ElMessage({
-        message: res.message || 'Error',
-        type: 'error',
-        duration: 5 * 1000
-      })
-      return Promise.reject(new Error(res.message || 'Error'))
-    } else {
+    if (res.code === 200 || res.success) {
       return res.data
     }
+
+    // 处理 401 未授权（Token 过期）
+    if (res.code === 401) {
+      // 如果已经在刷新中了，将请求加入队列
+      if (isRefreshing) {
+        return new Promise(resolve => {
+          pendingQueue.push((token: string) => {
+            originalConfig.headers['Authorization'] = 'Bearer ' + token
+            resolve(service(originalConfig))
+          })
+        })
+      }
+
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (!refreshToken) {
+        forceLogout()
+        return Promise.reject(new Error('暂无刷新令牌'))
+      }
+
+      isRefreshing = true
+      
+      try {
+        // 调用刷新接口
+        // 注意：这里使用 axios 直接调用，避免使用封装好的 service 导致死循环
+        const refreshRes = await axios.post((import.meta.env.VITE_APP_BASE_API || '/api') + '/auth/refresh', {
+          refreshToken
+        })
+
+        const { code, data, success } = refreshRes.data
+        if (code === 200 || success) {
+          const newToken = data.token
+          const newRefreshToken = data.refreshToken
+          
+          localStorage.setItem('token', newToken)
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken)
+          }
+
+          // 执行队列中的请求
+          pendingQueue.forEach(callback => callback(newToken))
+          pendingQueue = []
+
+          // 重试当前请求
+          originalConfig.headers['Authorization'] = 'Bearer ' + newToken
+          return service(originalConfig)
+        } else {
+          forceLogout(res.message || '登录已过期，请重新登录')
+          return Promise.reject(new Error('刷新令牌失败'))
+        }
+      } catch (err) {
+        forceLogout()
+        return Promise.reject(err)
+      } finally {
+        isRefreshing = false
+      }
+    }
+
+    ElMessage({
+      message: res.message || 'Error',
+      type: 'error',
+      duration: 5 * 1000
+    })
+    return Promise.reject(new Error(res.message || 'Error'))
   },
   error => {
-    // 处理 HTTP 状态码错误（如 401 Unauthorized）
-    if (error.response) {
-      const { status, data } = error.response
-      // HTTP 401 未授权（token 过期或无效）
-      if (status === 401) {
-        // 清除本地存储
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        // 提示用户
-        ElMessage({
-          message: data?.message || '登录已过期，请重新登录',
-          type: 'warning',
-          duration: 3 * 1000
-        })
-        // 跳转到登录页
-        router.push('/login')
-        return Promise.reject(error)
-      }
-      // 其他 HTTP 错误
-      ElMessage({
-        message: data?.message || error.message || '请求失败',
-        type: 'error',
-        duration: 5 * 1000
-      })
+    const { response } = error
+    if (response && response.status === 401) {
+      forceLogout()
     } else {
-      // 网络错误等其他错误
       ElMessage({
         message: error.message || '网络错误，请检查网络连接',
         type: 'error',
@@ -101,4 +134,3 @@ service.interceptors.response.use(
 )
 
 export default service
-

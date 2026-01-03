@@ -10,8 +10,10 @@ export const getStoreInfo = (storeId) => {
 
 /**
  * 获取所有门店列表
+ * @param {Object} coords 可选，用户经纬度 { longitude, latitude }
  */
-export const getStoreList = () => {
-  return get('/app/store/list')
+export const getStoreList = (coords) => {
+  const params = coords || {}
+  return get('/app/store/list', params)
 }
 

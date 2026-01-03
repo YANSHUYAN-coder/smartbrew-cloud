@@ -38,5 +38,20 @@ public interface DashboardService {
      * @return 商品名称和销量列表
      */
     List<Map<String, Object>> getTopProducts(int topN);
+
+    /**
+     * 获取AI服务总调用次数
+     */
+    Long getAiServiceCalls();
+
+    /**
+     * 获取销售额增长率（相对于昨日）
+     */
+    BigDecimal getSalesGrowth();
+
+    /**
+     * 获取订单量增长率（相对于昨日）
+     */
+    BigDecimal getOrderGrowth();
 }
 

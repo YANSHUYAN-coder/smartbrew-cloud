@@ -161,9 +161,9 @@
 					<text class="info-label">商品合计</text>
 					<text class="info-value">¥{{ totalPrice.toFixed(2) }}</text>
 				</view>
-				<view class="info-row" v-if="deliveryFee > 0">
+				<view class="info-row" v-if="deliveryType === 'delivery' && parseFloat(deliveryFee) > 0">
 					<text class="info-label">配送费</text>
-					<text class="info-value">¥{{ deliveryFee.toFixed(2) }}</text>
+					<text class="info-value">¥{{ parseFloat(deliveryFee).toFixed(2) }}</text>
 				</view>
 				<view class="info-row" v-if="couponDiscountAmount > 0">
 					<text class="info-label">优惠券抵扣</text>
@@ -268,6 +268,7 @@ import { getGiftCardList } from '@/services/giftcard.js'
 import { getMyCoupons } from '@/services/promotion.js'
 import { payByCoffeeCard } from '@/services/pay.js'
 import { getDistance } from '@/services/common.js'
+import { getStoreInfo } from '@/services/store.js'
 import { get } from '@/utils/request.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 
@@ -341,7 +342,7 @@ const couponDiscountAmount = computed(() => {
 })
 
 const finalPrice = computed(() => {
-	let price = totalPrice.value + deliveryFee.value - couponDiscountAmount.value
+	let price = totalPrice.value + parseFloat(deliveryFee.value) - couponDiscountAmount.value
 	if (payType.value === 3) {
 		price = price - coffeeCardDiscountAmount.value
 	}
@@ -690,9 +691,34 @@ onShow(() => {
 	}
 })
 
+// 监听地址和配送方式变化，自动重算运费
+watch([selectedAddress, deliveryType], () => {
+	if (deliveryType.value === 'delivery' && selectedAddress.value) {
+		calculateDistance()
+	} else {
+		deliveryFee.value = 0
+	}
+})
+
+// 监听地址和配送方式变化，自动重算运费
+watch([selectedAddress, deliveryType], () => {
+	if (deliveryType.value === 'delivery' && selectedAddress.value) {
+		calculateDistance()
+	} else {
+		deliveryFee.value = 0
+	}
+})
+
 // 计算地址距离
 const calculateDistance = async () => {
-	if (!selectedAddress.value || !appStore.currentStore) return
+	if (!selectedAddress.value) return
+	
+	// 确保门店信息已加载
+	if (!appStore.currentStore) {
+		await loadStoreInfo()
+	}
+	
+	if (!appStore.currentStore) return // 依然没有门店信息，停止计算
 	
 	try {
 		const userLoc = `${selectedAddress.value.longitude},${selectedAddress.value.latitude}`
@@ -715,6 +741,7 @@ const calculateDistance = async () => {
 					const extraKm = Math.ceil((data.distance - 3000) / 1000)
 					deliveryFee.value = baseFee + extraKm * 2
 				}
+				console.log('配送费计算完成:', deliveryFee.value)
 			} else {
 				deliveryFee.value = 0
 			}

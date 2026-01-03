@@ -74,6 +74,11 @@ public class CommonDictController {
         String storeLocation = store.getLongitude() + "," + store.getLatitude();
         int distance = aMapUtil.getDistance(storeLocation, userLocation);
         
+        // 核心修复：如果高德返回 -1 (异常)，后端直接返回报错，防止前端显示 -1m
+        if (distance == -1) {
+            return Result.failed("距离计算失败，请检查定位或门店坐标配置");
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("distance", distance); // 米
         // 格式化展示文字

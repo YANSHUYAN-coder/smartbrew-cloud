@@ -5,10 +5,14 @@
 			<view class="header-bar">
 				<view class="header-top">
 					<view class="location-info" @click="handleLocationClick">
-						<text class="location-text">{{ storeInfo?.name || '智咖·云' }}</text>
-						<text class="distance-badge" v-if="distanceText">{{ distanceText }}</text>
-						<text class="status-tag resting" v-if="storeInfo && storeInfo.openStatus === 0">休息中</text>
-						<text class="chevron">›</text>
+						<view class="location-main">
+							<text class="location-text">{{ storeInfo?.name || '智咖·云' }}</text>
+							<text class="chevron">›</text>
+						</view>
+						<view class="location-tags" v-if="distanceText || (storeInfo && storeInfo.openStatus === 0)">
+							<text class="distance-badge" v-if="distanceText">{{ distanceText }}</text>
+							<text class="status-tag resting" v-if="storeInfo && storeInfo.openStatus === 0">休息中</text>
+						</view>
 					</view>
 					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24" @click="navigateTo('/pages/message/list')"></uni-icons>
 				</view>
@@ -145,15 +149,17 @@
 		ref,
 		computed,
 		onMounted,
-		onUnmounted
+		onUnmounted,
+		watch
 	} from 'vue'
 	import {
 		onLoad,
+		onShow,
 		onPullDownRefresh
 	} from '@dcloudio/uni-app'
 	import { convertImageUrl } from '@/utils/image.js'
 	import { getMenuVO } from '@/services/product.js'
-	import { getStoreInfo } from '@/services/store.js'
+	import { getStoreInfo, getStoreList } from '@/services/store.js'
 	import {
 		useCartStore
 	} from '@/store/cart.js'
@@ -188,7 +194,8 @@
 	const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-light')
 
 	// 获取用户距离门店的真实距离
-	const fetchUserDistance = (storeId) => {
+	const fetchUserDistance = () => {
+		const storeId = appStore.currentStore?.id
 		// #ifdef APP-PLUS || MP-WEIXIN || H5
 		uni.getLocation({
 			type: 'gcj02',
@@ -212,20 +219,51 @@
 
 	const loadStoreInfo = async () => {
 		try {
-			// 获取当前门店 ID（如果没有则获取默认门店）
-			const currentId = appStore.currentStore?.id
+			// 1. 获取用户当前定位
+			let userCoords = null
+			try {
+				const location = await new Promise((resolve, reject) => {
+					uni.getLocation({
+						type: 'gcj02',
+						success: resolve,
+						fail: reject
+					})
+				})
+				userCoords = { longitude: location.longitude, latitude: location.latitude }
+			} catch (e) {
+				console.warn('首页获取定位失败，将使用默认排序', e)
+			}
+
+			// 2. 获取门店列表（如果提供了坐标，后端会自动按距离排序）
+			const res = await getStoreList(userCoords)
+			const stores = res.data || res || []
 			
-			const res = await getStoreInfo(currentId) // 修改接口支持传 ID
-			const store = res.data || res
-			
-			if (store) {
-				// 更新全局 Store 中的门店信息（保持最新的营业状态）
-				appStore.setStore(store)
-				fetchUserDistance(store.id)
+			if (stores.length > 0) {
+				// 3. 策略优化：
+				// 如果本场启动尚未自动选过店，且定位成功，则强制选中最近的一家 (stores[0])
+				// 否则（已经选过店或定位失败），仅更新当前门店的最新信息
+				if (!appStore.hasAutoSelected && userCoords) {
+					appStore.setStore(stores[0])
+					appStore.markAutoSelected()
+					console.log('App启动：已自动为您切换至最近门店:', stores[0].name)
+				} else {
+					// 仅更新状态，不切换门店
+					const currentId = appStore.currentStore?.id
+					const latestInfo = stores.find(s => s.id === currentId)
+					if (latestInfo) {
+						appStore.setStore(latestInfo)
+					} else if (!appStore.currentStore) {
+						// 兜底：如果完全没店，选第一个
+						appStore.setStore(stores[0])
+					}
+				}
+				
+				// 4. 计算并显示距离
+				fetchUserDistance()
 			}
 		} catch (e) {
-			console.error('加载门店信息失败', e)
-			fetchUserDistance(appStore.currentStore?.id)
+			console.error('初始化门店信息失败', e)
+			fetchUserDistance()
 		}
 	}
 
@@ -470,6 +508,23 @@
 		uni.stopPullDownRefresh()
 	})
 
+	onShow(() => {
+		// 核心修复：每次页面显示（包括从列表页返回）时，重新刷新门店状态和距离
+		if (appStore.currentStore && !isUnmounted) {
+			console.log('首页显示：同步门店状态与距离')
+			loadStoreInfo()
+		}
+	})
+
+	// 监听门店变化，实现自动测距同步
+	watch(() => appStore.currentStore?.id, (newId) => {
+		if (newId) {
+			console.log('检测到门店切换，重新计算距离...')
+			const loc = `${appStore.currentStore.longitude},${appStore.currentStore.latitude}`
+			fetchUserDistance(loc)
+		}
+	})
+
 	onMounted(() => {
 		statusBarHeight.value = getStatusBarHeight()
 		loadStoreInfo()
@@ -510,6 +565,13 @@
 
 	.location-info {
 		display: flex;
+		flex-direction: column;
+		cursor: pointer;
+		max-width: 80%; /* 限制最大宽度 */
+	}
+
+	.location-main {
+		display: flex;
 		align-items: center;
 		gap: 8rpx;
 	}
@@ -518,23 +580,33 @@
 		font-size: 40rpx;
 		font-weight: bold;
 		color: #333;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.location-tags {
+		display: flex;
+		align-items: center;
+		margin-top: 4rpx;
+		gap: 12rpx;
 	}
 
 	.distance-badge {
 		font-size: 24rpx;
 		color: #6f4e37;
 		background-color: #fdf6ec;
-		padding: 4rpx 12rpx;
-		border-radius: 20rpx;
-		margin-left: 12rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
 		font-weight: 500;
+		// margin-left: 12rpx; // 移除，用 gap 控制
 	}
 
 	.status-tag {
 		font-size: 20rpx;
-		padding: 4rpx 16rpx;
-		border-radius: 20rpx;
-		margin-left: 12rpx;
+		padding: 2rpx 12rpx;
+		border-radius: 8rpx;
+		// margin-left: 12rpx; // 移除，用 gap 控制
 		font-weight: bold;
 		box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
 		
@@ -620,7 +692,7 @@
 	.banner {
 		height: 100%;
 		border-radius: 32rpx;
-		background: linear-gradient(135deg, #6f4e37 0%, #8d6e53 100%);
+		// background: linear-gradient(135deg, #6f4e37 0%, #8d6e53 100%);
 		position: relative;
 		overflow: hidden;
 	}

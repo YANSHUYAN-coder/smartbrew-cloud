@@ -34,11 +34,15 @@ public class AdminDashboardController {
         // 今日订单量
         statistics.put("todayOrderCount", dashboardService.getTodayOrderCount());
         
-        // AI服务调用次数（暂时使用模拟数据，后续可对接真实AI服务统计）
-        statistics.put("aiServiceCalls", 5230L);
+        // AI服务调用次数（真实数据）
+        statistics.put("aiServiceCalls", dashboardService.getAiServiceCalls());
         
         // 今日新增会员
         statistics.put("todayNewMembers", dashboardService.getTodayNewMembers());
+
+        // 增长率统计（真实数据）
+        statistics.put("salesGrowth", dashboardService.getSalesGrowth());
+        statistics.put("orderGrowth", dashboardService.getOrderGrowth());
         
         return Result.success(statistics);
     }

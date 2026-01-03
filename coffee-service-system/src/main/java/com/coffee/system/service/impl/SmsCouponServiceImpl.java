@@ -15,9 +15,9 @@ import com.coffee.system.domain.vo.CouponHistoryVO;
 import com.coffee.system.domain.vo.RedeemableCouponVO;
 import com.coffee.system.mapper.SmsCouponHistoryMapper;
 import com.coffee.system.mapper.SmsCouponMapper;
-import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.service.SmsCouponService;
 import com.coffee.system.service.UmsMemberIntegrationHistoryService;
+import com.coffee.system.service.UmsMemberService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon> implements SmsCouponService {
 
     @Autowired
-    private UmsMemberMapper memberMapper;
+    private UmsMemberService memberService;
 
     @Autowired
     private SmsCouponHistoryMapper couponHistoryMapper;
@@ -144,7 +144,7 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
         }
 
         // 2. 检查用户积分
-        UmsMember member = memberMapper.selectById(userId);
+        UmsMember member = memberService.getById(userId);
         if (member == null) {
             throw new RuntimeException("用户不存在");
         }
@@ -173,11 +173,11 @@ public class SmsCouponServiceImpl extends ServiceImpl<SmsCouponMapper, SmsCoupon
                 couponId, userId, todayCount, coupon.getPerLimit());
         }
 
-        // 4. 扣除积分
-        int updatedPoints = member.getIntegration() - coupon.getPoints();
-        memberMapper.update(null, new LambdaUpdateWrapper<UmsMember>()
-                .eq(UmsMember::getId, userId)
-                .set(UmsMember::getIntegration, updatedPoints));
+        // 4. 扣除积分 (并清理缓存)
+        boolean success = memberService.addIntegration(userId, -coupon.getPoints());
+        if (!success) {
+            throw new RuntimeException("积分扣除失败");
+        }
         
         // 记录积分明细（扣除积分，使用负数）
         integrationHistoryService.recordIntegrationChange(

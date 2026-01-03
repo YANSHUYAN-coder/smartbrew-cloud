@@ -108,4 +108,6 @@ public interface UmsMemberService extends IService<UmsMember> {
     boolean checkAndUpdateLevel(Long userId);
 
     void clearUserCache(Long userId);
+
+    void doClearUserCache(Long userId);
 }

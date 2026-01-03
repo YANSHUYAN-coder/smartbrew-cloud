@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -34,8 +35,9 @@ public class AppStoreController {
 
     @Operation(summary = "获取所有门店列表")
     @GetMapping("/list")
-    public Result<List<OmsStore>> list() {
-        return Result.success(storeService.list());
+    public Result<List<OmsStore>> list(@RequestParam(required = false) Double longitude, 
+                                       @RequestParam(required = false) Double latitude) {
+        return Result.success(storeService.listNearby(longitude, latitude));
     }
 }
 

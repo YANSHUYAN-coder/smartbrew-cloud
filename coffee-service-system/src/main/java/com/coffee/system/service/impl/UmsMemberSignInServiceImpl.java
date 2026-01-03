@@ -9,6 +9,7 @@ import com.coffee.system.domain.entity.UmsMemberSignIn;
 import com.coffee.system.domain.vo.SignInResultVO;
 import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.mapper.UmsMemberSignInMapper;
+import com.coffee.system.service.UmsMemberService;
 import com.coffee.system.service.UmsMemberSignInService;
 import com.coffee.system.service.UmsMemberIntegrationHistoryService;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class UmsMemberSignInServiceImpl extends ServiceImpl<UmsMemberSignInMappe
         implements UmsMemberSignInService {
 
     @Autowired
-    private UmsMemberMapper memberMapper;
+    private UmsMemberService memberService;
     
     @Autowired
     private UmsMemberIntegrationHistoryService integrationHistoryService;
@@ -98,13 +99,9 @@ public class UmsMemberSignInServiceImpl extends ServiceImpl<UmsMemberSignInMappe
         signIn.setCreateTime(LocalDateTime.now());
         this.save(signIn);
 
-        // 更新用户积分
-        UmsMember member = memberMapper.selectById(userId);
-        if (member != null) {
-            int currentIntegration = member.getIntegration() != null ? member.getIntegration() : 0;
-            memberMapper.update(null, new LambdaUpdateWrapper<UmsMember>()
-                    .eq(UmsMember::getId, userId)
-                    .set(UmsMember::getIntegration, currentIntegration + points));
+        // 更新用户积分并清理缓存
+        boolean success = memberService.addIntegration(userId, points);
+        if (success) {
             log.info("用户签到成功，用户ID: {}, 奖励积分: {}, 连续签到: {}天", userId, points, continuousDays);
             
             // 记录积分明细

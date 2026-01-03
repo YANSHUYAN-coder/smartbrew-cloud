@@ -36,6 +36,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.Serializable;
@@ -468,11 +470,28 @@ public class UmsMemberServiceImpl extends ServiceImpl<UmsMemberMapper, UmsMember
     }
 
     /**
-     * 专门用于清理缓存的空方法
+     * 专门用于清理缓存的方法
+     * 优化：如果当前存在事务，则在事务提交后执行清理，防止 MVCC 导致的缓存脏数据
+     */
+    @Override
+    public void clearUserCache(Long userId) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    self.doClearUserCache(userId);
+                }
+            });
+        } else {
+            self.doClearUserCache(userId);
+        }
+    }
+
+    /**
+     * 真正执行缓存清理的方法
      */
     @CacheEvict(value = CacheKeyConstants.User.INFO, key = "#userId")
-    public void clearUserCache(Long userId) {
-        // 什么都不用做，注解会帮你删缓存
-        log.info("触发缓存清理: {}", userId);
+    public void doClearUserCache(Long userId) {
+        log.info("触发用户信息缓存清理: userId={}", userId);
     }
 }

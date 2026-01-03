@@ -10,9 +10,11 @@ import com.coffee.system.mapper.OmsOrderMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
 import com.coffee.system.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,10 +39,19 @@ public class DashboardServiceImpl implements DashboardService {
     @Autowired
     private OrderItemMapper orderItemMapper;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    public static final String AI_CALL_COUNT_KEY = "stats:ai:call_count";
+
     @Override
     public BigDecimal getTodaySales() {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59);
+        return getSalesByDate(LocalDate.now());
+    }
+
+    private BigDecimal getSalesByDate(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(23, 59, 59);
 
         LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.between(OmsOrder::getCreateTime, startOfDay, endOfDay)
@@ -55,8 +66,12 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public Long getTodayOrderCount() {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59);
+        return getOrderCountByDate(LocalDate.now());
+    }
+
+    private Long getOrderCountByDate(LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(23, 59, 59);
 
         LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.between(OmsOrder::getCreateTime, startOfDay, endOfDay);
@@ -73,6 +88,36 @@ public class DashboardServiceImpl implements DashboardService {
         wrapper.between(UmsMember::getCreateTime, startOfDay, endOfDay);
 
         return memberMapper.selectCount(wrapper);
+    }
+
+    @Override
+    public Long getAiServiceCalls() {
+        String count = redisTemplate.opsForValue().get(AI_CALL_COUNT_KEY);
+        return count != null ? Long.parseLong(count) : 0L;
+    }
+
+    @Override
+    public BigDecimal getSalesGrowth() {
+        BigDecimal todaySales = getTodaySales();
+        BigDecimal yesterdaySales = getSalesByDate(LocalDate.now().minusDays(1));
+        return calculateGrowth(todaySales, yesterdaySales);
+    }
+
+    @Override
+    public BigDecimal getOrderGrowth() {
+        Long todayCount = getTodayOrderCount();
+        Long yesterdayCount = getOrderCountByDate(LocalDate.now().minusDays(1));
+        return calculateGrowth(new BigDecimal(todayCount), new BigDecimal(yesterdayCount));
+    }
+
+    private BigDecimal calculateGrowth(BigDecimal today, BigDecimal yesterday) {
+        if (yesterday.compareTo(BigDecimal.ZERO) == 0) {
+            return today.compareTo(BigDecimal.ZERO) > 0 ? new BigDecimal("100.0") : BigDecimal.ZERO;
+        }
+        return today.subtract(yesterday)
+                .divide(yesterday, 4, RoundingMode.HALF_UP)
+                .multiply(new BigDecimal("100"))
+                .setScale(1, RoundingMode.HALF_UP);
     }
 
     @Override

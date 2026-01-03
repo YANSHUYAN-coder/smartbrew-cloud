@@ -40,9 +40,9 @@ public class CacheKeyConstants {
      * 用户相关缓存
      */
     public static class User {
-        private static final String PREFIX = "user:";
-        public static final String INFO = PREFIX + "info:"; // 用户信息，需要拼接 ID
-        public static final String STATISTICS = PREFIX + "statistics:"; // 用户统计，需要拼接 ID
+        private static final String PREFIX = "user";
+        public static final String INFO = PREFIX + ":info"; // 用户信息
+        public static final String STATISTICS = PREFIX + ":statistics"; // 用户统计
     }
     
     /**

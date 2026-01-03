@@ -1,5 +1,6 @@
 package com.coffee.common.config;
 
+import com.coffee.common.cache.CacheKeyConstants;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -77,7 +78,7 @@ public class RedisCacheConfig {
 
         // 【重点】给用户信息 (CacheKeyConstants.User.INFO) 设置 7 天过期
         // 注意：这里的 Key 字符串必须和你 @Cacheable(value="...") 里的 value 一模一样
-        initialCacheConfigurations.put("user:info", config.entryTtl(Duration.ofDays(7)));
+        initialCacheConfigurations.put(CacheKeyConstants.User.INFO, config.entryTtl(Duration.ofDays(7)));
 
         // 如果有字典数据，可以设置永久或更长
         initialCacheConfigurations.put("system:dict", config.entryTtl(Duration.ofDays(30)));

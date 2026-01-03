@@ -56,12 +56,6 @@
           <el-input v-model="temp.address" type="textarea" placeholder="请输入详细地址" />
           <el-button type="primary" link icon="Location" @click="openMapPicker" style="margin-top: 5px;">在地图上选择</el-button>
         </el-form-item>
-        <el-form-item label="经度" prop="longitude">
-          <el-input v-model="temp.longitude" placeholder="可通过地图工具获取" readonly />
-        </el-form-item>
-        <el-form-item label="纬度" prop="latitude">
-          <el-input v-model="temp.latitude" placeholder="可通过地图工具获取" readonly />
-        </el-form-item>
         <el-form-item label="营业时间" prop="businessHours">
           <el-input v-model="temp.businessHours" placeholder="如 08:00-22:00" />
         </el-form-item>

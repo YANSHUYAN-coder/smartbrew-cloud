@@ -57,19 +57,43 @@
         <text class="remark-text">{{ orderDetail.cancelReason }}</text>
       </view>
 
-      <!-- 收货地址（仅商品订单显示） -->
-      <view class="address-section" v-if="!isGiftCardOrder() && orderDetail.receiverName">
-        <view class="section-title">收货信息</view>
-        <view class="address-info">
-          <view class="address-header">
-            <text class="receiver-name">{{ orderDetail.receiverName }}</text>
-            <text class="receiver-phone">{{ orderDetail.receiverPhone }}</text>
+      <!-- 配送/取餐信息 (新增强化) -->
+      <view class="delivery-info-section" v-if="!isGiftCardOrder()">
+        <view class="section-title">{{ orderDetail.deliveryCompany === '门店自提' ? '取餐信息' : '配送信息' }}</view>
+        
+        <!-- 自提场景 -->
+        <template v-if="orderDetail.deliveryCompany === '门店自提'">
+          <view class="info-item">
+            <text class="info-label">取餐门店</text>
+            <text class="info-value">{{ orderDetail.storeName || '智咖·云(总店)' }}</text>
           </view>
-          <view class="address-detail">
-            {{ orderDetail.receiverProvince }}{{ orderDetail.receiverCity }}{{ orderDetail.receiverRegion }}
-            {{ orderDetail.receiverDetailAddress }}
+          <view class="info-item" v-if="orderDetail.pickupCode">
+            <text class="info-label">取餐码</text>
+            <text class="info-value highlight-code">{{ orderDetail.pickupCode }}</text>
           </view>
-        </view>
+        </template>
+
+        <!-- 外送场景 -->
+        <template v-else>
+          <view class="info-item">
+            <text class="info-label">配送服务</text>
+            <text class="info-value">商家配送</text>
+          </view>
+          <view class="info-item" v-if="orderDetail.deliveryDistance">
+            <text class="info-label">配送距离</text>
+            <text class="info-value">{{ (orderDetail.deliveryDistance / 1000).toFixed(1) }}km</text>
+          </view>
+          <view class="address-box">
+            <view class="addr-row">
+              <text class="addr-name">{{ orderDetail.receiverName }}</text>
+              <text class="addr-phone">{{ orderDetail.receiverPhone }}</text>
+            </view>
+            <text class="addr-detail">
+              {{ orderDetail.receiverProvince }}{{ orderDetail.receiverCity }}{{ orderDetail.receiverRegion }}
+              {{ orderDetail.receiverDetailAddress }}
+            </text>
+          </view>
+        </template>
       </view>
 
       <!-- 咖啡卡订单信息 -->
@@ -145,6 +169,10 @@
         <view class="price-item" v-if="orderDetail.couponAmount > 0">
           <text class="price-label">优惠券</text>
           <text class="price-value discount">-¥{{ orderDetail.couponAmount }}</text>
+        </view>
+        <view class="price-item" v-if="orderDetail.deliveryFee > 0">
+          <text class="price-label">配送费</text>
+          <text class="price-value">¥{{ orderDetail.deliveryFee }}</text>
         </view>
         <view class="price-item" v-if="orderDetail.coffeeCardDiscountAmount > 0">
           <text class="price-label">咖啡卡优惠</text>
@@ -651,34 +679,52 @@ $primary: #6f4e37;
   margin-bottom: 24rpx;
 }
 
-/* 收货地址 */
-.address-info {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
+.delivery-info-section {
+  background-color: var(--bg-primary);
+  margin: 24rpx 32rpx;
+  padding: 32rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 16rpx var(--shadow-color);
+  border: 2rpx solid transparent;
+  transition: all 0.3s;
 }
 
-.address-header {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-
-.receiver-name {
+.highlight-code {
+  color: $primary;
+  font-weight: bold;
   font-size: 32rpx;
+  letter-spacing: 2rpx;
+}
+
+.address-box {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background-color: var(--bg-secondary);
+  border-radius: 12rpx;
+}
+
+.addr-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16rpx;
+  margin-bottom: 8rpx;
+}
+
+.addr-name {
+  font-size: 28rpx;
   font-weight: bold;
   color: var(--text-primary);
 }
 
-.receiver-phone {
-  font-size: 28rpx;
+.addr-phone {
+  font-size: 26rpx;
   color: var(--text-secondary);
 }
 
-.address-detail {
-  font-size: 26rpx;
+.addr-detail {
+  font-size: 24rpx;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 /* 订单信息 */

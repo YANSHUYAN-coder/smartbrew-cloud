@@ -136,9 +136,9 @@ const loadStatistics = async () => {
     statistics.aiServiceCalls = typeof res.aiServiceCalls === 'number' ? res.aiServiceCalls : parseInt(res.aiServiceCalls) || 0
     statistics.todayNewMembers = typeof res.todayNewMembers === 'number' ? res.todayNewMembers : parseInt(res.todayNewMembers) || 0
     
-    // 计算增长率（这里简化处理，实际应该对比昨日数据）
-    statistics.salesGrowth = 12.5
-    statistics.orderGrowth = 8.3
+    // 使用后端返回的真实增长率
+    statistics.salesGrowth = typeof res.salesGrowth === 'number' ? res.salesGrowth : parseFloat(res.salesGrowth) || 0
+    statistics.orderGrowth = typeof res.orderGrowth === 'number' ? res.orderGrowth : parseFloat(res.orderGrowth) || 0
   } catch (error) {
     console.error('加载统计数据失败:', error)
     ElMessage.error('加载统计数据失败')

@@ -4,6 +4,7 @@ import com.coffee.ai.service.CoffeeAiService;
 import com.coffee.common.context.UserContext;
 import com.coffee.common.result.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,6 +15,11 @@ import java.util.Map;
 public class CoffeeController {
     @Autowired
     private CoffeeAiService coffeeAiService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    private static final String AI_CALL_COUNT_KEY = "stats:ai:call_count";
 
     /**
      * 新增的RAG问答接口，明确展示查询向量数据库的过程
@@ -27,6 +33,10 @@ public class CoffeeController {
         if (userId == null){
             return Result.failed("请先登录");
         }
+        
+        // 增加统计计数
+        redisTemplate.opsForValue().increment(AI_CALL_COUNT_KEY);
+
         // 调用 service 中配置好 RAG 的对话能力
         String answer = coffeeAiService.chat("你是智咖云的服务员，你需要回答用户的问题。", question,userId);
         return Result.success(answer);

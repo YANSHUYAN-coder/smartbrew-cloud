@@ -30,7 +30,10 @@
                 {{ store.openStatus === 1 ? '营业中' : '休息中' }}
               </text>
             </view>
-            <text class="store-address">{{ store.address }}</text>
+            <view class="address-row">
+              <text class="store-address">{{ store.address }}</text>
+              <text class="distance-text" v-if="store.distanceText">{{ store.distanceText }}</text>
+            </view>
             <view class="bottom-row">
               <view class="info-item">
                 <uni-icons type="phone" size="14" color="#999"></uni-icons>
@@ -58,6 +61,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
 import { getStoreList } from '@/services/store.js'
+import { getDistance } from '@/services/common.js'
 import { useAppStore } from '@/store/app.js'
 import { useUserStore } from '@/store/user.js'
 import { getStatusBarHeight } from '@/utils/system.js'
@@ -73,8 +77,40 @@ const themeClass = computed(() => userStore.isDarkMode ? 'theme-dark' : 'theme-l
 
 const fetchStores = async () => {
   try {
-    const res = await getStoreList()
-    stores.value = res.data || res || []
+    // 1. 获取用户定位
+    let userCoords = null
+    try {
+      const location = await new Promise((resolve, reject) => {
+        uni.getLocation({
+          type: 'gcj02',
+          success: resolve,
+          fail: reject
+        })
+      })
+      userCoords = { longitude: location.longitude, latitude: location.latitude }
+    } catch (e) {
+      console.warn('门店列表页获取定位失败')
+    }
+
+    // 2. 获取按距离排序的门店列表
+    const res = await getStoreList(userCoords)
+    const storesData = res.data || res || []
+    
+    // 3. 为列表中的每个门店计算并附加距离展示文字（复用后端的 distance 逻辑或前端计算）
+    // 后端 listNearby 已经返回了排序好的列表，我们只需要补充前端展示用的距离文字
+    if (userCoords) {
+      for (const s of storesData) {
+        // 这里可以调用后端的 distance 接口获取格式化文字，或者前端简单计算
+        // 为了性能，我们这里在前端根据后端排序后的结果，异步补充距离文本
+        try {
+          const distanceRes = await getDistance(`${userCoords.longitude},${userCoords.latitude}`, s.id)
+          const dData = distanceRes.data || distanceRes
+          s.distanceText = dData.distanceText
+        } catch (e) {}
+      }
+    }
+
+    stores.value = storesData
     
     // 如果当前选中的门店在列表中，同步更新它的最新状态到全局 store
     if (appStore.currentStore) {
@@ -171,6 +207,7 @@ onMounted(() => {
 
 .store-info {
   flex: 1;
+  min-width: 0; // 核心修复：允许子元素在 Flex 布局中收缩以触发省略号
 }
 
 .name-row {
@@ -205,8 +242,26 @@ onMounted(() => {
 .store-address {
   font-size: 26rpx;
   color: var(--text-secondary);
+  flex: 1;
+  display: block; // 确保是块级显示
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 16rpx;
-  display: block;
+  gap: 20rpx;
+}
+
+.distance-text {
+  font-size: 24rpx;
+  color: #6f4e37;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .bottom-row {

@@ -110,7 +110,10 @@
                     <!-- 订单底部 -->
                     <view class="order-footer">
                         <view class="order-total">
-                            <text class="total-label" v-if="!isGiftCardOrder(order)">共 {{ getTotalCount(order) }} 件商品，合计：</text>
+                            <text class="total-label" v-if="!isGiftCardOrder(order)">
+                                共 {{ getTotalCount(order) }} 件商品
+                                <text v-if="order.deliveryFee > 0"> (含运费¥{{ order.deliveryFee }})</text>，合计：
+                            </text>
                             <text class="total-label" v-else>订单金额：</text>
                             <text class="total-price">¥{{ order.payAmount }}</text>
                         </view>

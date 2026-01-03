@@ -8,6 +8,7 @@ import com.coffee.system.domain.entity.UmsMember;
 import com.coffee.system.mapper.OrderItemMapper;
 import com.coffee.system.mapper.OmsOrderMapper;
 import com.coffee.system.mapper.UmsMemberMapper;
+import com.coffee.common.dict.OrderStatus;
 import com.coffee.system.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -55,7 +56,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
         wrapper.between(OmsOrder::getCreateTime, startOfDay, endOfDay)
-               .eq(OmsOrder::getStatus, 3); // 只统计已完成的订单
+               .eq(OmsOrder::getStatus, OrderStatus.COMPLETED.getCode()); // 只统计已完成的订单
 
         List<OmsOrder> orders = orderMapper.selectList(wrapper);
         return orders.stream()
@@ -133,7 +134,7 @@ public class DashboardServiceImpl implements DashboardService {
 
             LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
             wrapper.between(OmsOrder::getCreateTime, startOfDay, endOfDay)
-                   .eq(OmsOrder::getStatus, 3); // 只统计已完成的订单
+                   .eq(OmsOrder::getStatus, OrderStatus.COMPLETED.getCode()); // 只统计已完成的订单
 
             List<OmsOrder> orders = orderMapper.selectList(wrapper);
             BigDecimal totalSales = orders.stream()
@@ -154,7 +155,7 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getTopProducts(int topN) {
         // 查询已完成的订单
         LambdaQueryWrapper<OmsOrder> orderWrapper = new LambdaQueryWrapper<>();
-        orderWrapper.eq(OmsOrder::getStatus, 3); // 已完成
+        orderWrapper.eq(OmsOrder::getStatus, OrderStatus.COMPLETED.getCode()); // 已完成
         List<OmsOrder> completedOrders = orderMapper.selectList(orderWrapper);
 
         if (completedOrders.isEmpty()) {

@@ -175,7 +175,7 @@ import { useOrderActions } from '@/composables/useOrderActions.js'
 import { useUserStore } from '@/store/user.js'
 import OrderListSkeleton from '@/components/OrderListSkeleton.vue'
 
-const { handleCancelOrder, handleConfirmReceive } = useOrderActions()
+const { handleCancelOrder, handlePayOrder, handleConfirmReceive } = useOrderActions()
 const userStore = useUserStore()
 
 const statusBarHeight = ref(0)
@@ -388,11 +388,9 @@ const cancelOrder = (order) => {
 
 // 支付订单
 const payOrder = (order) => {
-    // 假设 handlePayOrder 已定义或从 composable 引入
-    // handlePayOrder(order, () => {
-    //     loadOrderList(true)
-    // })
-    uni.showToast({ title: '支付功能需对接', icon: 'none' })
+    handlePayOrder(order, () => {
+        loadOrderList(true)
+    })
 }
 
 // 确认收货

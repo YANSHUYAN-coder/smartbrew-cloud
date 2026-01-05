@@ -39,6 +39,13 @@
             <view class="step-circle">
               <uni-icons v-if="orderDetail.status >= 1" type="checkmarkempty" size="12" color="#fff"/>
             </view>
+            <text class="step-label">待制作</text>
+          </view>
+          <view class="step-line" :class="{ active: orderDetail.status >= 2 }"></view>
+          <view class="step-item" :class="{ active: orderDetail.status >= 2 }">
+            <view class="step-circle">
+              <uni-icons v-if="orderDetail.status >= 2" type="checkmarkempty" size="12" color="#fff"/>
+            </view>
             <text class="step-label">制作中</text>
           </view>
           <view class="step-line" :class="{ active: orderDetail.status >= 3 }"></view>

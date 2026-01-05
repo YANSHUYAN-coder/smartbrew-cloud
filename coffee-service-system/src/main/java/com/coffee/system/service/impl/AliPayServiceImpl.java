@@ -7,6 +7,9 @@ import com.alipay.api.domain.AlipayTradeQueryModel;
 import com.alipay.api.internal.util.AlipaySignature;
 import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.response.AlipayTradeRefundResponse;
+import com.alipay.api.domain.AlipayTradeRefundModel;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -88,6 +91,47 @@ public class AliPayServiceImpl implements AliPayService {
         } catch (Exception e) {
             log.error("支付宝签名失败", e);
             throw new RuntimeException("支付发起失败");
+        }
+    }
+
+    /**
+     * 支付宝退款
+     */
+    @Override
+    public boolean refund(Long orderId, String reason) {
+        OmsOrder order = orderService.getById(orderId);
+        if (order == null) throw new RuntimeException("订单不存在");
+        
+        // 只能退款已支付且未完成/未取消的订单（或者根据业务需求调整）
+        // 这里假设状态为1（待制作）时允许退款
+        if (!OrderStatus.PENDING_MAKING.getCode().equals(order.getStatus())) {
+            throw new RuntimeException("当前订单状态不支持退款");
+        }
+
+        // 调用支付宝退款接口
+        AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
+        AlipayTradeRefundModel model = new AlipayTradeRefundModel();
+        model.setOutTradeNo(order.getOrderSn());
+        model.setRefundAmount(order.getPayAmount().toString());
+        model.setRefundReason(reason);
+        // 标识一次退款请求，同一笔交易多次退款需要保证唯一，如需支持部分退款，这里需要生成新的请求号
+        model.setOutRequestNo(order.getOrderSn() + "_refund"); 
+
+        request.setBizModel(model);
+
+        try {
+            AlipayTradeRefundResponse response = alipayClient.execute(request);
+            if (response.isSuccess()) {
+                log.info("支付宝退款成功，订单号: {}, 退款金额: {}", order.getOrderSn(), order.getPayAmount());
+                return true;
+            } else {
+                log.error("支付宝退款失败，订单号: {}, 错误码: {}, 错误信息: {}", 
+                        order.getOrderSn(), response.getCode(), response.getSubMsg());
+                throw new RuntimeException("退款失败: " + response.getSubMsg());
+            }
+        } catch (AlipayApiException e) {
+            log.error("调用支付宝退款接口异常", e);
+            throw new RuntimeException("退款系统异常");
         }
     }
 

@@ -206,7 +206,7 @@
     <view class="footer-bar" v-if="orderDetail.id">
       <view class="footer-actions">
         <button
-            v-if="orderDetail.status === 0"
+            v-if="orderDetail.status === 0 || orderDetail.status === 1"
             class="action-btn cancel-btn"
             @click="onCancelOrderClick"
         >

@@ -38,5 +38,11 @@ public interface AliPayService {
      * @param order 订单对象
      * @return 是否处理成功
      */
-    boolean completeOrderPayment(OmsOrder order);
+    /**
+     * 支付宝退款
+     * @param orderId 订单ID
+     * @param reason 退款原因
+     * @return 是否退款成功
+     */
+    boolean refund(Long orderId, String reason);
 }

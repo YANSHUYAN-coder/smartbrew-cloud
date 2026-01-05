@@ -100,6 +100,10 @@ const refreshAccessToken = () => {
         uni.setStorageSync('token', newToken)
         if (newRefreshToken) {
           uni.setStorageSync('refreshToken', newRefreshToken)
+        } else {
+          // 如果后端没返回新的（旧版本接口），为了防止无限死循环，这里选择信任旧的，
+          // 但在真正的 Token Rotation 机制下，后端必须返回新的。
+          // 如果后端已经修复，这里其实不需要 else 分支。
         }
 
         resolve(newToken)

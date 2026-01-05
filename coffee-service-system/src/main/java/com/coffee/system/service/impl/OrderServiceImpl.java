@@ -1,5 +1,6 @@
 package com.coffee.system.service.impl;
 
+import cn.hutool.extra.spring.SpringUtil;
 import com.coffee.system.domain.entity.*;
 import com.coffee.system.service.*;
 import org.springframework.amqp.core.Message;
@@ -922,13 +923,11 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         Long orderId = Long.valueOf(params.get("orderId").toString());
         String reason = params.get("reason") != null ? params.get("reason").toString() : "用户取消";
 
-        // 1. 获取当前登录用户ID
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new RuntimeException("请先登录");
         }
 
-        // 2. 查询订单，校验所有权和状态
         OmsOrder order = this.getById(orderId);
         if (order == null) {
             throw new RuntimeException("订单不存在");
@@ -936,13 +935,26 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         if (!order.getMemberId().equals(userId)) {
             throw new RuntimeException("非法操作：无权操作他人订单");
         }
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT.getCode()) {
-            throw new RuntimeException("当前状态不允许确认收货（仅待取餐订单可确认收货）");
+
+        // 1. 如果订单未支付 (状态为 0)，直接取消
+        if (OrderStatus.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
+            return this.updateStatus(Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason));
         }
 
-        // 3. 执行取消逻辑
-        return this.updateStatus(
-                Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason));
+        // 2. 如果订单已支付但未制作 (状态为 1)，允许退款
+        if (OrderStatus.PENDING_MAKING.getCode().equals(order.getStatus())) {
+            // 调用支付宝退款接口
+            if (order.getPayType() == 1) { // 支付宝
+                // 使用 Hutool SpringUtil 或 Autowired 注入
+                AliPayService aliPayService = SpringUtil.getBean(AliPayService.class); 
+                aliPayService.refund(orderId, reason);
+            }
+            // 无论是否是三方支付，只要状态改变，后续都会触发积分/优惠券退回逻辑 (在 updateStatus 中处理)
+            return this.updateStatus(Map.of("id", orderId, "status", OrderStatus.CANCELLED.getCode(), "cancelReason", reason));
+        }
+
+        // 3. 其他状态不允许取消
+        throw new RuntimeException("当前订单状态不支持取消");
     }
 
     /**

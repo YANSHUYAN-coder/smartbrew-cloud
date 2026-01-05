@@ -78,33 +78,33 @@ export function useOrderActions() {
   const handleCancelOrder = (order, onSuccess) => {
     const orderId = typeof order === 'object' ? order.id : order
     
-    uni.showModal({
-      title: '提示',
-      content: '确定要取消该订单吗？',
-      confirmColor: '#6f4e37',
+    // 先弹出原因选择框
+    const reasons = ['不想要了', '商品选错', '信息填写错误', '其他原因']
+    uni.showActionSheet({
+      itemList: reasons,
       success: async (res) => {
-        if (res.confirm) {
-          try {
-            uni.showLoading({ title: '正在取消...' })
-            await cancelOrderApi(orderId)
-            uni.hideLoading()
-            
-            uni.showToast({
-              title: '取消成功',
-              icon: 'success'
-            })
-            
-            // 触发成功回调
-            if (onSuccess && typeof onSuccess === 'function') {
-              onSuccess()
-            }
-          } catch (error) {
-            uni.hideLoading()
-            uni.showToast({
-              title: error.message || '取消失败',
-              icon: 'none'
-            })
+        const reason = reasons[res.tapIndex]
+        
+        try {
+          uni.showLoading({ title: '正在取消...' })
+          await cancelOrderApi(orderId, reason)
+          uni.hideLoading()
+          
+          uni.showToast({
+            title: '取消成功',
+            icon: 'success'
+          })
+          
+          // 触发成功回调
+          if (onSuccess && typeof onSuccess === 'function') {
+            onSuccess()
           }
+        } catch (error) {
+          uni.hideLoading()
+          uni.showToast({
+            title: error.message || '取消失败',
+            icon: 'none'
+          })
         }
       }
     })

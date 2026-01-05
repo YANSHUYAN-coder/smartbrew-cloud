@@ -66,134 +66,141 @@
   </view>
 </template>
 
-<script>
+<script setup>
+import { ref, reactive,onMounted } from 'vue'
 import { post, request } from '@/utils/request.js'
 import { useUserStore } from '@/store/user.js'
 
-export default {
-  data() {
-    return {
-      isLogin: true, // true 为登录模式, false 为注册模式
-      form: {
-        username: '13800138000', // 实际作为手机号 phone 使用
-        password: '123456',
-        confirmPassword: ''
-      }
-    }
-  },
-  methods: {
-    // 切换 登录/注册 模式
-    toggleMode() {
-      this.isLogin = !this.isLogin;
-      // 切换时清空表单，提升体验
-      this.form = {
-        username: '',
-        password: '',
-        confirmPassword: ''
-      };
-    },
-    
-    // 提交表单
-    async handleSubmit() {
-      // 1. 基础校验
-      if (!this.form.username || !this.form.password) {
-        uni.showToast({ title: '请填写完整信息', icon: 'none' });
-        return;
-      }
-      
-      // 2. 注册模式下的密码确认校验
-      if (!this.isLogin && this.form.password !== this.form.confirmPassword) {
-        uni.showToast({ title: '两次密码输入不一致', icon: 'none' });
-        return;
-      }
+// Store 实例
+const userStore = useUserStore()
 
-      // 3. 调用后端接口
-      if (this.isLogin) {
-        await this.handleLogin();
-      } else {
-        await this.handleRegister();
-      }
-    },
+// 状态定义
+const isLogin = ref(true) // true 为登录模式, false 为注册模式
+const form = reactive({
+  username: '13800138000', // 默认测试账号
+  password: '123456',
+  confirmPassword: ''
+})
 
-    // 调用 /auth/login
-    async handleLogin() {
-      const userStore = useUserStore()
-      try {
-        uni.showLoading({ title: '登录中...' });
-        // 后端使用 phone + password 登录，这里把用户名字段当作手机号传递
-        const res = await post('/auth/login', {
-          phone: this.form.username,
-          password: this.form.password
-        });
+// 切换 登录/注册 模式
+const toggleMode = () => {
+  isLogin.value = !isLogin.value
+  // 切换时清空密码，保留手机号体验更好，或者也可以全部清空
+  form.password = ''
+  form.confirmPassword = ''
+}
 
-        // 根据 request.js 的拦截器，这里的 res 已经是 data.data，期待结构为：
-        // { token, refreshToken, user }
-        const { token, refreshToken, user } = res || {}
+// 提交表单
+const handleSubmit = async () => {
+  // 1. 基础校验
+  if (!form.username || !form.password) {
+    uni.showToast({ title: '请填写完整信息', icon: 'none' })
+    return
+  }
 
-        // 先保存 token / refreshToken / 用户信息（需要用于后续请求与刷新）
-        userStore.setUser({
-          token: token || '',
-          refreshToken: refreshToken || '',
-          userInfo: user || null
-        });
+  // 校验手机号格式 (简单校验)
+  if (!/^1\d{10}$/.test(form.username)) {
+    uni.showToast({ title: '手机号格式不正确', icon: 'none' })
+    return
+  }
 
-        // 登录成功后，立即获取完整的用户信息并更新 store
-        // 这样可以确保 store 中的数据是最新且完整的，统一数据来源
-        try {
-          const userInfoRes = await request({
-            url: '/app/member/info',
-            method: 'GET'
-          })
-          if (userInfoRes.data) {
-            userStore.setUser(res.token, userInfoRes.data)
-          }
-        } catch (e) {
-          console.warn('获取用户详细信息失败，使用登录接口返回的数据', e)
-          // 如果获取详细信息失败，使用登录接口返回的基础信息也是可以的
-        }
+  // 2. 注册模式下的密码确认校验
+  if (!isLogin.value && form.password !== form.confirmPassword) {
+    uni.showToast({ title: '两次密码输入不一致', icon: 'none' })
+    return
+  }
 
-        uni.hideLoading();
-        uni.showToast({ title: '登录成功', icon: 'success' });
-
-        // 触发登录成功事件，通知 App.vue 连接 WebSocket
-        uni.$emit('userLoginSuccess')
-
-        // 短暂停留后跳转到首页或个人中心
-        setTimeout(() => {
-          uni.switchTab({ url: '/pages/home/index' });
-        }, 800);
-      } catch (e) {
-        uni.hideLoading();
-        // 错误提示已在拦截器里弹出，这里再兜底一下
-        // console.error('登录失败:', e);
-      }
-    },
-
-    // 调用 /auth/register
-    async handleRegister() {
-      try {
-        uni.showLoading({ title: '注册中...' });
-        const res = await post('/auth/register', {
-          phone: this.form.username,
-          password: this.form.password
-        });
-
-        uni.hideLoading();
-
-        // 注册成功，后端也会返回 token + user，这里简单提示后切回登录模式
-        uni.showToast({ title: '注册成功，请登录', icon: 'success' });
-
-        // 自动切换回登录模式，并保留刚输入的手机号
-        this.isLogin = true;
-        this.form.password = '';
-        this.form.confirmPassword = '';
-      } catch (e) {
-        uni.hideLoading();
-        // console.error('注册失败:', e);
-      }
-    }
+  // 3. 调用后端接口
+  if (isLogin.value) {
+    await handleLogin()
+  } else {
+    await handleRegister()
   }
 }
+
+// 登录逻辑
+const handleLogin = async () => {
+  try {
+    uni.showLoading({ title: '登录中...', mask: true })
+    
+    // 调用登录接口
+    const res = await post('/auth/login', {
+      phone: form.username,
+      password: form.password
+    })
+
+    // 解构返回数据
+    const { token, refreshToken, user } = res || {}
+
+    // 1. 先保存基础 Token 信息
+    userStore.setUser({
+      token: token || '',
+      refreshToken: refreshToken || '',
+      userInfo: user || null
+    })
+
+    // 2. 尝试获取更完整的用户信息 (如积分、等级等)
+    try {
+      const userInfoRes = await request({
+        url: '/app/member/info',
+        method: 'GET'
+      })
+      
+      // 兼容直接返回数据或包裹在 data 中的情况
+      const fullInfo = userInfoRes.data || userInfoRes
+      
+      if (fullInfo) {
+        // 更新 Store 中的用户信息
+        userStore.setUser({ userInfo: fullInfo })
+      }
+    } catch (e) {
+      console.warn('获取用户详细信息失败，将使用登录接口返回的基础信息', e)
+    }
+
+    uni.hideLoading()
+    uni.showToast({ title: '登录成功', icon: 'success' })
+
+    // 触发全局登录成功事件
+    uni.$emit('userLoginSuccess')
+
+    // 延迟跳转
+    setTimeout(() => {
+      uni.switchTab({ url: '/pages/home/index' })
+    }, 800)
+
+  } catch (e) {
+    uni.hideLoading()
+    // request.js 拦截器通常会处理错误提示，这里不需要重复 toast
+    console.error('登录异常:', e)
+  }
+}
+
+// 注册逻辑
+const handleRegister = async () => {
+  try {
+    uni.showLoading({ title: '注册中...', mask: true })
+    
+    await post('/auth/register', {
+      phone: form.username,
+      password: form.password
+    })
+
+    uni.hideLoading()
+    uni.showToast({ title: '注册成功，请登录', icon: 'success' })
+
+    // 注册成功后自动切回登录模式
+    isLogin.value = true
+    form.password = ''
+    form.confirmPassword = ''
+    
+  } catch (e) {
+    uni.hideLoading()
+    console.error('注册异常:', e)
+  }
+}
+onMounted(()=>{
+	console.log("refreshToken",userStore.refreshToken);
+});
 </script>
 
 <style lang="scss">

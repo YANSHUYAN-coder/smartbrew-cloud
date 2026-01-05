@@ -119,7 +119,7 @@
                         </view>
                         <view class="order-actions">
                             <button 
-                                v-if="order.status === 0" 
+                                v-if="order.status === 0 || order.status === 1" 
                                 class="action-btn cancel-btn"
                                 @click.stop="cancelOrder(order)"
                             >

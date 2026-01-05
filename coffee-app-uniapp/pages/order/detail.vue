@@ -413,17 +413,19 @@ const loadStoreLocation = async (storeId) => {
         latitude: storeLocation.value.latitude,
         longitude: storeLocation.value.longitude,
         title: storeInfo.name || orderDetail.value.storeName || '门店',
-        width: 60,
-        height: 60,
+        width: 40,
+        height: 40,
+        iconPath: '/static/location-fill.png', // 使用Logo作为门店图标
         callout: {
           content: '📍 ' + (storeInfo.name || orderDetail.value.storeName || '门店位置'),
           color: '#333',
-          fontSize: 16,
+          fontSize: 14,
           borderRadius: 6,
           bgColor: '#fff',
-          padding: 10,
+          padding: 8,
           display: 'ALWAYS',
-          textAlign: 'center'
+          textAlign: 'center',
+          anchorY: -10 // 调整气泡位置
         }
       })
     }
@@ -459,17 +461,19 @@ const loadReceiverLocation = async (order) => {
         latitude: receiverLocation.value.latitude,
         longitude: receiverLocation.value.longitude,
         title: order.receiverName || '收货地址',
-        width: 60,
-        height: 60,
+        width: 24,
+        height: 24,
+        iconPath: '/static/tabbar/profile-active.png', // 使用用户图标作为收货地址
         callout: {
           content: '🎯 ' + (order.receiverName || '收货地址'),
           color: '#333',
-          fontSize: 16,
+          fontSize: 14,
           borderRadius: 6,
           bgColor: '#fff',
-          padding: 10,
+          padding: 8,
           display: 'ALWAYS',
-          textAlign: 'center'
+          textAlign: 'center',
+          anchorY: -10
         }
       })
 

@@ -32,3 +32,16 @@ export const getDistance = (userLocation, storeId) => {
   return get('/common/dict/distance', { userLocation, storeId })
 }
 
+/**
+ * 地理编码 (地址转坐标)
+ * @param {String} address 完整地址
+ * @param {String} city 城市（可选）
+ */
+export const geocode = (address, city) => {
+  const params = { address }
+  if (city) {
+    params.city = city
+  }
+  return get('/common/dict/geocode', params)
+}
+

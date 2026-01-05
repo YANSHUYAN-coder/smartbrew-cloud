@@ -19,7 +19,8 @@
             <text class="status-desc-text">{{ getStatusDesc(orderDetail.status) }}</text>
 
             <!-- 取餐码 (仅在商品订单的制作中/待取餐时显示) -->
-            <view class="pickup-code-box" v-if="!isGiftCardOrder() && [1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
+            <view class="pickup-code-box"
+              v-if="!isGiftCardOrder() && [1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
               <text class="code-label">取餐码</text>
               <text class="code-value">{{ orderDetail.pickupCode }}</text>
             </view>
@@ -30,28 +31,28 @@
         <view class="status-steps" v-if="!isGiftCardOrder() && [0, 1, 2, 3].includes(orderDetail.status)">
           <view class="step-item" :class="{ active: orderDetail.status >= 0 }">
             <view class="step-circle">
-              <uni-icons v-if="orderDetail.status >= 0" type="checkmarkempty" size="12" color="#fff"/>
+              <uni-icons v-if="orderDetail.status >= 0" type="checkmarkempty" size="12" color="#fff" />
             </view>
             <text class="step-label">已下单</text>
           </view>
           <view class="step-line" :class="{ active: orderDetail.status >= 1 }"></view>
           <view class="step-item" :class="{ active: orderDetail.status >= 1 }">
             <view class="step-circle">
-              <uni-icons v-if="orderDetail.status >= 1" type="checkmarkempty" size="12" color="#fff"/>
+              <uni-icons v-if="orderDetail.status >= 1" type="checkmarkempty" size="12" color="#fff" />
             </view>
             <text class="step-label">待制作</text>
           </view>
           <view class="step-line" :class="{ active: orderDetail.status >= 2 }"></view>
           <view class="step-item" :class="{ active: orderDetail.status >= 2 }">
             <view class="step-circle">
-              <uni-icons v-if="orderDetail.status >= 2" type="checkmarkempty" size="12" color="#fff"/>
+              <uni-icons v-if="orderDetail.status >= 2" type="checkmarkempty" size="12" color="#fff" />
             </view>
             <text class="step-label">制作中</text>
           </view>
           <view class="step-line" :class="{ active: orderDetail.status >= 3 }"></view>
           <view class="step-item" :class="{ active: orderDetail.status >= 3 }">
             <view class="step-circle">
-              <uni-icons v-if="orderDetail.status >= 3" type="checkmarkempty" size="12" color="#fff"/>
+              <uni-icons v-if="orderDetail.status >= 3" type="checkmarkempty" size="12" color="#fff" />
             </view>
             <text class="step-label">待取餐</text>
           </view>
@@ -67,7 +68,7 @@
       <!-- 配送/取餐信息 (新增强化) -->
       <view class="delivery-info-section" v-if="!isGiftCardOrder()">
         <view class="section-title">{{ orderDetail.deliveryCompany === '门店自提' ? '取餐信息' : '配送信息' }}</view>
-        
+
         <!-- 自提场景 -->
         <template v-if="orderDetail.deliveryCompany === '门店自提'">
           <view class="info-item">
@@ -99,6 +100,12 @@
               {{ orderDetail.receiverProvince }}{{ orderDetail.receiverCity }}{{ orderDetail.receiverRegion }}
               {{ orderDetail.receiverDetailAddress }}
             </text>
+          </view>
+
+          <!-- 配送地图 (仅外卖订单显示) -->
+          <view class="delivery-map-container" v-if="storeLocation.latitude && storeLocation.longitude">
+            <map :latitude="storeLocation.latitude" :longitude="storeLocation.longitude" :markers="mapMarkers"
+              :polyline="polyline" :scale="14" class="delivery-map" show-location></map>
           </view>
         </template>
       </view>
@@ -135,15 +142,11 @@
 
       <!-- 商品列表（仅商品订单显示） -->
       <view class="goods-section"
-            v-if="!isGiftCardOrder() && orderDetail.orderItemList && orderDetail.orderItemList.length > 0">
+        v-if="!isGiftCardOrder() && orderDetail.orderItemList && orderDetail.orderItemList.length > 0">
         <view class="section-title">商品清单</view>
         <view class="goods-list">
-          <view
-              v-for="(item, index) in orderDetail.orderItemList"
-              :key="index"
-              class="goods-item"
-          >
-            <image :src="item.productPic" mode="aspectFill" class="goods-img"/>
+          <view v-for="(item, index) in orderDetail.orderItemList" :key="index" class="goods-item">
+            <image :src="item.productPic" mode="aspectFill" class="goods-img" />
             <view class="goods-info">
               <text class="goods-name">{{ item.productName }}</text>
               <view class="goods-spec" v-if="item.productAttr">
@@ -212,25 +215,14 @@
     <!-- 底部操作栏 -->
     <view class="footer-bar" v-if="orderDetail.id">
       <view class="footer-actions">
-        <button
-            v-if="orderDetail.status === 0 || orderDetail.status === 1"
-            class="action-btn cancel-btn"
-            @click="onCancelOrderClick"
-        >
+        <button v-if="orderDetail.status === 0 || orderDetail.status === 1" class="action-btn cancel-btn"
+          @click="onCancelOrderClick">
           取消订单
         </button>
-        <button
-            v-if="orderDetail.status === 0"
-            class="action-btn pay-btn"
-            @click="payOrder"
-        >
+        <button v-if="orderDetail.status === 0" class="action-btn pay-btn" @click="payOrder">
           立即支付
         </button>
-        <button
-            v-if="orderDetail.status === 3"
-            class="action-btn confirm-btn"
-            @click="confirmReceive"
-        >
+        <button v-if="orderDetail.status === 3" class="action-btn confirm-btn" @click="confirmReceive">
           取餐
         </button>
       </view>
@@ -239,20 +231,26 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, computed} from 'vue'
-import {onLoad} from '@dcloudio/uni-app'
-import {getOrderDetail, cancelOrder as apiCancelOrder} from '@/services/order.js' // 直接引入 API
-import {getStatusBarHeight} from '@/utils/system.js'
-import {formatDateTime} from '@/utils/date.js'
-import {useOrderActions} from '@/composables/useOrderActions.js'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { getOrderDetail, cancelOrder as apiCancelOrder } from '@/services/order.js' // 直接引入 API
+import { getStatusBarHeight } from '@/utils/system.js'
+import { formatDateTime } from '@/utils/date.js'
+import { useOrderActions } from '@/composables/useOrderActions.js'
 import { useUserStore } from '@/store/user.js'
+import { getStoreInfo } from '@/services/store.js'
+import { geocode } from '@/services/common.js'
 
-const {handleConfirmReceive, handlePayOrder} = useOrderActions() // 移除 handleCancelOrder，改用本地实现
+const { handleConfirmReceive, handlePayOrder } = useOrderActions() // 移除 handleCancelOrder，改用本地实现
 const userStore = useUserStore()
 
 const statusBarHeight = ref(0)
 const orderDetail = ref({})
 const orderId = ref(null)
+const storeLocation = ref({ latitude: null, longitude: null })
+const receiverLocation = ref({ latitude: null, longitude: null })
+const mapMarkers = ref([])
+const polyline = ref([])
 let isUnmounted = false
 
 onUnmounted(() => {
@@ -374,6 +372,12 @@ const loadOrderDetail = async () => {
     const result = await getOrderDetail(orderId.value)
     if (isUnmounted) return
     orderDetail.value = result || {}
+
+    // 如果是外卖订单，加载门店信息和收货地址坐标用于地图展示
+    if (result && result.deliveryCompany && result.deliveryCompany !== '门店自提' && result.storeId) {
+      await loadStoreLocation(result.storeId)
+      await loadReceiverLocation(result)
+    }
   } catch (error) {
     console.error('加载订单详情失败', error)
     if (!isUnmounted) {
@@ -391,6 +395,121 @@ const loadOrderDetail = async () => {
   }
 }
 
+// 加载门店位置信息（用于地图展示）
+const loadStoreLocation = async (storeId) => {
+  try {
+    const storeInfo = await getStoreInfo(storeId)
+    if (isUnmounted) return
+
+    if (storeInfo && storeInfo.latitude && storeInfo.longitude) {
+      storeLocation.value = {
+        latitude: parseFloat(storeInfo.latitude),
+        longitude: parseFloat(storeInfo.longitude)
+      }
+
+      // 添加门店标记点
+      mapMarkers.value.push({
+        id: 1,
+        latitude: storeLocation.value.latitude,
+        longitude: storeLocation.value.longitude,
+        title: storeInfo.name || orderDetail.value.storeName || '门店',
+        width: 60,
+        height: 60,
+        callout: {
+          content: '📍 ' + (storeInfo.name || orderDetail.value.storeName || '门店位置'),
+          color: '#333',
+          fontSize: 16,
+          borderRadius: 6,
+          bgColor: '#fff',
+          padding: 10,
+          display: 'ALWAYS',
+          textAlign: 'center'
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载门店位置失败', error)
+    // 地图加载失败不影响订单详情展示
+  }
+}
+
+// 加载收货地址坐标（用于地图展示）
+const loadReceiverLocation = async (order) => {
+  try {
+    // 构建完整地址
+    const fullAddress = `${order.receiverProvince || ''}${order.receiverCity || ''}${order.receiverRegion || ''}${order.receiverDetailAddress || ''}`.trim()
+    if (!fullAddress) {
+      console.warn('收货地址为空，无法进行地理编码')
+      return
+    }
+
+    // 调用地理编码API
+    const result = await geocode(fullAddress, order.receiverCity)
+    if (isUnmounted) return
+
+    if (result && result.latitude && result.longitude) {
+      receiverLocation.value = {
+        latitude: parseFloat(result.latitude),
+        longitude: parseFloat(result.longitude)
+      }
+
+      // 添加收货地址标记点
+      mapMarkers.value.push({
+        id: 2,
+        latitude: receiverLocation.value.latitude,
+        longitude: receiverLocation.value.longitude,
+        title: order.receiverName || '收货地址',
+        width: 60,
+        height: 60,
+        callout: {
+          content: '🎯 ' + (order.receiverName || '收货地址'),
+          color: '#333',
+          fontSize: 16,
+          borderRadius: 6,
+          bgColor: '#fff',
+          padding: 10,
+          display: 'ALWAYS',
+          textAlign: 'center'
+        }
+      })
+
+      // 如果门店位置和收货地址都已加载，绘制配送路线
+      if (storeLocation.value.latitude && storeLocation.value.longitude) {
+        drawDeliveryRoute()
+      }
+    } else {
+      console.warn('地理编码失败，收货地址：', fullAddress)
+    }
+  } catch (error) {
+    console.error('加载收货地址位置失败', error)
+    // 地址解析失败不影响订单详情展示
+  }
+}
+
+// 绘制配送路线（从门店到收货地址）
+const drawDeliveryRoute = () => {
+  if (!storeLocation.value.latitude || !receiverLocation.value.latitude) {
+    return
+  }
+
+  polyline.value = [{
+    points: [
+      {
+        latitude: storeLocation.value.latitude,
+        longitude: storeLocation.value.longitude
+      },
+      {
+        latitude: receiverLocation.value.latitude,
+        longitude: receiverLocation.value.longitude
+      }
+    ],
+    color: '#6f4e37',
+    width: 4,
+    dottedLine: false,
+    arrowLine: true
+  }]
+}
+
 // 点击取消订单
 const onCancelOrderClick = () => {
   const reasons = ['不想要了', '商品选错', '信息填写错误', '其他原因']
@@ -406,18 +525,18 @@ const onCancelOrderClick = () => {
 // 执行取消逻辑
 const doCancelOrder = async (reason) => {
   try {
-    uni.showLoading({title: '处理中'})
+    uni.showLoading({ title: '处理中' })
     // 调用 services/order.js 中的 cancelOrder 方法
     // 注意：你需要确保 services/order.js 中的 cancelOrder 支持传 reason
     // 如果原本只传 orderId，现在需要改成传 { orderId, reason } 或者直接复用 cancelOrder(orderId, reason)
     await apiCancelOrder(orderId.value, reason)
     if (isUnmounted) return
 
-    uni.showToast({title: '订单已取消', icon: 'success'})
+    uni.showToast({ title: '订单已取消', icon: 'success' })
     loadOrderDetail() // 刷新详情
   } catch (e) {
     if (!isUnmounted) {
-      uni.showToast({title: e.message || '取消失败', icon: 'none'})
+      uni.showToast({ title: e.message || '取消失败', icon: 'none' })
     }
   } finally {
     if (!isUnmounted) uni.hideLoading()
@@ -627,7 +746,8 @@ $primary: #6f4e37;
   height: 4rpx;
   background-color: var(--border-light);
   margin: 0 12rpx;
-  margin-bottom: 30rpx; /* 对齐圆圈中心 */
+  margin-bottom: 30rpx;
+  /* 对齐圆圈中心 */
   border-radius: 2rpx;
 }
 
@@ -732,6 +852,30 @@ $primary: #6f4e37;
   font-size: 24rpx;
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+/* 配送地图 */
+.delivery-map-container {
+  margin-top: 24rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+}
+
+.delivery-map {
+  width: 100%;
+  height: 400rpx;
+}
+
+.map-tips {
+  padding: 16rpx 24rpx;
+  background-color: var(--bg-primary);
+  border-top: 1rpx solid var(--border-light);
+}
+
+.tips-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
 }
 
 /* 订单信息 */

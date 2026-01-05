@@ -51,6 +51,25 @@ public class CommonDictController {
         return addressComponent != null ? Result.success(addressComponent) : Result.failed("解析地址失败");
     }
 
+    /**
+     * 地理编码
+     * 根据地址获取经纬度坐标
+     */
+    @GetMapping("/geocode")
+    @Operation(summary = "地理编码", description = "根据地址获取经纬度坐标")
+    public Result<Map<String, Object>> geocode(@RequestParam String address, @RequestParam(required = false) String city) {
+        String location = aMapUtil.geocode(address, city);
+        if (location != null && !location.isEmpty()) {
+            String[] coords = location.split(",");
+            Map<String, Object> result = new HashMap<>();
+            result.put("longitude", Double.parseDouble(coords[0]));
+            result.put("latitude", Double.parseDouble(coords[1]));
+            result.put("location", location);
+            return Result.success(result);
+        }
+        return Result.failed("地址解析失败，请检查地址格式");
+    }
+
     @Autowired
     private com.coffee.system.service.OmsStoreService storeService;
 

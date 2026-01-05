@@ -20,6 +20,13 @@ public interface AliPayService {
     String handleAlipayNotify(Map<String, String> params);
 
     /**
+     * 执行支付成功后的订单处理逻辑
+     * @param order 订单对象
+     * @return 是否处理成功
+     */
+    boolean completeOrderPayment(OmsOrder order);
+
+    /**
      * 查询支付宝订单支付状态
      * @param outTradeNo 商户订单号
      * @return true: 已支付, false: 未支付

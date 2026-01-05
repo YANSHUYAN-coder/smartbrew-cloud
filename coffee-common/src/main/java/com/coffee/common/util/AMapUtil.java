@@ -23,6 +23,7 @@ public class AMapUtil {
 
     private static final String DISTANCE_URL = "https://restapi.amap.com/v3/distance";
     private static final String REGEO_URL = "https://restapi.amap.com/v3/geocode/regeo";
+    private static final String GEO_URL = "https://restapi.amap.com/v3/geocode/geo";
 
     /**
      * 逆地理编码：根据坐标获取详细地址组件（省市区）
@@ -77,6 +78,39 @@ public class AMapUtil {
             log.error("调用高德地图 API 异常", e);
         }
         return -1;
+    }
+
+    /**
+     * 地理编码：根据地址获取经纬度坐标
+     * @param address 完整地址，例如："广东省深圳市南山区科技园中区科兴科学园B栋301"
+     * @param city 城市（可选），例如："深圳市"，用于提高匹配精度
+     * @return 坐标字符串 "lng,lat"，失败返回 null
+     */
+    public String geocode(String address, String city) {
+        try {
+            Map<String, Object> paramMap = new HashMap<>();
+            paramMap.put("key", amapKey);
+            paramMap.put("address", address);
+            if (city != null && !city.isEmpty()) {
+                paramMap.put("city", city);
+            }
+
+            String result = HttpUtil.get(GEO_URL, paramMap);
+            JSONObject jsonObject = JSONUtil.parseObj(result);
+
+            if ("1".equals(jsonObject.getStr("status"))) {
+                JSONObject geocodes = jsonObject.getJSONArray("geocodes").getJSONObject(0);
+                String location = geocodes.getStr("location");
+                if (location != null && !location.isEmpty()) {
+                    return location; // 返回 "lng,lat" 格式
+                }
+            } else {
+                log.warn("高德地图地理编码失败: {} - {}", jsonObject.getStr("info"), address);
+            }
+        } catch (Exception e) {
+            log.error("调用高德地图地理编码 API 异常: {}", address, e);
+        }
+        return null;
     }
 }
 

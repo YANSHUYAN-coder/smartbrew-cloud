@@ -9,7 +9,7 @@
       <view style="width: 48rpx;"></view>
     </view>
 
-    <scroll-view scroll-y class="content-scroll">
+    <scroll-view scroll-y class="content-scroll" refresher-enabled="true" :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
       <!-- 订单状态卡片 -->
       <view class="status-card-new" :class="{ 'gift-card-status': isGiftCardOrder() }">
         <!-- 上半部分：状态文字与图标 -->
@@ -65,8 +65,8 @@
         <text class="remark-text">{{ orderDetail.cancelReason }}</text>
       </view>
 
-      <!-- 配送/取餐信息 (新增强化) -->
-      <view class="delivery-info-section" v-if="!isGiftCardOrder()">
+      <!-- 配送/取餐信息 (新增强化) - 已取消订单不显示 -->
+      <view class="delivery-info-section" v-if="!isGiftCardOrder() && orderDetail.status !== 5">
         <view class="section-title">{{ orderDetail.deliveryCompany === '门店自提' ? '取餐信息' : '配送信息' }}</view>
 
         <!-- 自提场景 -->
@@ -83,14 +83,15 @@
 
         <!-- 外送场景 -->
         <template v-else>
-          <view class="info-item">
-            <text class="info-label">配送服务</text>
-            <text class="info-value">商家配送</text>
+          <!-- 配送地图 (仅外卖订单显示，且订单未取消) - 前置显示，更醒目 -->
+          <view class="delivery-map-container" 
+            v-if="orderDetail.status !== 5 && storeLocation.latitude && storeLocation.longitude && !refreshing">
+            <map :latitude="storeLocation.latitude" :longitude="storeLocation.longitude" :markers="mapMarkers"
+              :polyline="polyline" :scale="14" class="delivery-map" show-location 
+              :enable-scroll="false" :enable-zoom="false"></map>
+            
           </view>
-          <view class="info-item" v-if="orderDetail.deliveryDistance">
-            <text class="info-label">配送距离</text>
-            <text class="info-value">{{ (orderDetail.deliveryDistance / 1000).toFixed(1) }}km</text>
-          </view>
+
           <view class="address-box">
             <view class="addr-row">
               <text class="addr-name">{{ orderDetail.receiverName }}</text>
@@ -102,42 +103,15 @@
             </text>
           </view>
 
-          <!-- 配送地图 (仅外卖订单显示) -->
-          <view class="delivery-map-container" v-if="storeLocation.latitude && storeLocation.longitude">
-            <map :latitude="storeLocation.latitude" :longitude="storeLocation.longitude" :markers="mapMarkers"
-              :polyline="polyline" :scale="14" class="delivery-map" show-location></map>
+          <view class="info-item">
+            <text class="info-label">配送服务</text>
+            <text class="info-value">商家配送</text>
+          </view>
+          <view class="info-item" v-if="orderDetail.deliveryDistance">
+            <text class="info-label">配送距离</text>
+            <text class="info-value">{{ (orderDetail.deliveryDistance / 1000).toFixed(1) }}km</text>
           </view>
         </template>
-      </view>
-
-      <!-- 咖啡卡订单信息 -->
-      <view class="gift-card-info-section" v-if="isGiftCardOrder()">
-        <view class="section-title">订单类型</view>
-        <view class="gift-card-badge">
-          <text class="gift-card-icon">☕</text>
-          <text class="gift-card-text">咖啡卡订单</text>
-        </view>
-      </view>
-
-      <!-- 订单信息 -->
-      <view class="order-info-section" :class="{ 'gift-card-info': isGiftCardOrder() }">
-        <view class="section-title">订单信息</view>
-        <view class="info-item">
-          <text class="info-label">订单编号</text>
-          <text class="info-value">{{ orderDetail.orderSn }}</text>
-        </view>
-        <view class="info-item">
-          <text class="info-label">下单时间</text>
-          <text class="info-value">{{ formatTime(orderDetail.createTime) }}</text>
-        </view>
-        <view class="info-item" v-if="orderDetail.paymentTime">
-          <text class="info-label">支付时间</text>
-          <text class="info-value">{{ formatTime(orderDetail.paymentTime) }}</text>
-        </view>
-        <view class="info-item" v-if="!isGiftCardOrder() && orderDetail.deliveryCompany">
-          <text class="info-label">配送方式</text>
-          <text class="info-value">{{ orderDetail.deliveryCompany }}</text>
-        </view>
       </view>
 
       <!-- 商品列表（仅商品订单显示） -->
@@ -191,6 +165,36 @@
         <view class="price-item total">
           <text class="price-label">实付金额</text>
           <text class="price-value total-price">¥{{ orderDetail.payAmount || 0 }}</text>
+        </view>
+      </view>
+
+      <!-- 咖啡卡订单信息 -->
+      <view class="gift-card-info-section" v-if="isGiftCardOrder()">
+        <view class="section-title">订单类型</view>
+        <view class="gift-card-badge">
+          <text class="gift-card-icon">☕</text>
+          <text class="gift-card-text">咖啡卡订单</text>
+        </view>
+      </view>
+
+      <!-- 订单信息 -->
+      <view class="order-info-section" :class="{ 'gift-card-info': isGiftCardOrder() }">
+        <view class="section-title">订单信息</view>
+        <view class="info-item">
+          <text class="info-label">订单编号</text>
+          <text class="info-value">{{ orderDetail.orderSn }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">下单时间</text>
+          <text class="info-value">{{ formatTime(orderDetail.createTime) }}</text>
+        </view>
+        <view class="info-item" v-if="orderDetail.paymentTime">
+          <text class="info-label">支付时间</text>
+          <text class="info-value">{{ formatTime(orderDetail.paymentTime) }}</text>
+        </view>
+        <view class="info-item" v-if="!isGiftCardOrder() && orderDetail.deliveryCompany">
+          <text class="info-label">配送方式</text>
+          <text class="info-value">{{ orderDetail.deliveryCompany }}</text>
         </view>
       </view>
 
@@ -251,6 +255,7 @@ const storeLocation = ref({ latitude: null, longitude: null })
 const receiverLocation = ref({ latitude: null, longitude: null })
 const mapMarkers = ref([])
 const polyline = ref([])
+const refreshing = ref(false)
 let isUnmounted = false
 
 onUnmounted(() => {
@@ -351,6 +356,25 @@ const goBack = () => {
   uni.navigateBack()
 }
 
+// 下拉刷新
+const onRefresh = async () => {
+  refreshing.value = true
+  try {
+    // 清空地图相关数据，重新加载
+    mapMarkers.value = []
+    polyline.value = []
+    storeLocation.value = { latitude: null, longitude: null }
+    receiverLocation.value = { latitude: null, longitude: null }
+    
+    // 重新加载订单详情
+    await loadOrderDetail()
+  } catch (error) {
+    console.error('刷新订单详情失败', error)
+  } finally {
+    refreshing.value = false
+  }
+}
+
 // 加载订单详情
 const loadOrderDetail = async () => {
   if (!orderId.value) {
@@ -373,8 +397,8 @@ const loadOrderDetail = async () => {
     if (isUnmounted) return
     orderDetail.value = result || {}
 
-    // 如果是外卖订单，加载门店信息和收货地址坐标用于地图展示
-    if (result && result.deliveryCompany && result.deliveryCompany !== '门店自提' && result.storeId) {
+    // 如果是外卖订单且订单未取消，加载门店信息和收货地址坐标用于地图展示
+    if (result && result.deliveryCompany && result.deliveryCompany !== '门店自提' && result.storeId && result.status !== 5) {
       await loadStoreLocation(result.storeId)
       await loadReceiverLocation(result)
     }
@@ -623,133 +647,151 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 $primary: #6f4e37;
+$bg-color: #f8f8f8;
+$card-bg: #ffffff;
+$text-main: #333333;
+$text-sub: #666666;
+$text-light: #999999;
+$border-color: #eeeeee;
 
 .order-detail-page {
   min-height: 100vh;
-  background-color: var(--bg-secondary);
+  background-color: $bg-color;
   display: flex;
   flex-direction: column;
-  transition: background-color 0.3s;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
 
 /* 顶部导航 */
 .nav-bar {
-  background-color: var(--bg-primary);
-  padding-bottom: 20rpx;
-  padding-left: 32rpx;
-  padding-right: 32rpx;
+  background-color: $card-bg;
+  padding: 20rpx 32rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 50;
-  box-shadow: 0 2rpx 10rpx var(--shadow-color);
+  z-index: 100;
+  // 移除阴影，保持简洁
+  // box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05); 
 }
 
 .nav-back {
-  width: 48rpx;
-  height: 48rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: -16rpx; // 修正视觉偏差
 }
 
 .page-title {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: var(--text-primary);
+  font-size: 34rpx;
+  font-weight: 600;
+  color: $text-main;
 }
 
 /* 内容区域 */
 .content-scroll {
   flex: 1;
-  /* 预留与底部操作栏等高的内边距，避免被遮挡 */
-  padding-bottom: 200rpx;
+  padding: 24rpx;
   box-sizing: border-box;
+}
+
+/* 通用卡片样式 */
+.status-card-new,
+.delivery-info-section,
+.order-info-section,
+.goods-section,
+.price-section,
+.remark-section,
+.gift-card-info-section {
+  background-color: $card-bg;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03); // 更柔和的阴影
+  border: none; // 移除边框
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $text-main;
+  margin-bottom: 24rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 24rpx;
+    background-color: $primary;
+    border-radius: 4rpx;
+    margin-right: 16rpx;
+    display: block;
+  }
 }
 
 /* 订单状态卡片 */
 .status-card-new {
-  background-color: var(--bg-primary);
-  margin: 24rpx 32rpx;
   padding: 40rpx 32rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 8rpx 24rpx var(--shadow-color);
-  overflow: hidden;
-  position: relative;
-  border: 2rpx solid transparent;
-  transition: all 0.3s;
-}
-
-/* 咖啡卡订单状态卡片样式 */
-.status-card-new.gift-card-status {
-  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
-  border: 2rpx solid #d4af37 !important;
-  box-shadow: 0 8rpx 24rpx rgba(212, 175, 55, 0.15) !important;
+  
+  &.gift-card-status {
+    background: linear-gradient(135deg, #3d3d3d 0%, #1a1a1a 100%);
+    
+    .status-title, .status-desc-text {
+      color: #ffd700;
+    }
+    .step-item.active .step-label {
+      color: #ffd700;
+    }
+    .step-item.active .step-circle {
+      background-color: #ffd700;
+    }
+    .step-line.active {
+      background-color: #ffd700;
+    }
+  }
 }
 
 .status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   margin-bottom: 40rpx;
-  position: relative;
-  z-index: 1;
-}
-
-.status-info {
-  display: flex;
-  flex-direction: column;
 }
 
 .status-title {
-  font-size: 44rpx;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 12rpx;
+  font-size: 40rpx;
+  font-weight: bold;
+  color: $text-main;
+  margin-bottom: 8rpx;
 }
 
 .status-desc-text {
   font-size: 26rpx;
-  color: var(--text-tertiary);
-  margin-bottom: 24rpx;
+  color: $text-sub;
 }
 
 .pickup-code-box {
-  background-color: var(--bg-secondary);
-  padding: 12rpx 24rpx;
+  margin-top: 24rpx;
+  background-color: rgba($primary, 0.08);
+  padding: 16rpx 32rpx;
   border-radius: 12rpx;
-  display: inline-flex;
-  align-items: baseline;
-  align-self: flex-start;
-}
-
-.code-label {
-  font-size: 24rpx;
-  color: var(--text-secondary);
-  margin-right: 12rpx;
-}
-
-.code-value {
-  font-size: 40rpx;
-  font-weight: bold;
-  color: $primary;
-  font-family: monospace;
-}
-
-.status-icon-bg {
-  width: 120rpx;
-  height: 120rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
-  transform: rotate(10deg);
-}
-
-.icon-emoji {
-  font-size: 100rpx;
+  display: inline-block;
+  
+  .code-label {
+    font-size: 24rpx;
+    color: $text-sub;
+    margin-right: 12rpx;
+  }
+  
+  .code-value {
+    font-size: 48rpx;
+    font-weight: bold;
+    color: $primary;
+    font-family: monospace;
+    letter-spacing: 2rpx;
+  }
 }
 
 /* 步骤条 */
@@ -766,356 +808,262 @@ $primary: #6f4e37;
   align-items: center;
   position: relative;
   z-index: 2;
+  min-width: 80rpx;
 }
 
 .step-circle {
-  width: 36rpx;
-  height: 36rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
-  background-color: var(--border-color);
+  background-color: #e0e0e0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12rpx;
   transition: all 0.3s;
+  border: 4rpx solid $card-bg; // 增加白边，增加层次感
 }
 
 .step-item.active .step-circle {
   background-color: $primary;
-  box-shadow: 0 2rpx 8rpx rgba(111, 78, 55, 0.3);
+  box-shadow: 0 0 0 4rpx rgba($primary, 0.2); // 外发光效果
 }
 
 .step-label {
   font-size: 22rpx;
-  color: var(--text-tertiary);
+  color: $text-light;
+  font-weight: 500;
 }
 
 .step-item.active .step-label {
   color: $primary;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .step-line {
   flex: 1;
   height: 4rpx;
-  background-color: var(--border-light);
-  margin: 0 12rpx;
-  margin-bottom: 30rpx;
-  /* 对齐圆圈中心 */
-  border-radius: 2rpx;
+  background-color: #e0e0e0;
+  margin: 0 -20rpx; // 负margin连接圆点
+  margin-bottom: 40rpx; // 对齐圆点中心
+  position: relative;
+  z-index: 1;
 }
 
 .step-line.active {
   background-color: $primary;
 }
 
-/* 通用区块 */
-.address-section,
-.order-info-section,
-.goods-section,
-.price-section,
-.remark-section,
-.gift-card-info-section {
-  background-color: var(--bg-primary);
-  margin: 24rpx 32rpx;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx var(--shadow-color);
-  border: 2rpx solid transparent;
-  transition: all 0.3s;
-}
-
-/* 咖啡卡订单费用明细样式 */
-.price-section.gift-card-price {
-  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
-  border: 2rpx solid #d4af37 !important;
-  box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
-}
-
-/* 咖啡卡订单信息 */
-.gift-card-badge {
-  display: flex;
-  align-items: center;
-  padding: 20rpx 24rpx;
-  background: linear-gradient(135deg, #6f4e37 0%, #8b6f47 100%);
-  border-radius: 16rpx;
-  box-shadow: 0 4rpx 12rpx rgba(111, 78, 55, 0.2);
-}
-
-.gift-card-icon {
-  font-size: 36rpx;
-  margin-right: 16rpx;
-}
-
-.gift-card-text {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #ffffff;
-}
-
-.section-title {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin-bottom: 24rpx;
-}
-
-.delivery-info-section {
-  background-color: var(--bg-primary);
-  margin: 24rpx 32rpx;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx var(--shadow-color);
-  border: 2rpx solid transparent;
-  transition: all 0.3s;
-}
-
-.highlight-code {
-  color: $primary;
-  font-weight: bold;
-  font-size: 32rpx;
-  letter-spacing: 2rpx;
-}
-
-.address-box {
-  margin-top: 16rpx;
-  padding: 16rpx;
-  background-color: var(--bg-secondary);
-  border-radius: 12rpx;
-}
-
-.addr-row {
-  display: flex;
-  align-items: baseline;
-  gap: 16rpx;
-  margin-bottom: 8rpx;
-}
-
-.addr-name {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: var(--text-primary);
-}
-
-.addr-phone {
-  font-size: 26rpx;
-  color: var(--text-secondary);
-}
-
-.addr-detail {
-  font-size: 24rpx;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-
-/* 配送地图 */
-.delivery-map-container {
-  margin-top: 24rpx;
-  border-radius: 16rpx;
-  overflow: hidden;
-  background-color: var(--bg-secondary);
-}
-
-.delivery-map {
-  width: 100%;
-  height: 400rpx;
-}
-
-.map-tips {
-  padding: 16rpx 24rpx;
-  background-color: var(--bg-primary);
-  border-top: 1rpx solid var(--border-light);
-}
-
-.tips-text {
-  font-size: 24rpx;
-  color: var(--text-secondary);
-}
-
-/* 订单信息 */
+/* 配送信息 */
 .info-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid var(--border-light);
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-/* 咖啡卡订单信息区块样式 */
-.order-info-section.gift-card-info {
-  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%) !important;
-  border: 2rpx solid #d4af37 !important;
-  box-shadow: 0 4rpx 16rpx rgba(212, 175, 55, 0.1) !important;
-}
-
-.order-info-section.gift-card-info .info-item {
-  border-bottom-color: rgba(212, 175, 55, 0.2) !important;
+  border-bottom: 1rpx solid $border-color;
+  
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .info-label {
   font-size: 28rpx;
-  color: var(--text-secondary);
+  color: $text-sub;
+  min-width: 140rpx;
 }
 
 .info-value {
   font-size: 28rpx;
-  color: var(--text-primary);
+  color: $text-main;
+  text-align: right;
+  flex: 1;
+  font-weight: 500;
+  
+  &.highlight-code {
+    color: $primary;
+    font-weight: bold;
+    font-size: 32rpx;
+  }
+}
+
+.address-box {
+  background-color: #f9f9f9;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  margin-top: 24rpx;
+  
+  .addr-row {
+    margin-bottom: 12rpx;
+    display: flex;
+    align-items: baseline;
+    
+    .addr-name {
+      font-size: 30rpx;
+      font-weight: 600;
+      color: $text-main;
+      margin-right: 16rpx;
+    }
+    
+    .addr-phone {
+      font-size: 26rpx;
+      color: $text-sub;
+    }
+  }
+  
+  .addr-detail {
+    font-size: 26rpx;
+    color: $text-sub;
+    line-height: 1.5;
+  }
+}
+
+/* 地图容器 */
+.delivery-map-container {
+  margin-top: 24rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0); /* 开启硬件加速，让地图跟随滚动 */
+  -webkit-transform: translateZ(0);
+}
+
+.delivery-map {
+  width: 100%;
+  height: 360rpx;
+  position: relative;
+}
+
+.map-tips {
+  padding: 16rpx 24rpx;
+  background-color: $card-bg;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  
+  .tips-text {
+    font-size: 24rpx;
+    color: $text-sub;
+    display: flex;
+    align-items: center;
+    
+    &::before {
+      margin-right: 8rpx;
+    }
+  }
 }
 
 /* 商品列表 */
-.goods-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-}
-
 .goods-item {
   display: flex;
-  align-items: flex-start;
-}
-
-.goods-img {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 16rpx;
-  background-color: var(--bg-tertiary);
-  margin-right: 24rpx;
-}
-
-.goods-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 160rpx;
-}
-
-.goods-name {
-  font-size: 30rpx;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin-bottom: 8rpx;
-}
-
-.goods-spec {
-  margin-bottom: 16rpx;
-}
-
-.spec-text {
-  font-size: 24rpx;
-  color: var(--text-tertiary);
-  background-color: var(--bg-secondary);
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-}
-
-.goods-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.goods-price {
-  color: $primary;
-  font-weight: bold;
-}
-
-.symbol {
-  font-size: 24rpx;
-}
-
-.price {
-  font-size: 32rpx;
-}
-
-.goods-quantity {
-  font-size: 26rpx;
-  color: var(--text-secondary);
+  margin-bottom: 32rpx;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  .goods-img {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 16rpx;
+    background-color: #f5f5f5;
+    margin-right: 24rpx;
+    flex-shrink: 0;
+  }
+  
+  .goods-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4rpx 0;
+  }
+  
+  .goods-name {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: $text-main;
+    margin-bottom: 8rpx;
+    line-height: 1.4;
+  }
+  
+  .goods-spec {
+    display: flex;
+    flex-wrap: wrap;
+    
+    .spec-text {
+      font-size: 22rpx;
+      color: $text-light;
+      background-color: #f5f5f5;
+      padding: 4rpx 12rpx;
+      border-radius: 8rpx;
+      margin-right: 12rpx;
+      margin-bottom: 8rpx;
+    }
+  }
+  
+  .goods-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    
+    .goods-price {
+      color: $text-main;
+      font-weight: 600;
+      
+      .symbol {
+        font-size: 24rpx;
+      }
+      .price {
+        font-size: 32rpx;
+      }
+    }
+    
+    .goods-quantity {
+      font-size: 26rpx;
+      color: $text-light;
+    }
+  }
 }
 
 /* 费用明细 */
 .price-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 16rpx 0;
-}
-
-.price-item.total {
-  padding-top: 24rpx;
-  border-top: 1rpx solid var(--border-light);
-  margin-top: 16rpx;
-}
-
-.price-label {
-  font-size: 28rpx;
-  color: var(--text-secondary);
-}
-
-.price-value {
-  font-size: 28rpx;
-  color: var(--text-primary);
-}
-
-.price-value.discount {
-  color: #ff4d4f;
-}
-
-.price-value.total-price {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: $primary;
-}
-
-/* 备注 */
-.remark-section {
-  background-color: var(--bg-primary);
-  margin: 24rpx 32rpx;
-  padding: 32rpx;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 16rpx var(--shadow-color);
-}
-
-.remark-text {
+  margin-bottom: 20rpx;
   font-size: 26rpx;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-/* 咖啡卡备注格式化样式 */
-.gift-card-remark {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.remark-item {
-  display: flex;
-  align-items: flex-start;
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid var(--border-light);
-}
-
-.remark-item:last-child {
-  border-bottom: none;
-}
-
-.remark-label {
-  font-size: 26rpx;
-  color: var(--text-secondary);
-  min-width: 120rpx;
-  flex-shrink: 0;
-}
-
-.remark-value {
-  font-size: 26rpx;
-  color: var(--text-primary);
-  font-weight: 500;
-  flex: 1;
+  color: $text-sub;
+  
+  &.total {
+    margin-top: 32rpx;
+    padding-top: 32rpx;
+    border-top: 1rpx dashed $border-color;
+    margin-bottom: 0;
+    align-items: flex-end;
+    
+    .price-label {
+      font-size: 28rpx;
+      font-weight: 500;
+      color: $text-main;
+    }
+    
+    .total-price {
+      font-size: 40rpx;
+      font-weight: bold;
+      color: $primary;
+    }
+  }
+  
+  .price-value {
+    font-weight: 500;
+    color: $text-main;
+    
+    &.discount {
+      color: #ff4d4f;
+    }
+  }
 }
 
 /* 底部操作栏 */
@@ -1124,42 +1072,77 @@ $primary: #6f4e37;
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: var(--bg-primary);
+  background-color: $card-bg;
   padding: 24rpx 32rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  box-shadow: 0 -2rpx 10rpx var(--shadow-color);
-  z-index: 40;
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.05);
+  z-index: 99;
 }
 
 .footer-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .action-btn {
-  height: 80rpx;
-  padding: 0 48rpx;
-  border-radius: 40rpx;
+  min-width: 160rpx;
+  height: 72rpx;
+  padding: 0 32rpx;
+  border-radius: 36rpx;
   font-size: 28rpx;
-  font-weight: bold;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  border: none;
+  
+  &::after {
+    border: none;
+  }
 }
 
 .cancel-btn {
-  background-color: transparent;
-  color: var(--text-secondary);
-  border: 2rpx solid var(--border-color);
+  background-color: #f5f5f5;
+  color: $text-sub;
+  border: 1rpx solid #e0e0e0;
 }
 
-.pay-btn,
-.confirm-btn {
+.pay-btn, .confirm-btn {
   background-color: $primary;
-  color: white;
-  box-shadow: 0 4rpx 16rpx rgba(111, 78, 55, 0.3);
+  color: #fff;
+  box-shadow: 0 4rpx 12rpx rgba($primary, 0.3);
+}
+
+/* 备注 */
+.remark-text {
+  font-size: 26rpx;
+  color: $text-sub;
+  line-height: 1.6;
+  background-color: #f9f9f9;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  display: block;
+}
+
+/* 咖啡卡信息 */
+.gift-card-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #4a4a4a 0%, #2b2b2b 100%);
+  border-radius: 16rpx;
+  color: #ffd700;
+  
+  .gift-card-icon {
+    font-size: 40rpx;
+    margin-right: 16rpx;
+  }
+  
+  .gift-card-text {
+    font-size: 30rpx;
+    font-weight: bold;
+  }
 }
 </style>

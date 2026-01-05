@@ -70,6 +70,27 @@ public class CommonDictController {
         return Result.failed("地址解析失败，请检查地址格式");
     }
 
+    /**
+     * 步行路线规划
+     * 获取从起点到终点的真实路线坐标点
+     */
+    @GetMapping("/route/walking")
+    @Operation(summary = "步行路线规划", description = "获取从起点到终点的真实步行路线坐标点")
+    public Result<List<String>> getWalkingRoute(@RequestParam String origin, @RequestParam String destination) {
+        try {
+            List<String> routePoints = aMapUtil.getWalkingRoute(origin, destination);
+            if (routePoints != null && !routePoints.isEmpty()) {
+                return Result.success(routePoints);
+            }
+            // 记录详细错误信息以便调试
+            log.warn("路线规划返回空结果，起点: {}, 终点: {}", origin, destination);
+            return Result.failed("路线规划失败，请检查起点和终点坐标");
+        } catch (Exception e) {
+            log.error("路线规划异常，起点: {}, 终点: {}", origin, destination, e);
+            return Result.failed("路线规划服务异常: " + e.getMessage());
+        }
+    }
+
     @Autowired
     private com.coffee.system.service.OmsStoreService storeService;
 

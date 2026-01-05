@@ -45,3 +45,12 @@ export const geocode = (address, city) => {
   return get('/common/dict/geocode', params)
 }
 
+/**
+ * 步行路线规划 (获取真实路线坐标点)
+ * @param {String} origin 起点坐标 "lng,lat"
+ * @param {String} destination 终点坐标 "lng,lat"
+ */
+export const getWalkingRoute = (origin, destination) => {
+  return get('/common/dict/route/walking', { origin, destination })
+}
+

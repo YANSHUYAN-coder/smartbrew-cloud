@@ -239,7 +239,7 @@ import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 import { useUserStore } from '@/store/user.js'
 import { getStoreInfo } from '@/services/store.js'
-import { geocode } from '@/services/common.js'
+import { geocode, getWalkingRoute } from '@/services/common.js'
 
 const { handleConfirmReceive, handlePayOrder } = useOrderActions() // 移除 handleCancelOrder，改用本地实现
 const userStore = useUserStore()
@@ -486,12 +486,62 @@ const loadReceiverLocation = async (order) => {
   }
 }
 
-// 绘制配送路线（从门店到收货地址）
-const drawDeliveryRoute = () => {
+// 绘制配送路线（从门店到收货地址）- 使用真实路线规划
+const drawDeliveryRoute = async () => {
   if (!storeLocation.value.latitude || !receiverLocation.value.latitude) {
     return
   }
+  
+  try {
+    // 构建起点和终点坐标字符串
+    const origin = `${storeLocation.value.longitude},${storeLocation.value.latitude}`
+    const destination = `${receiverLocation.value.longitude},${receiverLocation.value.latitude}`
+    
+    // 调用路线规划API获取真实路线坐标点
+    const response = await getWalkingRoute(origin, destination)
+    if (isUnmounted) return
+    
+    // 检查API返回的数据结构
+    const routePoints = response?.data || response
+    
+    if (routePoints && Array.isArray(routePoints) && routePoints.length > 0) {
+      // 将坐标点转换为地图polyline需要的格式
+      const points = routePoints.map(point => {
+        const [lng, lat] = point.split(',')
+        return {
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng)
+        }
+      }).filter(p => !isNaN(p.latitude) && !isNaN(p.longitude)) // 过滤无效坐标
+      
+      if (points.length > 0) {
+        polyline.value = [{
+          points: points,
+          color: '#6f4e37',
+          width: 4,
+          dottedLine: false,
+          arrowLine: true
+        }]
+        return // 成功绘制路线，直接返回
+      }
+    }
+    
+    // 如果路线规划失败或返回空数据，降级为两点连线
+    console.warn('路线规划失败或返回空数据，使用两点连线')
+    drawFallbackRoute()
+  } catch (error) {
+    console.error('获取路线规划失败', error)
+    // 降级为两点连线
+    drawFallbackRoute()
+  }
+}
 
+// 绘制降级路线（两点连线）
+const drawFallbackRoute = () => {
+  if (!storeLocation.value.latitude || !receiverLocation.value.latitude) {
+    return
+  }
+  
   polyline.value = [{
     points: [
       {

@@ -24,6 +24,7 @@ public class AMapUtil {
     private static final String DISTANCE_URL = "https://restapi.amap.com/v3/distance";
     private static final String REGEO_URL = "https://restapi.amap.com/v3/geocode/regeo";
     private static final String GEO_URL = "https://restapi.amap.com/v3/geocode/geo";
+    private static final String WALKING_DIRECTION_URL = "https://restapi.amap.com/v3/direction/walking";
 
     /**
      * 逆地理编码：根据坐标获取详细地址组件（省市区）
@@ -109,6 +110,70 @@ public class AMapUtil {
             }
         } catch (Exception e) {
             log.error("调用高德地图地理编码 API 异常: {}", address, e);
+        }
+        return null;
+    }
+
+    /**
+     * 步行路线规划：获取从起点到终点的真实路线坐标点
+     * @param origin 起点坐标 "lng,lat"
+     * @param destination 终点坐标 "lng,lat"
+     * @return 路线坐标点列表，每个元素为 "lng,lat" 格式，失败返回 null
+     */
+    public java.util.List<String> getWalkingRoute(String origin, String destination) {
+        try {
+            Map<String, Object> paramMap = new HashMap<>();
+            paramMap.put("key", amapKey);
+            paramMap.put("origin", origin);
+            paramMap.put("destination", destination);
+            paramMap.put("extensions", "base"); // base: 返回基础路线信息，all: 返回详细信息
+
+            String result = HttpUtil.get(WALKING_DIRECTION_URL, paramMap);
+            log.debug("高德地图路线规划API返回: {}", result);
+            JSONObject jsonObject = JSONUtil.parseObj(result);
+
+            if ("1".equals(jsonObject.getStr("status"))) {
+                JSONObject route = jsonObject.getJSONObject("route");
+                if (route != null) {
+                    cn.hutool.json.JSONArray paths = route.getJSONArray("paths");
+                    if (paths != null && paths.size() > 0) {
+                        // 获取第一条路径（通常是最优路径）
+                        JSONObject path = paths.getJSONObject(0);
+                        // 步行路线规划返回的是 steps 数组，每个 step 包含 polyline
+                        cn.hutool.json.JSONArray steps = path.getJSONArray("steps");
+                        java.util.List<String> points = new java.util.ArrayList<>();
+                        
+                        if (steps != null && !steps.isEmpty()) {
+                            for (int i = 0; i < steps.size(); i++) {
+                                JSONObject step = steps.getJSONObject(i);
+                                String polyline = step.getStr("polyline");
+                                if (polyline != null && !polyline.isEmpty()) {
+                                    String[] pointArray = polyline.split(";");
+                                    for (String point : pointArray) {
+                                        if (point != null && !point.trim().isEmpty()) {
+                                            points.add(point.trim());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (!points.isEmpty()) {
+                            return points;
+                        }
+                    } else {
+                        log.warn("高德地图路线规划返回空路径，起点: {}, 终点: {}", origin, destination);
+                    }
+                } else {
+                    log.warn("高德地图路线规划返回空route对象，起点: {}, 终点: {}", origin, destination);
+                }
+            } else {
+                String info = jsonObject.getStr("info");
+                String infocode = jsonObject.getStr("infocode");
+                log.warn("高德地图路线规划失败: {} (错误码: {}) - 从 {} 到 {}", info, infocode, origin, destination);
+            }
+        } catch (Exception e) {
+            log.error("调用高德地图路线规划 API 异常: 从 {} 到 {}", origin, destination, e);
         }
         return null;
     }

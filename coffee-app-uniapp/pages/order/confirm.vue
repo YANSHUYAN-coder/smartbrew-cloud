@@ -10,8 +10,8 @@
 		</view>
 
 		<scroll-view scroll-y class="content-scroll" :style="{ height: scrollHeight }">
-			<!-- 配送方式显示 (不再提供选择，由前序页面决定) -->
-			<view class="delivery-display-section">
+			<!-- 配送方式选择 -->
+			<view class="delivery-display-section" @click="openDeliveryTypePopup">
 				<view class="section-row">
 					<text class="section-label">配送方式</text>
 					<view class="section-right">
@@ -23,6 +23,53 @@
 						<text class="delivery-name-text">
 							{{ deliveryType === 'pickup' ? '到店取' : '外卖配送' }}
 						</text>
+						<uni-icons type="right" size="16" color="#999"></uni-icons>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 配送方式选择弹窗 -->
+			<view v-if="showDeliveryTypePopup" class="popup-mask" @click="closeDeliveryTypePopup">
+				<view class="popup-content delivery-popup" @click.stop>
+					<view class="popup-header">
+						<text class="popup-title">选择配送方式</text>
+						<view class="popup-close" @click="closeDeliveryTypePopup">
+							<uni-icons type="closeempty" size="24" color="#999"></uni-icons>
+						</view>
+					</view>
+					<view class="delivery-options">
+						<view 
+							class="delivery-option" 
+							:class="{ active: deliveryType === 'pickup' }"
+							@click="selectDeliveryType('pickup')"
+						>
+							<view class="option-left">
+								<uni-icons type="shop" size="24" :color="deliveryType === 'pickup' ? '#6f4e37' : '#999'"></uni-icons>
+								<view class="option-info">
+									<text class="option-title">到店取</text>
+									<text class="option-desc">到店自取，无需配送费</text>
+								</view>
+							</view>
+							<view class="option-check" v-if="deliveryType === 'pickup'">
+								<uni-icons type="checkmarkempty" size="20" color="#6f4e37"></uni-icons>
+							</view>
+						</view>
+						<view 
+							class="delivery-option" 
+							:class="{ active: deliveryType === 'delivery' }"
+							@click="selectDeliveryType('delivery')"
+						>
+							<view class="option-left">
+								<uni-icons type="location" size="24" :color="deliveryType === 'delivery' ? '#6f4e37' : '#999'"></uni-icons>
+								<view class="option-info">
+									<text class="option-title">外卖配送</text>
+									<text class="option-desc">配送到家，需选择收货地址</text>
+								</view>
+							</view>
+							<view class="option-check" v-if="deliveryType === 'delivery'">
+								<uni-icons type="checkmarkempty" size="20" color="#6f4e37"></uni-icons>
+							</view>
+						</view>
 					</view>
 				</view>
 			</view>
@@ -290,6 +337,13 @@ let isUnmounted = false
 
 onUnmounted(() => {
 	isUnmounted = true
+	// 清理防抖定时器
+	if (calculateDistanceTimer) {
+		clearTimeout(calculateDistanceTimer)
+		calculateDistanceTimer = null
+	}
+	// 重置计算状态
+	calculatingDistance.value = false
 })
 
 const deliveryType = computed({
@@ -305,6 +359,9 @@ const isSubmitDisabled = computed(() => {
 	}
 	return false
 })
+
+// ========== 配送方式选择相关 ==========
+const showDeliveryTypePopup = ref(false)
 
 // ========== 优惠券相关 ==========
 const selectedCoupon = ref(null)
@@ -367,6 +424,30 @@ const formatCouponDate = (dateStr) => formatDate(dateStr)
 
 const goBack = () => {
 	uni.navigateBack()
+}
+
+// 配送方式选择相关方法
+const openDeliveryTypePopup = () => {
+	showDeliveryTypePopup.value = true
+}
+
+const closeDeliveryTypePopup = () => {
+	showDeliveryTypePopup.value = false
+}
+
+const selectDeliveryType = (type) => {
+	if (deliveryType.value === type) {
+		closeDeliveryTypePopup()
+		return
+	}
+	
+	// 如果切换到外卖，且没有地址，尝试加载默认地址
+	if (type === 'delivery' && !selectedAddress.value) {
+		loadDefaultAddress()
+	}
+	
+	deliveryType.value = type
+	closeDeliveryTypePopup()
 }
 
 const selectAddress = () => {
@@ -613,6 +694,8 @@ const submitOrder = async () => {
 					title: '支付成功',
 					icon: 'success'
 				})
+				// 发送支付成功事件，通知聊天页面更新按钮状态
+				uni.$emit('orderPaymentSuccess', orderId)
 			} catch (payError) {
 				console.error('咖啡卡支付失败', payError)
 				if (isUnmounted) return
@@ -691,27 +774,47 @@ onShow(() => {
 	}
 })
 
-// 监听地址和配送方式变化，自动重算运费
+// 计算距离的防抖定时器
+let calculateDistanceTimer = null
+const calculatingDistance = ref(false)
+
+// 监听地址和配送方式变化，自动重算运费（防抖处理，避免频繁调用）
 watch([selectedAddress, deliveryType], () => {
+	// 清除之前的定时器
+	if (calculateDistanceTimer) {
+		clearTimeout(calculateDistanceTimer)
+	}
+	
+	// 如果切换到到店取，直接清空配送费
+	if (deliveryType.value === 'pickup') {
+		deliveryFee.value = 0
+		distanceInfo.value = {
+			distance: 0,
+			distanceText: '',
+			isOutOfRange: false
+		}
+		return
+	}
+	
+	// 如果是外卖，且有地址，延迟500ms后计算（防抖）
 	if (deliveryType.value === 'delivery' && selectedAddress.value) {
-		calculateDistance()
+		calculateDistanceTimer = setTimeout(() => {
+			calculateDistance()
+		}, 500)
 	} else {
 		deliveryFee.value = 0
 	}
 })
 
-// 监听地址和配送方式变化，自动重算运费
-watch([selectedAddress, deliveryType], () => {
-	if (deliveryType.value === 'delivery' && selectedAddress.value) {
-		calculateDistance()
-	} else {
-		deliveryFee.value = 0
-	}
-})
-
-// 计算地址距离
+// 计算地址距离（添加防并发保护）
 const calculateDistance = async () => {
 	if (!selectedAddress.value) return
+	
+	// 如果正在计算中，跳过本次请求
+	if (calculatingDistance.value) {
+		console.log('距离计算中，跳过本次请求')
+		return
+	}
 	
 	// 确保门店信息已加载
 	if (!appStore.currentStore) {
@@ -720,15 +823,22 @@ const calculateDistance = async () => {
 	
 	if (!appStore.currentStore) return // 依然没有门店信息，停止计算
 	
+	// 检查地址是否有坐标
+	if (!selectedAddress.value.longitude || !selectedAddress.value.latitude) {
+		console.warn('地址缺少坐标信息')
+		return
+	}
+	
 	try {
+		calculatingDistance.value = true
 		const userLoc = `${selectedAddress.value.longitude},${selectedAddress.value.latitude}`
 		const res = await getDistance(userLoc, appStore.currentStore.id)
 		const data = res.data || res
 		
-		if (data) {
+		if (data && data.distance !== undefined) {
 			distanceInfo.value = {
 				distance: data.distance,
-				distanceText: data.distanceText,
+				distanceText: data.distanceText || '',
 				isOutOfRange: data.distance > (appStore.currentStore.deliveryRadius || 5000)
 			}
 			
@@ -745,15 +855,57 @@ const calculateDistance = async () => {
 			} else {
 				deliveryFee.value = 0
 			}
+		} else {
+			console.warn('距离计算返回数据异常:', data)
 		}
 	} catch (e) {
 		console.error('确认页计算距离失败', e)
+		// 如果高德API调用失败，使用默认配送费（降级处理）
+		if (e.message && e.message.includes('QPS')) {
+			console.warn('高德地图QPS超限，使用默认配送费')
+			deliveryFee.value = parseFloat(appStore.currentStore?.baseDeliveryFee || 5)
+			distanceInfo.value = {
+				distance: 0,
+				distanceText: '',
+				isOutOfRange: false
+			}
+		}
+	} finally {
+		calculatingDistance.value = false
 	}
 }
 
-onMounted(() => {
+onMounted(async () => {
 	statusBarHeight.value = getStatusBarHeight()
 	
+	// 先同步购物车数据，确保数据是最新的
+	try {
+		await cartStore.syncCart()
+	} catch (error) {
+		console.error('同步购物车失败', error)
+	}
+	
+	// 如果购物车为空，提示用户
+	if (cartStore.items.length === 0) {
+		uni.showModal({
+			title: '提示',
+			content: '购物车中没有商品，请先添加商品',
+			showCancel: false,
+			success: () => {
+				uni.navigateBack()
+			}
+		})
+		return
+	}
+	
+	// 如果没有选中的商品，自动选中所有商品（适用于从菜单页面立即结算的场景）
+	if (selectedCartItems.value.length === 0) {
+		cartStore.items.forEach(item => {
+			item.checked = true
+		})
+	}
+	
+	// 再次检查，如果仍然没有选中的商品，提示用户
 	if (selectedCartItems.value.length === 0) {
 		uni.showModal({
 			title: '提示',
@@ -830,6 +982,7 @@ $bg-color: #f7f8fa;
 	padding: 32rpx;
 	border-radius: 24rpx;
 	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+	cursor: pointer;
 }
 
 .delivery-name-text {
@@ -837,6 +990,64 @@ $bg-color: #f7f8fa;
 	color: #333;
 	font-weight: 500;
 	margin-left: 8rpx;
+	margin-right: 8rpx;
+}
+
+/* 配送方式选择弹窗 */
+.delivery-popup {
+	max-height: 50vh;
+}
+
+.delivery-options {
+	padding: 24rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.delivery-option {
+	background-color: white;
+	border-radius: 16rpx;
+	padding: 32rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border: 2rpx solid #eee;
+	transition: all 0.3s;
+}
+
+.delivery-option.active {
+	border-color: #6f4e37;
+	background-color: #fef8f5;
+}
+
+.option-left {
+	display: flex;
+	align-items: center;
+	gap: 24rpx;
+	flex: 1;
+}
+
+.option-info {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.option-title {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #333;
+}
+
+.option-desc {
+	font-size: 24rpx;
+	color: #999;
+}
+
+.option-check {
+	display: flex;
+	align-items: center;
 }
 
 /* 收货地址 */

@@ -82,7 +82,20 @@
                   <text>合计:</text>
                   <text class="total-price">¥{{ msg.cardData.totalPrice }}</text>
                 </view>
-                <button class="buy-btn" @click="handleBuy(msg.cardData)">立即结算</button>
+                <button 
+                  v-if="!msg.cardData.isPaid" 
+                  class="buy-btn" 
+                  @click="handleBuy(msg.cardData, index)"
+                >
+                  立即结算
+                </button>
+                <button 
+                  v-else 
+                  class="buy-btn paid-btn" 
+                  disabled
+                >
+                  ✓ 已支付
+                </button>
               </view>
             </view>
 
@@ -147,7 +160,7 @@
         />
         <view 
           class="send-btn" 
-          :class="{ active: inputText.trim() }"
+          :class="{ active: inputText && inputText.trim() }"
           @click="sendMessage"
         >
           <uni-icons type="paperplane-filled" size="24" color="#fff"></uni-icons>
@@ -158,12 +171,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { chatWithAi, getChatHistory, clearChatHistory } from '@/services/ai.js'
 import { useUserStore } from '@/store/user.js'
+import { useAppStore } from '@/store/app.js'
+import { useCartStore } from '@/store/cart.js'
 import { convertImageUrl } from '@/utils/image.js'
 import { searchProducts, getProductDetail } from '@/services/product.js'
+import { getOrderList } from '@/services/order.js'
 
 // 状态管理
 const statusBarHeight = ref(0)
@@ -325,6 +341,99 @@ const parseJsonToCard = async (fullText) => {
   return { displayContent, cardData }
 }
 
+// 图片辅助处理
+const getImageUrl = (url) => {
+  if (!url) return '/static/logo.png' 
+  return convertImageUrl(url)
+}
+
+const goBack = () => {
+  uni.navigateBack()
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    scrollTop.value = 9999999
+  })
+}
+
+// 监听支付成功事件
+const handlePaymentSuccess = (orderId) => {
+  console.log('收到支付成功事件，订单ID:', orderId)
+  
+  // 方法1: 通过临时存储的索引查找
+  const cardIndex = uni.getStorageSync('pendingOrderCardIndex')
+  if (cardIndex !== undefined && cardIndex !== null && messageList.value[cardIndex]) {
+    const cardData = messageList.value[cardIndex].cardData
+    if (cardData && cardData.type === 'order_card' && !cardData.isPaid) {
+      // 更新卡片状态为已支付
+      cardData.isPaid = true
+      cardData.orderId = orderId
+      // 清除临时存储
+      uni.removeStorageSync('pendingOrderCardIndex')
+      console.log('订单卡片已更新为已支付状态（通过索引）', orderId)
+      return
+    }
+  }
+  
+  // 方法2: 遍历所有消息，查找未支付的订单卡片（兜底方案）
+  // 如果用户从订单详情页支付，可能没有保存索引
+  for (let i = messageList.value.length - 1; i >= 0; i--) {
+    const msg = messageList.value[i]
+    if (msg.role === 'ai' && msg.cardData && msg.cardData.type === 'order_card' && !msg.cardData.isPaid) {
+      // 更新第一个找到的未支付卡片（通常是最新的）
+      msg.cardData.isPaid = true
+      msg.cardData.orderId = orderId
+      console.log('订单卡片已更新为已支付状态（通过遍历）', orderId)
+      break
+    }
+  }
+}
+
+// 检查订单卡片是否已支付
+const checkOrderCardPaymentStatus = async (cardData) => {
+  if (!cardData || cardData.type !== 'order_card' || !cardData.productId) {
+    return
+  }
+  
+  try {
+    // 查询用户最近的订单列表（只查最近10条，提高性能）
+    const orderList = await getOrderList({ page: 1, pageSize: 10 })
+    const orders = orderList.data?.records || orderList.records || []
+    
+    // 遍历订单，查找匹配的订单
+    // 匹配条件：商品ID相同，且订单状态 > 0（已支付）
+    for (const order of orders) {
+      if (order.status > 0 && order.orderItemList) {
+        // 检查订单项中是否有匹配的商品
+        const matchedItem = order.orderItemList.find(item => {
+          // 匹配商品ID
+          if (item.productId !== cardData.productId) return false
+          
+          // 如果有SKU ID，也要匹配
+          if (cardData.skuId && item.productSkuId !== cardData.skuId) return false
+          
+          // 数量也要匹配（可选，因为用户可能修改了数量）
+          // if (item.productQuantity !== cardData.quantity) return false
+          
+          return true
+        })
+        
+        if (matchedItem) {
+          // 找到匹配的订单，且订单已支付
+          cardData.isPaid = true
+          cardData.orderId = order.id
+          console.log('订单卡片已匹配到已支付订单', order.id)
+          return
+        }
+      }
+    }
+  } catch (error) {
+    console.error('检查订单支付状态失败', error)
+    // 失败不影响页面显示，静默处理
+  }
+}
+
 // 加载历史记录
 const loadHistory = async () => {
   try {
@@ -337,6 +446,12 @@ const loadHistory = async () => {
           // 只处理AI消息中的JSON
           if (role === 'ai' && item.content) {
             const { displayContent, cardData } = await parseJsonToCard(item.content)
+            
+            // 如果是订单卡片，检查支付状态
+            if (cardData && cardData.type === 'order_card') {
+              await checkOrderCardPaymentStatus(cardData)
+            }
+            
             return {
               role,
               content: displayContent,
@@ -358,29 +473,21 @@ const loadHistory = async () => {
   }
 }
 
-// 图片辅助处理
-const getImageUrl = (url) => {
-  if (!url) return '/static/logo.png' 
-  return convertImageUrl(url)
-}
-
 onMounted(() => {
   statusBarHeight.value = getStatusBarHeight()
   const screenHeight = uni.getSystemInfoSync().windowHeight
   // 动态计算高度：屏幕 - 状态栏 - 导航栏(44) - 底部输入区(约110)
   contentHeight.value = screenHeight - statusBarHeight.value - 44 - 110 
   loadHistory()
+  
+  // 监听支付成功事件
+  uni.$on('orderPaymentSuccess', handlePaymentSuccess)
 })
 
-const goBack = () => {
-  uni.navigateBack()
-}
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    scrollTop.value = 9999999
-  })
-}
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  uni.$off('orderPaymentSuccess', handlePaymentSuccess)
+})
 
 const handleTagClick = (text) => {
   inputText.value = text
@@ -411,11 +518,123 @@ const handleClearChat = () => {
 }
 
 // --- 下单逻辑 ---
-const handleBuy = (cardData) => {
-  // 跳转到确认订单页面，传递 SKU ID 和数量
-  uni.navigateTo({
-    url: `/pages/order/confirm?skuId=${cardData.skuId}&count=${cardData.quantity}`
-  })
+const handleBuy = async (cardData, messageIndex) => {
+  try {
+    // agent下单默认使用到店取方式（更简单，不需要选择地址）
+    const appStore = useAppStore()
+    const cartStore = useCartStore()
+    
+    // 如果当前没有设置配送方式，默认设置为到店取
+    // 如果用户之前选择了外卖，保持用户的选择
+    if (!appStore.orderType) {
+      appStore.setOrderType('pickup')
+    }
+    
+    // 先获取商品详情，构建完整的商品信息
+    uni.showLoading({ title: '正在加入购物车...' })
+    
+    const productDetail = await getProductDetail(cardData.productId)
+    if (!productDetail) {
+      uni.hideLoading()
+      uni.showToast({ title: '获取商品信息失败', icon: 'none' })
+      return
+    }
+    
+    // 构建商品对象（用于加入购物车）
+    const product = {
+      id: cardData.productId,
+      name: cardData.productName,
+      image: cardData.productPic || productDetail.picUrl,
+      picUrl: cardData.productPic || productDetail.picUrl,
+      price: cardData.price,
+      selectedSku: null,
+      selectedSpecs: {}
+    }
+    
+    // 如果有 SKU ID，找到对应的 SKU
+    if (cardData.skuId && productDetail.skuList) {
+      const sku = productDetail.skuList.find(s => s.id === cardData.skuId)
+      if (sku) {
+        product.selectedSku = sku
+        // 解析规格文本为对象
+        if (cardData.specs && cardData.specs !== '标准规格') {
+          const specArray = cardData.specs.split(',').map(s => s.trim())
+          // 尝试从 SKU 的 spec JSON 中提取规格键值对
+          if (sku.spec) {
+            try {
+              const specJson = typeof sku.spec === 'string' ? JSON.parse(sku.spec) : sku.spec
+              if (Array.isArray(specJson)) {
+                specJson.forEach((item, index) => {
+                  if (item.key && specArray[index]) {
+                    product.selectedSpecs[item.key] = specArray[index]
+                  }
+                })
+              }
+            } catch (e) {
+              // 如果解析失败，使用默认映射
+              const specKeys = ['容量', '温度', '糖度']
+              specArray.forEach((value, index) => {
+                if (specKeys[index]) {
+                  product.selectedSpecs[specKeys[index]] = value
+                }
+              })
+            }
+          } else {
+            // 如果没有 spec JSON，使用默认映射
+            const specKeys = ['容量', '温度', '糖度']
+            specArray.forEach((value, index) => {
+              if (specKeys[index]) {
+                product.selectedSpecs[specKeys[index]] = value
+              }
+            })
+          }
+        }
+        product.price = sku.price || cardData.price
+      }
+    }
+    
+    // 先取消所有商品的选中状态，确保只结算卡片中的商品
+    cartStore.items.forEach(item => {
+      item.checked = false
+    })
+    
+    // 将商品加入购物车
+    await cartStore.addToCart(product, cardData.quantity || 1)
+    
+    // 同步购物车以获取 cartItemId
+    await cartStore.syncCart()
+    
+    // 找到刚加入的商品并选中它（通过 cartKey 匹配）
+    const cartKey = cartStore.getCartItemKey(product)
+    const addedItem = cartStore.items.find(item => {
+      const itemKey = item.cartKey || cartStore.getCartItemKey(item)
+      return itemKey === cartKey
+    })
+    if (addedItem) {
+      addedItem.checked = true
+    }
+    
+    uni.hideLoading()
+    uni.showToast({ title: '已加入购物车', icon: 'success' })
+    
+    // 保存消息索引，用于支付成功后更新按钮状态
+    // 使用 sessionStorage 临时存储，支付成功后通过事件通知更新
+    uni.setStorageSync('pendingOrderCardIndex', messageIndex)
+    
+    // 跳转到确认订单页面
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/order/confirm'
+      })
+    }, 500)
+  } catch (error) {
+    console.error('加入购物车失败', error)
+    uni.hideLoading()
+    uni.showToast({ 
+      title: error.message || '加入购物车失败，请重试', 
+      icon: 'none' 
+    })
+  }
 }
 
 // --- 消息处理核心 ---

@@ -25,6 +25,8 @@ export function useOrderActions() {
         await payByCoffeeCard(orderId)
         uni.hideLoading()
         uni.showToast({ title: '支付成功', icon: 'success' })
+        // 发送支付成功事件，通知聊天页面更新按钮状态
+        uni.$emit('orderPaymentSuccess', orderId)
         if (onSuccess) onSuccess()
       } else {
         // 支付宝支付
@@ -55,6 +57,8 @@ export function useOrderActions() {
               console.warn('同步支付状态失败，等待系统后台自动同步:', e)
             }
             uni.showToast({ title: '支付成功', icon: 'success' })
+            // 发送支付成功事件，通知聊天页面更新按钮状态
+            uni.$emit('orderPaymentSuccess', orderId)
             if (onSuccess) onSuccess()
           },
           fail: (err) => {

@@ -1,6 +1,7 @@
 package com.coffee.ai.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.coffee.ai.tools.OrderTools;
 import com.coffee.system.domain.entity.Product;
 import com.coffee.system.domain.entity.SkuStock;
 import com.coffee.system.service.ProductService;
@@ -50,6 +51,8 @@ public class CoffeeAiService {
     private final SkuStockService skuStockService;
     private final ChatMemory chatMemory; // 保存引用以便手动访问
 
+    private final OrderTools orderTools;
+
     // 文本切分器，用于将长文档切分成小块，提高 RAG 效果
     private final TokenTextSplitter textSplitter = new TokenTextSplitter();
 
@@ -58,11 +61,13 @@ public class CoffeeAiService {
                            ProductService productService,
                            SkuStockService skuStockService,
                            ChatMemory chatMemory,
-                           ChatModel chatModel) { // 注入底层 ChatModel
+                           ChatModel chatModel,
+                           OrderTools orderTools) { // 注入底层 ChatModel
         this.vectorStore = vectorStore;
         this.productService = productService;
         this.skuStockService = skuStockService;
         this.chatMemory = chatMemory;
+        this.orderTools = orderTools;
 
         // 1. 初始化无记忆的简单 ChatClient (用于查询重写)
         // 使用 ChatClient.create(chatModel) 创建的客户端是"干净"的，不会自动挂载 Advisor
@@ -71,6 +76,7 @@ public class CoffeeAiService {
         // 2. 初始化主对话 RAG ChatClient (带记忆功能)
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultTools(orderTools)
                 .build();
     }
 
@@ -295,7 +301,7 @@ public class CoffeeAiService {
         List<Document> documents = vectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(searchKey)
-                        .topK(1) // 只取最相似的1条，解决多商品混淆问题
+                        .topK(2) // 只取最相似的1条，解决多商品混淆问题
                         .similarityThreshold(0.5) // 过滤掉相关性太低的结果
                         .build());
 
@@ -305,16 +311,25 @@ public class CoffeeAiService {
                 .orElse("暂无相关信息");
 
         // 3. 构建最终 Prompt：强制要求 AI 基于 searchKey 回答
-        String finalSystemPrompt = systemPrompt + "\n\n【知识库参考资料】:\n" + context +
-                "\n\n请严格遵守以下规则回答：" +
-                "\n1. 你的任务是根据参考资料回答用户问题。" +
-                "\n2. 【重要】如果参考资料中包含多个商品，请只回答用户明确问到的那个商品。" +
-                "\n3. 如果用户没有明确指定商品，再列出所有参考资料中的商品。";
+        String finalSystemPrompt = systemPrompt +
+                "\n\n【知识库参考资料 (RAG Context)】:\n" + context +
+                "\n\n================ 操作规则 ================" +
+                "\n1. 你的任务是根据参考资料回答用户问题，并协助下单。" +
+                "\n2. 【RAG 优先】回答商品价格、口味时，必须基于知识库资料。" +
+                "\n3. 【下单检测】当用户想要下单时：" +
+                "\n   - 第一步：检查参考资料中该商品是否有‘规格’（如冷/热，大/中杯）。" +
+                "\n   - 第二步（规格缺失）：如果需要选规格但用户没说，请**追问用户**，不要调用工具。" +
+                "\n   - 第三步（信息完整）：如果商品无规格，或用户已明确规格，请调用工具 `createOrderCard`。" +
+                "\n4. 【输出格式】如果成功调用了工具，请将工具返回的 JSON 结果放在 Markdown 代码块中，格式如下：" +
+                "\n   ```json" +
+                "\n   { 工具返回的JSON数据 }" +
+                "\n   ```" +
+                "\n   并在后面附带一句：“已为您生成订单，请点击上方卡片支付。”";
 
         // 4. 发送给 AI：使用 searchKey (重写后的明确问题) 作为用户输入
         return chatClient.prompt()
                 .system(finalSystemPrompt)
-                .user(searchKey) // <--- 关键修改：让 AI 看到明确的 "可颂多少钱"
+                .user(userQuestion) // <--- 关键修改：让 AI 看到明确的 "可颂多少钱"
                 .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();

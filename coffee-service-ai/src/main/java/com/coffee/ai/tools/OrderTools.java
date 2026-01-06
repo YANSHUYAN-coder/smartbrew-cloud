@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static cn.hutool.core.util.IdUtil.fastSimpleUUID;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class OrderTools {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record OrderCardData(
+            String cardId, // 新增：唯一卡片ID
             String type,
             Long productId,
             Long skuId,
@@ -57,14 +60,14 @@ public class OrderTools {
 
         if (CollUtil.isEmpty(products)) {
             // 【修复 1】找不到商品直接返回错误，禁止瞎编
-            return new OrderCardData("error", null, null, request.productName(), null, null, 0, null, null, "抱歉，未找到商品：" + request.productName());
+            return new OrderCardData(null, "error", null, null, request.productName(), null, null, 0, null, null, "抱歉，未找到商品：" + request.productName());
         }
 
         Product product = products.get(0);
         List<SkuStock> skuList = skuStockService.listByProductId(product.getId());
 
         if (CollUtil.isEmpty(skuList)) {
-            return new OrderCardData("error", null, null, product.getName(), null, null, 0, null, null, "该商品暂无库存信息");
+            return new OrderCardData(null, "error", null, null, product.getName(), null, null, 0, null, null, "该商品暂无库存信息");
         }
 
         // 2. 匹配 SKU 规格 (严格匹配模式)
@@ -77,7 +80,7 @@ public class OrderTools {
             // 如果有多个规格，必须根据 specs 匹配
             if (StrUtil.isBlank(request.specs())) {
                 // 依然没规格，说明 AI 判断失误，返回错误提示 AI 继续追问
-                return new OrderCardData("error", null, null, product.getName(), null, null, 0, null, null, "请询问用户具体的规格（如温度、大小）");
+                return new OrderCardData(null, "error", null, null, product.getName(), null, null, 0, null, null, "请询问用户具体的规格（如温度、大小）");
             }
 
             for (SkuStock sku : skuList) {
@@ -92,7 +95,7 @@ public class OrderTools {
 
         if (bestMatchSku == null) {
             // 【修复 2】规格匹配失败
-            return new OrderCardData("error", null, null, product.getName(), null, null, 0, null, null, "抱歉，没有找到符合“" + request.specs() + "”的规格，请重新选择");
+            return new OrderCardData(null, "error", null, null, product.getName(), null, null, 0, null, null, "抱歉，没有找到符合“" + request.specs() + "”的规格，请重新选择");
         }
 
         // 3. 成功构建数据
@@ -100,7 +103,11 @@ public class OrderTools {
         BigDecimal price = bestMatchSku.getPrice();
         BigDecimal total = price.multiply(BigDecimal.valueOf(qty));
 
+        // 生成唯一 cardId
+        String cardId = fastSimpleUUID();
+
         return new OrderCardData(
+                cardId,
                 "order_card",
                 product.getId(),
                 bestMatchSku.getId(),

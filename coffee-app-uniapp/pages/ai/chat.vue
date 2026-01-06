@@ -279,6 +279,7 @@ const parseJsonToCard = async (fullText) => {
               
               // 构建订单卡片数据
               cardData = {
+                cardId: requestData.cardId || (data.cardId), // 确保获取 cardId
                 type: 'order_card',
                 productId: product.id,
                 skuId: selectedSku.id,
@@ -294,6 +295,7 @@ const parseJsonToCard = async (fullText) => {
               const quantity = requestData.quantity || 1
               const price = product.price || 0
               cardData = {
+                cardId: requestData.cardId || (data.cardId), // 确保获取 cardId
                 type: 'order_card',
                 productId: product.id,
                 skuId: null,
@@ -361,77 +363,49 @@ const scrollToBottom = () => {
 const handlePaymentSuccess = (orderId) => {
   console.log('收到支付成功事件，订单ID:', orderId)
   
-  // 方法1: 通过临时存储的索引查找
-  const cardIndex = uni.getStorageSync('pendingOrderCardIndex')
-  if (cardIndex !== undefined && cardIndex !== null && messageList.value[cardIndex]) {
-    const cardData = messageList.value[cardIndex].cardData
-    if (cardData && cardData.type === 'order_card' && !cardData.isPaid) {
-      // 更新卡片状态为已支付
-      cardData.isPaid = true
-      cardData.orderId = orderId
-      // 清除临时存储
-      uni.removeStorageSync('pendingOrderCardIndex')
-      console.log('订单卡片已更新为已支付状态（通过索引）', orderId)
-      return
+  // 获取当前正在处理的卡片ID
+  const currentCardId = uni.getStorageSync('currentPendingCardId')
+  
+  if (currentCardId) {
+    // 1. 将该卡片ID存入已支付列表（FIFO 策略）
+    let paidCards = uni.getStorageSync('paid_card_ids') || []
+    if (!Array.isArray(paidCards)) paidCards = []
+    
+    // 如果已经存在，先移除（为了移到最新的位置或避免重复）
+    const index = paidCards.indexOf(currentCardId)
+    if (index !== -1) {
+      paidCards.splice(index, 1)
     }
+    
+    // 加入到队尾
+    paidCards.push(currentCardId)
+    
+    // 保持最近 100 条
+    if (paidCards.length > 100) {
+      paidCards = paidCards.slice(paidCards.length - 100)
+    }
+    
+    uni.setStorageSync('paid_card_ids', paidCards)
+    uni.removeStorageSync('currentPendingCardId') // 清除临时状态
+    console.log('已将卡片标记为支付成功:', currentCardId)
   }
   
-  // 方法2: 遍历所有消息，查找未支付的订单卡片（兜底方案）
-  // 如果用户从订单详情页支付，可能没有保存索引
-  for (let i = messageList.value.length - 1; i >= 0; i--) {
-    const msg = messageList.value[i]
-    if (msg.role === 'ai' && msg.cardData && msg.cardData.type === 'order_card' && !msg.cardData.isPaid) {
-      // 更新第一个找到的未支付卡片（通常是最新的）
-      msg.cardData.isPaid = true
-      msg.cardData.orderId = orderId
-      console.log('订单卡片已更新为已支付状态（通过遍历）', orderId)
-      break
-    }
-  }
+  // 2. 更新当前页面消息列表中的状态
+  updateMessageListStatus()
 }
 
-// 检查订单卡片是否已支付
-const checkOrderCardPaymentStatus = async (cardData) => {
-  if (!cardData || cardData.type !== 'order_card' || !cardData.productId) {
-    return
-  }
+// 根据本地存储的已支付ID，更新消息列表状态
+const updateMessageListStatus = () => {
+  const paidCards = uni.getStorageSync('paid_card_ids') || []
   
-  try {
-    // 查询用户最近的订单列表（只查最近10条，提高性能）
-    const orderList = await getOrderList({ page: 1, pageSize: 10 })
-    const orders = orderList.data?.records || orderList.records || []
-    
-    // 遍历订单，查找匹配的订单
-    // 匹配条件：商品ID相同，且订单状态 > 0（已支付）
-    for (const order of orders) {
-      if (order.status > 0 && order.orderItemList) {
-        // 检查订单项中是否有匹配的商品
-        const matchedItem = order.orderItemList.find(item => {
-          // 匹配商品ID
-          if (item.productId !== cardData.productId) return false
-          
-          // 如果有SKU ID，也要匹配
-          if (cardData.skuId && item.productSkuId !== cardData.skuId) return false
-          
-          // 数量也要匹配（可选，因为用户可能修改了数量）
-          // if (item.productQuantity !== cardData.quantity) return false
-          
-          return true
-        })
-        
-        if (matchedItem) {
-          // 找到匹配的订单，且订单已支付
-          cardData.isPaid = true
-          cardData.orderId = order.id
-          console.log('订单卡片已匹配到已支付订单', order.id)
-          return
-        }
+  messageList.value.forEach(msg => {
+    if (msg.role === 'ai' && msg.cardData && msg.cardData.type === 'order_card') {
+      const cardId = msg.cardData.cardId
+      if (cardId && paidCards.includes(cardId)) {
+        msg.cardData.isPaid = true
       }
     }
-  } catch (error) {
-    console.error('检查订单支付状态失败', error)
-    // 失败不影响页面显示，静默处理
-  }
+  })
 }
 
 // 加载历史记录
@@ -439,19 +413,13 @@ const loadHistory = async () => {
   try {
     const history = await getChatHistory()
     if (history && history.length > 0) {
-      // 处理每条历史消息，解析JSON并转换为卡片
+      // 1. 初步解析消息
       const processedMessages = await Promise.all(
         history.map(async (item) => {
           const role = item.role === 'assistant' ? 'ai' : item.role
           // 只处理AI消息中的JSON
           if (role === 'ai' && item.content) {
             const { displayContent, cardData } = await parseJsonToCard(item.content)
-            
-            // 如果是订单卡片，检查支付状态
-            if (cardData && cardData.type === 'order_card') {
-              await checkOrderCardPaymentStatus(cardData)
-            }
-            
             return {
               role,
               content: displayContent,
@@ -465,7 +433,12 @@ const loadHistory = async () => {
           }
         })
       )
+      
       messageList.value = processedMessages
+      
+      // 2. 根据本地存储更新支付状态
+      updateMessageListStatus()
+      
       scrollToBottom()
     }
   } catch (error) {
@@ -617,9 +590,10 @@ const handleBuy = async (cardData, messageIndex) => {
     uni.hideLoading()
     uni.showToast({ title: '已加入购物车', icon: 'success' })
     
-    // 保存消息索引，用于支付成功后更新按钮状态
-    // 使用 sessionStorage 临时存储，支付成功后通过事件通知更新
-    uni.setStorageSync('pendingOrderCardIndex', messageIndex)
+    // 记录当前操作的 cardId，用于支付成功后标记
+    if (cardData.cardId) {
+        uni.setStorageSync('currentPendingCardId', cardData.cardId)
+    }
     
     // 跳转到确认订单页面
     setTimeout(() => {

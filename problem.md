@@ -611,3 +611,70 @@ try {
 }
 ```
 
+### 高并发
+
+#### 分布式锁（Distributed Lock）:
+
+- 在关键业务操作上使用了分布式锁，特别是 Redisson。
+
+- 创建订单 (createOrder): 使用了基于 userId 和 cartItemIds.hashCode()的分布式锁，防止用户重复提交订单（幂等性）。
+
+  ```java
+  String lockKey = "lock:order:create:" + userId + ":" + ...;
+  RLock lock = redissonClient.getLock(lockKey);
+  if (lock.tryLock(0, 5, TimeUnit.SECONDS)) { ... }
+  ```
+
+- 使用优惠券 (useCouponWithLock): 在扣减优惠券时，使用了基于 couponHistoryId 的分布式锁，防止同一张优惠券在高并发下被多次使用。
+
+  ```java
+  String lockKey = "lock:coupon:use:" + couponInfo.getCouponHistoryId();
+  RLock lock = redissonClient.getLock(lockKey);
+  ```
+
+#### 消息队列（RabbitMQ）:
+
+- 使用了 RabbitMQ 进行异步处理，削峰填谷，降低主流程延迟。
+
+- 延迟消息: 订单创建成功后，发送延迟消息用于“超时未支付自动取消订单”。
+
+  ```java
+  rabbitTemplate.convertAndSend(..., new MessagePostProcessor() { ... setDelay(delayTime); ... });
+  ```
+
+- 事件通知: 支付成功、取餐通知等事件通过 MQ 异步发送，解耦业务逻辑。例如 sendPickupNotification 发送取餐通知。
+
+#### Redis 缓存:
+
+- 在生成取餐码时使用了 Redis 的原子递增操作 (increment)，保证在高并发下取餐码的唯一性和连续性。
+
+  ```java
+  Long increment = redisTemplate.opsForValue().increment(key);
+  ```
+
+- 在高并发读场景下（如商品浏览、菜单展示）充分利用了 Redis 缓存 + Spring Cache 机制，配合 Cache Aside 模式（读写分离，更新时失效缓存），有效地减轻了数据库压力，提升了系统的读取性能。
+
+#### 数据库优化:
+
+- 批量查询: 在获取订单列表 (getAllList, listCurrent) 时，先查出订单列表，再批量查询所有订单项 (orderItemMapper.selectList(...))，然后在内存中进行分组匹配。这避免了常见的 "N+1 查询问题"，显著减少了数据库交互次数。
+
+- 事务管理: 关键操作使用了 @Transactional 注解，保证数据一致性。
+
+- 为了优化用户订单列表的查询性能（根据 member_id 过滤，根据 status 筛选，并按 create_time 倒序）
+
+- 将 C 端订单列表改为“滚动分页”模式。不使用 LIMIT offset, size（因为 offset 越大越慢），而是使用 WHERE id < lastId ORDER BY id DESC LIMIT size。
+
+- ```
+  “在这个项目中，针对 C 端用户订单列表这种数据量大且持续增长的场景，我进行了 SQL 层面和架构层面的优化。我将传统的 LIMIT offset 分页改造为基于游标的滚动分页 (Cursor Pagination)。这是一个典型的 SQL 优化。传统分页在深度翻页时，MySQL 需要扫描并丢弃大量数据，性能很差。而滚动分页通过 WHERE id < last_id 这种方式，能够利用索引覆盖和范围查询，直接定位到目标位置，扫描行数恒定，无论翻多少页，响应时间都保持在毫秒级。同时，这种方式也完美解决了动态数据流场景下的数据重复和遗漏问题，非常适合移动端的下拉加载体验。”
+  ```
+
+- ```sql
+  -- 添加联合索引 idx_member_status_create
+  -- 用于优化：WHERE member_id = ? AND status = ? ORDER BY create_time DESC
+  CREATE INDEX `idx_member_status_create` ON `oms_order` (`member_id`, `status`, `create_time`);
+  ```
+
+#### 总结:
+
+该项目在核心的“下单”、“支付”、“优惠券扣减”等容易出现并发冲突的环节，都引入了成熟的解决方案（Redis 分布式锁、RabbitMQ 异步/延迟消息、批量查询优化），具备处理高并发场景的能力。
+

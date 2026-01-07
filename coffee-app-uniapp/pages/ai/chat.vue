@@ -446,38 +446,46 @@ const updateMessageListStatus = () => {
   })
 }
 
-// 加载历史记录
+// 加载历史记录 (性能优化版：先渲染框架，后异步加载卡片详情)
 const loadHistory = async () => {
   try {
     const history = await getChatHistory()
     if (history && history.length > 0) {
-      // 1. 初步解析消息
-      const processedMessages = await Promise.all(
-        history.map(async (item) => {
-          const role = item.role === 'assistant' ? 'ai' : item.role
-          // 只处理AI消息中的JSON
-          if (role === 'ai' && item.content) {
-            const { displayContent, cardData } = await parseJsonToCard(item.content)
-            return {
-              role,
-              content: displayContent,
-              cardData
-            }
-          }
-          return {
-            role,
-            content: item.content,
-            cardData: null
-          }
-        })
-      )
+      // 1. 先快速构建消息列表（暂不解析耗时的卡片详情）
+      const tempMessages = history.map(item => {
+        const role = item.role === 'assistant' ? 'ai' : item.role
+        return {
+          role,
+          content: item.content, // 先直接显示原始文本
+          cardData: null,
+          rawContent: item.content, // 保存原始数据用于后续解析
+          isLoadingCard: role === 'ai' && (item.content.includes('```json') || item.content.includes('"request"')) // 标记是否需要解析
+        }
+      })
       
-      messageList.value = processedMessages
-      
-      // 2. 根据本地存储更新支付状态
-      updateMessageListStatus()
-      
+      messageList.value = tempMessages
       scrollToBottom()
+      
+      // 2. 异步解析卡片详情 (不阻塞页面显示)
+      // 使用 for...of 串行或小批次并行，避免瞬间发起大量请求卡顿
+      for (let i = 0; i < messageList.value.length; i++) {
+        const msg = messageList.value[i]
+        if (msg.isLoadingCard) {
+            // 异步解析
+            parseJsonToCard(msg.rawContent).then(({ displayContent, cardData }) => {
+                msg.content = displayContent
+                msg.cardData = cardData
+                msg.isLoadingCard = false
+                // 如果解析出了卡片，更新本地存储状态
+                if (cardData && cardData.cardId) {
+                    updateMessageListStatus()
+                }
+            }).catch(e => {
+                console.error('卡片解析失败', e)
+                msg.isLoadingCard = false
+            })
+        }
+      }
     }
   } catch (error) {
     console.error('加载历史记录失败', error)

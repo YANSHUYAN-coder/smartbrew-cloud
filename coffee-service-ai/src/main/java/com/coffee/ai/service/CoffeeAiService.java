@@ -324,7 +324,7 @@ public class CoffeeAiService {
                 "\n   ```json" +
                 "\n   { 工具返回的JSON数据 }" +
                 "\n   ```" +
-                "\n   并在后面附带一句：“已为您生成订单，请点击上方卡片支付。”";
+                "\n   并在后面附带一句：“已为您生成订单，请点击卡片支付。”";
 
         // 4. 发送给 AI：使用 searchKey (重写后的明确问题) 作为用户输入
         return chatClient.prompt()

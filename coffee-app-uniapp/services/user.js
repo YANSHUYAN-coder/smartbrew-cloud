@@ -38,6 +38,24 @@ export const logout = () => {
 }
 
 /**
+ * 发送手机验证码
+ * @param {String} mobile 手机号
+ * @returns {Promise}
+ */
+export const sendCode = (mobile) => {
+  return post(`/auth/sendCode?mobile=${mobile}`)
+}
+
+/**
+ * 手机号验证码登录
+ * @param {Object} data { mobile, code }
+ * @returns {Promise}
+ */
+export const loginByMobile = (data) => {
+  return post('/auth/loginByMobile', data)
+}
+
+/**
  * 上传头像
  * @param {String} filePath 图片文件路径（临时路径）
  * @returns {Promise} 返回上传结果

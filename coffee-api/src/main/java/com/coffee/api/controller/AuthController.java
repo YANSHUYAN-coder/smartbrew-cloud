@@ -1,6 +1,10 @@
 package com.coffee.api.controller;
 
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.coffee.common.constant.AuthConstants;
+import com.coffee.common.dto.MobileLoginDTO;
 import com.coffee.common.result.Result;
 import com.coffee.common.util.JwtUtil;
 import com.coffee.system.domain.entity.UmsMember;
@@ -190,5 +194,86 @@ public class AuthController {
 
         // 4. 返回成功提示，前端需据此删除本地 Token
         return Result.success("退出成功");
+    }
+
+    @Operation(summary = "发送短信验证码")
+    @PostMapping("/sendCode")
+    public Result<String> sendCode(@RequestParam String mobile) {
+        // 1. 简单校验手机号
+        if (StrUtil.isBlank(mobile) || mobile.length() != 11) {
+            return Result.failed("请输入正确的11位手机号");
+        }
+
+        // 2. 生成6位随机数字
+        String code = RandomUtil.randomNumbers(6);
+
+        // 3. 存入 Redis，有效期 5 分钟
+        // Key 格式建议统一管理，这里为了演示直接写字符串
+        String redisKey = "sms:code:" + mobile;
+        redisTemplate.opsForValue().set(redisKey, code, 5, TimeUnit.MINUTES);
+
+        // 4. 【模拟发送】实际项目中请对接阿里云/腾讯云短信服务
+        log.info("==========> 手机号 [{}] 的验证码是：{}", mobile, code);
+
+        return Result.success("验证码发送成功");
+    }
+
+    @Operation(summary = "手机号验证码登录(自动注册)")
+    @PostMapping("/loginByMobile")
+    public Result<Map<String, Object>> loginByMobile(@RequestBody MobileLoginDTO loginDTO) {
+        String mobile = loginDTO.getMobile();
+        String code = loginDTO.getCode();
+
+        // 1. 校验参数
+        if (StrUtil.hasBlank(mobile, code)) {
+            return Result.failed("手机号和验证码不能为空");
+        }
+
+        // 2. 校验验证码
+        String redisKey = "sms:code:" + mobile;
+        String cacheCode = redisTemplate.opsForValue().get(redisKey);
+
+        if (cacheCode == null || !cacheCode.equals(code)) {
+            return Result.failed("验证码错误或已失效");
+        }
+
+        // 3. 验证通过，删除验证码（防止重复使用）
+        redisTemplate.delete(redisKey);
+
+        // 4. 查询用户，不存在则注册
+        UmsMember member = umsMemberService.getOne(new LambdaQueryWrapper<UmsMember>()
+                .eq(UmsMember::getPhone, mobile));
+
+        if (member == null) {
+            member = new UmsMember();
+            member.setPhone(mobile);
+            member.setUsername(mobile); // 默认账号为手机号
+            member.setNickname("用户" + mobile.substring(7)); // 默认昵称
+            member.setStatus(1); // 启用状态
+            member.setIntegration(0);
+            member.setGrowth(0);
+            umsMemberService.save(member);
+            log.info("手机号 {} 新用户自动注册成功", mobile);
+        } else {
+            if (member.getStatus() == 0) {
+                return Result.failed("账号已被禁用，请联系客服");
+            }
+        }
+
+        // 5. 生成 Token (使用 JwtUtil)
+        String accessToken = jwtUtil.generateAccessToken(member.getId(), member.getPhone());
+        String refreshToken = jwtUtil.generateRefreshToken(member.getId(), member.getPhone());
+
+        // 6. 保存 Refresh Token 到 Redis
+        String tokenRedisKey = AuthConstants.REFRESH_TOKEN_PREFIX + member.getPhone();
+        redisTemplate.opsForValue().set(tokenRedisKey, refreshToken, AuthConstants.REFRESH_EXPIRATION, TimeUnit.MILLISECONDS);
+
+        // 7. 返回登录信息
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", accessToken);
+        data.put("refreshToken", refreshToken);
+        data.put("userInfo", member);
+
+        return Result.success(data);
     }
 }

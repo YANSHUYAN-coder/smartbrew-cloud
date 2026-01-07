@@ -179,7 +179,7 @@ import { useAppStore } from '@/store/app.js'
 import { useCartStore } from '@/store/cart.js'
 import { convertImageUrl } from '@/utils/image.js'
 import { searchProducts, getProductDetail } from '@/services/product.js'
-import { getOrderList } from '@/services/order.js'
+import { getOrderList, getOrderListCursor } from '@/services/order.js'
 
 // 状态管理
 const statusBarHeight = ref(0)

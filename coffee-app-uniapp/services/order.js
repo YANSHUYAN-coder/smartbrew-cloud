@@ -13,6 +13,12 @@ export const getOrderList = (params = {}) => {
   return get('/app/order/list', params)
 }
 
+// 获取订单列表（滚动分页）
+// params: { lastId: number | null, pageSize: number, status?: number }
+export const getOrderListCursor = (params = {}) => {
+  return get('/app/order/list/cursor', params)
+}
+
 // 获取订单详情
 export const getOrderDetail = (id) => {
   return get(`/app/order/${id}`)

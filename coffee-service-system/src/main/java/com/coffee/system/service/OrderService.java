@@ -3,6 +3,8 @@ package com.coffee.system.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coffee.common.dto.CreateOrderRequest;
+import com.coffee.common.dto.CursorPageParam;
+import com.coffee.common.vo.CursorPage;
 import com.coffee.common.dto.PageParam;
 import com.coffee.system.domain.entity.OmsOrder;
 import com.coffee.system.domain.vo.OrderVO;
@@ -35,6 +37,11 @@ public interface OrderService extends IService<OmsOrder> {
      * 用户端获取用户自己的订单列表（包含商品明细）
      */
     Page<OrderVO> listCurrent(PageParam pageParam, Integer status);
+
+    /**
+     * 用户端获取用户自己的订单列表（滚动分页）
+     */
+    CursorPage<OrderVO> listCurrentCursor(CursorPageParam pageParam, Integer status);
 
     /**
      * C 端创建订单

@@ -1,11 +1,11 @@
 package com.coffee.app.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.coffee.common.dict.OrderStatus;
-import com.coffee.common.context.UserContext;
 import com.coffee.common.dto.CreateOrderRequest;
+import com.coffee.common.dto.CursorPageParam;
 import com.coffee.common.dto.PageParam;
 import com.coffee.common.result.Result;
+import com.coffee.common.vo.CursorPage;
 import com.coffee.system.domain.entity.OmsOrder;
 import com.coffee.system.domain.vo.OrderVO;
 import com.coffee.system.service.OrderService;
@@ -87,7 +87,15 @@ public class AppOrderController {
             @Parameter(description = "订单ID") @PathVariable("id") Long id) {
         return orderService.confirm(id) ? Result.success("确认收货成功")
                 : Result.failed("确认收货失败");
+
+    }
+
+    @GetMapping("/list/cursor")
+    @Operation(summary = "获取订单列表(滚动分页)", description = "使用游标分页方式获取订单列表，避免深度分页性能问题")
+    public Result<CursorPage<OrderVO>> listCursor(
+            @ModelAttribute CursorPageParam pageParam,
+            @Parameter(description = "订单状态，可选") @RequestParam(required = false) Integer status) {
+        return Result.success(orderService.listCurrentCursor(pageParam, status));
     }
 }
-
 

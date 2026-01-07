@@ -168,7 +168,8 @@
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { getOrderList } from '@/services/order.js'
+// 替换为新的滚动分页 API
+import { getOrderListCursor } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
@@ -190,9 +191,11 @@ const orderList = ref([])
 const refreshing = ref(false)
 const loading = ref(false)
 const hasMore = ref(true)
-const page = ref(1)
+// 使用游标 lastId 替代 page
+const lastId = ref(null) 
 const pageSize = ref(10)
-const total = ref(0)
+// total 在滚动分页中通常不返回，或者仅供参考，这里可以保留或移除
+const total = ref(0) 
 const scrollTop = ref(0) // 控制列表滚动位置
 const tabIntoView = ref('') // 控制 Tab 滚动位置
 const lastRequestId = ref(0) // 用于处理竞态条件
@@ -288,17 +291,16 @@ const switchStatus = (status, index) => {
     scrollTop.value = scrollTop.value === 0 ? 0.01 : 0
     
     // 重置分页参数
-    page.value = 1
+    lastId.value = null
     hasMore.value = true
     
     // 加载数据 (传入 reset=true)
     loadOrderList(true)
 }
 
-// 加载订单列表
+// 加载订单列表 (改造为滚动分页)
 const loadOrderList = async (reset = false) => {
     // 如果不是重置（即加载更多）且正在加载中或没有更多数据，则返回
-    // 修复点：如果是 reset (切换Tab/下拉刷新)，允许打断/并发请求
     if (!reset && (loading.value || !hasMore.value)) return
     
     // 生成本次请求 ID，解决并发竞态问题
@@ -307,10 +309,11 @@ const loadOrderList = async (reset = false) => {
     
     try {
         loading.value = true
-        const currentPage = reset ? 1 : page.value
+        // 如果是重置，游标置空；否则使用当前 lastId
+        const currentLastId = reset ? null : lastId.value
         
         const params = {
-            page: currentPage,
+            lastId: currentLastId,
             pageSize: pageSize.value
         }
         // 注意：0 也是有效值，不能简单用 if (val) 判断
@@ -318,29 +321,33 @@ const loadOrderList = async (reset = false) => {
             params.status = currentStatus.value
         }
         
-        const result = await getOrderList(params)
+        // 调用新的游标分页接口
+        const result = await getOrderListCursor(params)
         
         // 关键：如果本次请求 ID 不等于最后一次发出的 ID，说明有新请求发起了，丢弃旧结果
         if (requestId !== lastRequestId.value || isUnmounted) return
         
-        // 处理分页数据
-        const records = result.records || result.data?.records || result.list || []
-        total.value = result.total || 0
+        // 处理分页数据 (Result<CursorPage<OrderVO>>)
+        const data = result.data || result
+        const records = data.records || []
         
-        // 调试：打印订单数据，检查 orderType 字段
+        // total 在滚动分页接口中通常没有，如果需要显示总数，需后端额外返回，这里暂时忽略
+        // total.value = result.total || 0
+        
+        // 调试：打印订单数据
         if (records.length > 0) {
+            // console.log('Loaded orders:', records.length)
         }
         
         if (reset) {
             orderList.value = records
-            page.value = 1
         } else {
             orderList.value = [...orderList.value, ...records]
         }
         
-        // 判断是否还有更多
-        hasMore.value = orderList.value.length < total.value
-        page.value = currentPage + 1
+        // 更新游标和更多状态
+        lastId.value = data.nextCursor
+        hasMore.value = data.hasMore
         
     } catch (error) {
         // 只提示最新请求的错误

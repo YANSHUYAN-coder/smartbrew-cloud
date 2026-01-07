@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.coffee.common.dto.CursorPageParam;
+import com.coffee.common.vo.CursorPage;
 import com.coffee.common.config.RabbitMqConfig;
 import com.coffee.common.constant.DateFormatConstants;
 import com.coffee.common.context.UserContext;
@@ -328,6 +330,86 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         }
 
         return voPage;
+    }
+
+    @Override
+    public CursorPage<OrderVO> listCurrentCursor(CursorPageParam pageParam, Integer status) {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new RuntimeException("用户未登录");
+        }
+
+        Integer pageSize = pageParam.getPageSize() != null ? pageParam.getPageSize() : 10;
+        
+        // 构造查询条件
+        LambdaQueryWrapper<OmsOrder> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(OmsOrder::getMemberId, userId);
+        
+        if (status != null) {
+            wrapper.eq(OmsOrder::getStatus, status);
+        }
+        
+        // 核心优化：使用游标过滤 (ID < lastId)
+        if (pageParam.getLastId() != null) {
+            wrapper.lt(OmsOrder::getId, pageParam.getLastId());
+        }
+        
+        // 按 ID 倒序排列，并限制数量
+        wrapper.orderByDesc(OmsOrder::getId);
+        wrapper.last("LIMIT " + pageSize);
+
+        List<OmsOrder> orderList = orderMapper.selectList(wrapper);
+        
+        // 转换为 VO
+        List<OrderVO> voList = convertToOrderVOList(orderList);
+
+        // 计算下一页游标
+        Long nextCursor = null;
+        boolean hasMore = false;
+        if (!voList.isEmpty()) {
+            // 取最后一条的 ID 作为下一次的游标
+            nextCursor = voList.get(voList.size() - 1).getId();
+            // 简单判断是否还有更多：如果本次返回数量等于 pageSize，大概率还有下一页
+            // 严谨做法是多查一条 (LIMIT pageSize + 1)，如果有第 n+1 条，说明有下一页，然后去掉第 n+1 条返回
+            // 这里为了性能，且前端通常不需要精确的“无更多”提示，简化处理
+            hasMore = voList.size() >= pageSize;
+        }
+
+        return new CursorPage<>(voList, nextCursor, hasMore);
+    }
+
+    /**
+     * 将 OmsOrder 列表转换为 OrderVO 列表（批量查询优化）
+     */
+    private List<OrderVO> convertToOrderVOList(List<OmsOrder> orderList) {
+        if (orderList == null || orderList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 1. 批量查询所有订单的商品明细
+        List<Long> orderIds = orderList.stream().map(OmsOrder::getId).collect(Collectors.toList());
+        List<OmsOrderItem> allItems = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OmsOrderItem>().in(OmsOrderItem::getOrderId, orderIds)
+        );
+
+        // 2. 分组
+        Map<Long, List<OmsOrderItem>> itemsMap = allItems.stream()
+                .collect(Collectors.groupingBy(OmsOrderItem::getOrderId));
+
+        // 3. 转换
+        return orderList.stream().map(order -> {
+            OrderVO orderVO = new OrderVO();
+            BeanUtils.copyProperties(order, orderVO);
+            orderVO.setOrderItemList(itemsMap.getOrDefault(order.getId(), new ArrayList<>()));
+            // 填充门店名称
+            if (order.getStoreId() != null) {
+                OmsStore store = storeService.getById(order.getStoreId());
+                if (store != null) {
+                    orderVO.setStoreName(store.getName());
+                }
+            }
+            return orderVO;
+        }).collect(Collectors.toList());
     }
 
     /**

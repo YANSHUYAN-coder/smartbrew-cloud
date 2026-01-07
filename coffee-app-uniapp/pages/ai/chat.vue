@@ -209,6 +209,20 @@ const quickTags = [
 // 消息列表
 const messageList = ref([])
 
+// 生成确定性 ID (用于无 cardId 的历史记录回显)
+const generateStableId = (data) => {
+  // 组合关键字段，确保同一张卡片生成相同的 ID
+  const str = `${data.productId}-${data.skuId || 'null'}-${data.price}-${data.quantity}-${data.specs || ''}`
+  let hash = 0, i, chr
+  if (str.length === 0) return 'stable_card_0'
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + chr
+    hash |= 0 // Convert to 32bit integer
+  }
+  return 'stable_card_' + Math.abs(hash)
+}
+
 // 解析JSON并转换为卡片数据（用于历史记录和实时消息）
 const parseJsonToCard = async (fullText) => {
   let displayContent = fullText
@@ -278,8 +292,18 @@ const parseJsonToCard = async (fullText) => {
               const totalPrice = price * quantity
               
               // 构建订单卡片数据
+              const tempCardData = {
+                productId: product.id,
+                skuId: selectedSku.id,
+                price: price,
+                quantity: quantity,
+                specs: specs
+              }
+              // 优先使用后端返回的 cardId，没有则生成确定性 ID
+              const cardId = requestData.cardId || data.cardId || generateStableId(tempCardData)
+
               cardData = {
-                cardId: requestData.cardId || (data.cardId), // 确保获取 cardId
+                cardId: cardId,
                 type: 'order_card',
                 productId: product.id,
                 skuId: selectedSku.id,
@@ -294,8 +318,18 @@ const parseJsonToCard = async (fullText) => {
               // 没有SKU，使用商品默认价格
               const quantity = requestData.quantity || 1
               const price = product.price || 0
+              
+              const tempCardData = {
+                productId: product.id,
+                skuId: null,
+                price: price,
+                quantity: quantity,
+                specs: requestData.specs || '标准规格'
+              }
+              const cardId = requestData.cardId || data.cardId || generateStableId(tempCardData)
+
               cardData = {
-                cardId: requestData.cardId || (data.cardId), // 确保获取 cardId
+                cardId: cardId,
                 type: 'order_card',
                 productId: product.id,
                 skuId: null,
@@ -330,6 +364,10 @@ const parseJsonToCard = async (fullText) => {
       // 处理标准格式的 JSON 卡片（type: order_card 或 error）
       else if (data.type === 'order_card' || data.type === 'error') {
         cardData = data
+        // 如果后端数据没有 cardId，补充一个确定性 ID
+        if (cardData.type === 'order_card' && !cardData.cardId) {
+            cardData.cardId = generateStableId(cardData)
+        }
         // 移除 JSON 部分
         displayContent = fullText.replace(match[0], '').trim()
         // 清理残留的 markdown 符号

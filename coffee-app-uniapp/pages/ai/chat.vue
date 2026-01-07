@@ -825,7 +825,7 @@ $user-bubble: #6f4e37;
       background-color: $user-bubble;
       color: #fff;
       border-radius: 24rpx 4rpx 24rpx 24rpx;
-      margin-right: 20rpx;
+      // margin-right: 20rpx;
     }
   }
   
@@ -871,11 +871,12 @@ $user-bubble: #6f4e37;
     height: 80rpx;
     border-radius: 50%;
     background-color: #ddd;
+    margin-left: 10rpx;
   }
 }
 
 .bubble-box {
-  padding: 24rpx 32rpx;
+  padding: 18rpx;
   font-size: 30rpx;
   line-height: 1.6;
   position: relative;

@@ -18,18 +18,27 @@
 
 /* 定义深色模式变量的 Mixin */
 @mixin dark-theme-variables {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #252525;
-  --text-primary: #e0e0e0;
-  --text-secondary: #aaaaaa;
-  --text-tertiary: #777777;
-  --border-color: #333333;
-  --border-light: #2a2a2a;
-  --card-bg: #1e1e1e;
-  --shadow-color: rgba(0, 0, 0, 0.2);
+  /* 背景色体系：采用 Material Design 推荐的深灰色阶，而非纯黑 */
+  --bg-primary: #1A1A1A;    /* 稍微亮一点的深色背景，减少视觉疲劳 */
+  --bg-secondary: #000000;  /* 页面底色加深，突出卡片 */
+  --bg-tertiary: #333333;   /* 第三级背景，用于输入框等 */
   
-  image { filter: brightness(0.8) contrast(1.1); }
+  /* 卡片背景：比底色稍亮，形成层级 */
+  --card-bg: #252525;
+  
+  /* 文字颜色体系：提高对比度 */
+  --text-primary: #FFFFFF;  /* 主标题纯白，最清晰 */
+  --text-secondary: #CCCCCC; /* 次级文字浅灰，提高可读性 */
+  --text-tertiary: #999999;  /* 辅助文字 */
+  
+  /* 边框和分割线 */
+  --border-color: #404040;  /* 加深边框颜色，使其可见 */
+  --border-light: #333333;
+  
+  /* 阴影：深色模式下阴影需要更重才能被感知 */
+  --shadow-color: rgba(0, 0, 0, 0.6);
+  
+  image { filter: brightness(0.9); } /* 图片轻微压暗即可 */
 }
 
 /* 深色模式变量类 */

@@ -12,7 +12,7 @@ const updateNativeTheme = (isDark) => {
   if (!pages || pages.length === 0) return
 
   const frontColor = isDark ? '#ffffff' : '#000000'
-  const bgColor = isDark ? '#121212' : '#ffffff'
+  const bgColor = isDark ? '#1A1A1A' : '#ffffff' // 调整顶部导航栏背景色
   
   uni.setNavigationBarColor({
     frontColor: frontColor,
@@ -21,8 +21,8 @@ const updateNativeTheme = (isDark) => {
   }).catch(() => {}) // 忽略非原生导航栏页面的报错
 
   uni.setTabBarStyle({
-    backgroundColor: bgColor,
-    color: isDark ? '#aaaaaa' : '#999999',
+    backgroundColor: isDark ? '#1A1A1A' : '#ffffff', // 调整 TabBar 背景色
+    color: isDark ? '#999999' : '#999999',
     selectedColor: '#6f4e37',
     borderStyle: isDark ? 'black' : 'white'
   }).catch(() => {})
@@ -310,16 +310,21 @@ page {
 
 /* 适配微信小程序等不支持 :root 的环境 */
 .theme-dark {
-  --bg-primary: #121212;
-  --bg-secondary: #1e1e1e;
-  --bg-tertiary: #252525;
-  --text-primary: #e0e0e0;
-  --text-secondary: #aaaaaa;
-  --text-tertiary: #777777;
-  --border-color: #333333;
-  --border-light: #2a2a2a;
-  --card-bg: #1e1e1e;
-  --shadow-color: rgba(0, 0, 0, 0.2);
+  /* 背景色体系 */
+  --bg-primary: #1A1A1A;
+  --bg-secondary: #000000;
+  --bg-tertiary: #333333;
+  --card-bg: #252525;
+  
+  /* 文字颜色体系 */
+  --text-primary: #FFFFFF;
+  --text-secondary: #CCCCCC;
+  --text-tertiary: #999999;
+  
+  /* 边框和分割线 */
+  --border-color: #404040;
+  --border-light: #333333;
+  --shadow-color: rgba(0, 0, 0, 0.6);
 }
 
 /* 隐藏滚动条 */

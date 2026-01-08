@@ -14,7 +14,7 @@ export default defineConfig({
     include: ['echarts']
   },
   server: {
-    port: 3000,
+    port: 8084,
     proxy: {
       '/api': {
         target: 'http://localhost:8082', // Assuming backend runs on 8080

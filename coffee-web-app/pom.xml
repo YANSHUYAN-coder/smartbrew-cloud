@@ -80,6 +80,13 @@
                     <!-- 显式指定启动类 -->
                     <mainClass>com.coffee.app.CoffeeAppApplication</mainClass>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

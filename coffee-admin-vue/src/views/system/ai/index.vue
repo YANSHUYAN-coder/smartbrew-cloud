@@ -84,13 +84,11 @@ const handleSync = () => {
         url: '/system/ai/syncDatabase',
         method: 'post'
       })
-      if (res.code === 200) {
-        ElMessage.success(res.data || '同步成功')
-      } else {
-        ElMessage.error(res.message || '同步失败')
-      }
+      // request.ts 拦截器已经解包了 res.data，如果没报错说明 code=200
+      // 这里的 res 就是后端返回的 message 字符串
+      ElMessage.success(res || '同步成功')
     } catch (error) {
-      ElMessage.error('请求失败')
+      console.error('同步请求失败', error)
     } finally {
       syncLoading.value = false
     }

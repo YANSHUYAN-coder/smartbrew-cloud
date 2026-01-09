@@ -274,7 +274,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Delete, Search, Refresh } from '@element-plus/icons-vue'
-import { getProductList, updateProductStatus, createProduct, updateProduct, deleteProduct, uploadProductImage } from '@/api/product'
+import { getProductList, updateProductStatus, createProduct, updateProduct, deleteProduct, uploadProductImage, getProductDetail } from '@/api/product'
 import { getCategoryList } from '@/api/category'
 
 interface SpecItem {
@@ -451,7 +451,26 @@ const openProductDialog = () => {
 
 const editProduct = (row: Product) => {
   isEdit.value = true
-  Object.assign(form, { ...row })
+  // 先重置表单
+  Object.assign(form, { 
+      id: null, 
+      name: '', 
+      price: 0, 
+      category: '', 
+      categoryId: null,
+      description: '', 
+      picUrl: '', 
+      sales: 0, 
+      status: 1, 
+      skuStockList: [] 
+  })
+  
+  loading.value = true
+  // 调用详情接口获取完整数据（包含SKU）
+  getProductDetail(row.id!).then((res: any) => {
+      // 这里的 res 应该是 ProductDTO
+      const productDetail = res.data || res
+      Object.assign(form, { ...productDetail })
   
   // 如果 categoryId 不存在，尝试根据 category 名称查找
   if (!form.categoryId && form.category) {
@@ -461,7 +480,7 @@ const editProduct = (row: Product) => {
     }
   }
   
-  // 如果SKU列表为空，初始化为空数组（后端会返回完整的SKU数据）
+      // 如果SKU列表为空，初始化为空数组
   if (!form.skuStockList) {
     form.skuStockList = []
   }
@@ -485,6 +504,11 @@ const editProduct = (row: Product) => {
     }
   })
   dialogVisible.value = true
+  }).catch(() => {
+      ElMessage.error('获取商品详情失败')
+  }).finally(() => {
+      loading.value = false
+  })
 }
 
 // 将 specList 转换为 JSON 字符串

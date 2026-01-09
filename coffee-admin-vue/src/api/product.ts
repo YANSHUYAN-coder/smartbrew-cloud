@@ -9,6 +9,13 @@ export function getProductList(params: any) {
   })
 }
 
+export function getProductDetail(id: number) {
+  return request({
+    url: `/admin/product/detail/${id}`,
+    method: 'get'
+  })
+}
+
 export function createProduct(data: any) {
   return request({
     url: '/admin/product/add',

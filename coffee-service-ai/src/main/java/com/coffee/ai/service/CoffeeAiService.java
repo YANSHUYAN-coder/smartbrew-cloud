@@ -171,43 +171,63 @@ public class CoffeeAiService {
      */
     public String syncDatabaseToVectorStore() {
         try {
-            // 1. 获取所有上架产品
-            List<Product> productList = productService.list(new LambdaQueryWrapper<Product>()
-                    .eq(Product::getStatus, 1));
+            // 1. 获取所有商品（包含上架和下架）
+            List<Product> allProducts = productService.list();
 
-            if (productList.isEmpty()) {
-                return "数据库中没有上架商品";
+            if (allProducts.isEmpty()) {
+                return "数据库中没有商品";
             }
 
-            List<Document> documents = new ArrayList<>();
+            List<Document> documentsToAdd = new ArrayList<>();
+            List<String> idsToDelete = new ArrayList<>();
 
-            for (Product product : productList) {
-                // 2. 获取该产品下的所有 SKU
-                List<SkuStock> skus = skuStockService.list(new LambdaQueryWrapper<SkuStock>()
-                        .eq(SkuStock::getProductId, product.getId()));
+            for (Product product : allProducts) {
+                // ID 格式必须与 add 时保持一致
+                String docId = "doc_prod_" + product.getId();
 
-                // 3. 构建结构化描述文本
-                String productText = String.format(
-                    "商品名称: %s\n基础价格: ￥%s\n商品描述: %s\n%s",
-                    product.getName(),
-                    product.getPrice(),
-                    product.getDescription(),
-                    buildSkuDescription(skus)
-                );
+                if (product.getStatus() == 1) {
+                    // 上架商品 -> 准备添加/更新
+                    List<SkuStock> skus = skuStockService.list(new LambdaQueryWrapper<SkuStock>()
+                            .eq(SkuStock::getProductId, product.getId()));
 
-                // 4. 创建文档对象，并设置固定 ID 以实现"存在即更新，不存在则插入"
-                // 使用 product_ 前缀加上商品 ID，确保唯一且可追溯
-                Document document = new Document("doc_prod_" + product.getId(), productText, new java.util.HashMap<>());
-                document.getMetadata().put("type", "product");
-                document.getMetadata().put("id", product.getId());
+                    // 构建结构化描述文本
+                    String productText = String.format(
+                        "商品名称: %s\n基础价格: ￥%s\n商品描述: %s\n%s",
+                        product.getName(),
+                        product.getPrice(),
+                        product.getDescription(),
+                        buildSkuDescription(skus)
+                    );
 
-                documents.add(document);
+                    // 创建文档对象，并设置固定 ID
+                    Document document = new Document(docId, productText, new java.util.HashMap<>());
+                    document.getMetadata().put("type", "product");
+                    document.getMetadata().put("id", product.getId());
+                    
+                    documentsToAdd.add(document);
+                } else {
+                    // 下架商品 -> 准备删除
+                    idsToDelete.add(docId);
+                }
             }
 
-            // 5. 更新向量数据库
-            vectorStore.add(documents);
+            // 执行同步操作
+            int addedCount = 0;
+            int deletedCount = 0;
 
-            return "成功同步 " + documents.size() + " 件商品的详细信息到 AI 知识库";
+            if (!documentsToAdd.isEmpty()) {
+                vectorStore.add(documentsToAdd);
+                addedCount = documentsToAdd.size();
+            }
+
+            if (!idsToDelete.isEmpty()) {
+                // Spring AI 的 delete 方法通常接受 ID 列表
+                vectorStore.delete(idsToDelete);
+                deletedCount = idsToDelete.size();
+            }
+
+            return String.format("同步完成: 更新上架商品 %d 条, 清理下架商品 %d 条", addedCount, deletedCount);
+
         } catch (Exception e) {
             log.error("数据库同步到 RAG 失败", e);
             return "同步失败: " + e.getMessage();

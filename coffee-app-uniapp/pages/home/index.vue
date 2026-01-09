@@ -14,7 +14,10 @@
 							<text class="status-tag resting" v-if="storeInfo && storeInfo.openStatus === 0">休息中</text>
 						</view>
 					</view>
-					<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24" @click="navigateTo('/pages/message/list')"></uni-icons>
+					<view class="message-box" @click="navigateTo('/pages/message/list')">
+						<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24"></uni-icons>
+						<view class="badge" v-if="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -160,6 +163,7 @@
 	import { convertImageUrl } from '@/utils/image.js'
 	import { getMenuVO } from '@/services/product.js'
 	import { getStoreInfo, getStoreList } from '@/services/store.js'
+	import { getUnreadCount } from '@/services/message.js'
 	import {
 		useCartStore
 	} from '@/store/cart.js'
@@ -183,6 +187,7 @@
 	const userStore = useUserStore()
 	const flyCartRef = ref(null)
 	const distanceText = ref('')
+	const unreadCount = ref(0)
 	// 改为计算属性，从全局 store 获取
 	const storeInfo = computed(() => appStore.currentStore)
 	let isUnmounted = false
@@ -215,6 +220,21 @@
 			}
 		})
 		// #endif
+	}
+
+	const loadUnreadCount = async () => {
+		if (!userStore.isLogin) {
+			unreadCount.value = 0
+			return
+		}
+		try {
+			const res = await getUnreadCount()
+			// 兼容直接返回数字或对象的情况
+			const count = typeof res === 'number' ? res : (res.data || 0)
+			unreadCount.value = count
+		} catch (e) {
+			console.error('获取未读消息失败', e)
+		}
 	}
 
 	const loadStoreInfo = async () => {
@@ -503,7 +523,8 @@
 	onPullDownRefresh(async () => {
 		await Promise.all([
 			loadStoreInfo(),
-			loadHomeData()
+			loadHomeData(),
+			loadUnreadCount()
 		])
 		uni.stopPullDownRefresh()
 	})
@@ -514,6 +535,8 @@
 			console.log('首页显示：同步门店状态与距离')
 			loadStoreInfo()
 		}
+		// 刷新未读消息
+		loadUnreadCount()
 	})
 
 	// 监听门店变化，实现自动测距同步
@@ -590,6 +613,35 @@
 		align-items: center;
 		margin-top: 4rpx;
 		gap: 12rpx;
+	}
+
+	.message-box {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 60rpx;
+		height: 60rpx;
+	}
+
+	.badge {
+		position: absolute;
+		top: -6rpx;
+		right: -6rpx;
+		background-color: #ff4d4f;
+		color: white;
+		font-size: 20rpx;
+		font-weight: bold;
+		padding: 0 8rpx;
+		min-width: 32rpx;
+		height: 32rpx;
+		border-radius: 16rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 0 0 2rpx #fff;
+		box-sizing: border-box;
+		z-index: 10;
 	}
 
 	.distance-badge {

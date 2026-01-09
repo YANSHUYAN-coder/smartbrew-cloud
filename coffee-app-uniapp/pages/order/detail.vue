@@ -1,6 +1,5 @@
 <template>
   <view class="order-detail-page" :class="themeClass">
-    <!-- 顶部导航 -->
     <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="nav-back" @click="goBack">
         <uni-icons type="left" size="24" color="#333"></uni-icons>
@@ -9,16 +8,13 @@
       <view style="width: 48rpx;"></view>
     </view>
 
-    <scroll-view scroll-y class="content-scroll" refresher-enabled="true" :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
-      <!-- 订单状态卡片 -->
+    <view class="content-scroll">
       <view class="status-card-new" :class="{ 'gift-card-status': isGiftCardOrder() }">
-        <!-- 上半部分：状态文字与图标 -->
         <view class="status-header">
           <view class="status-info">
             <text class="status-title">{{ getStatusText(orderDetail.status) }}</text>
             <text class="status-desc-text">{{ getStatusDesc(orderDetail.status) }}</text>
 
-            <!-- 取餐码 (仅在商品订单的制作中/待取餐时显示) -->
             <view class="pickup-code-box"
               v-if="!isGiftCardOrder() && [1, 2, 3].includes(orderDetail.status) && orderDetail.pickupCode">
               <text class="code-label">取餐码</text>
@@ -27,7 +23,6 @@
           </view>
         </view>
 
-        <!-- 下半部分：进度条 (仅商品订单进行中时显示) -->
         <view class="status-steps" v-if="!isGiftCardOrder() && [0, 1, 2, 3].includes(orderDetail.status)">
           <view class="step-item" :class="{ active: orderDetail.status >= 0 }">
             <view class="step-circle">
@@ -59,17 +54,14 @@
         </view>
       </view>
 
-      <!-- 订单取消原因显示 -->
       <view class="remark-section" v-if="orderDetail.status === 5 && orderDetail.cancelReason">
         <view class="section-title" style="color: #ff4d4f;">取消原因</view>
         <text class="remark-text">{{ orderDetail.cancelReason }}</text>
       </view>
 
-      <!-- 配送/取餐信息 (新增强化) - 已取消订单不显示 -->
       <view class="delivery-info-section" v-if="!isGiftCardOrder() && orderDetail.status !== 5">
         <view class="section-title">{{ orderDetail.deliveryCompany === '门店自提' ? '取餐信息' : '配送信息' }}</view>
 
-        <!-- 自提场景 -->
         <template v-if="orderDetail.deliveryCompany === '门店自提'">
           <view class="info-item">
             <text class="info-label">取餐门店</text>
@@ -81,15 +73,20 @@
           </view>
         </template>
 
-        <!-- 外送场景 -->
         <template v-else>
-          <!-- 配送地图 (仅外卖订单显示，且订单未取消) - 前置显示，更醒目 -->
           <view class="delivery-map-container" 
             v-if="orderDetail.status !== 5 && storeLocation.latitude && storeLocation.longitude && !refreshing">
-            <map :latitude="storeLocation.latitude" :longitude="storeLocation.longitude" :markers="mapMarkers"
-              :polyline="polyline" :scale="14" class="delivery-map" show-location 
-              :enable-scroll="false" :enable-zoom="false"></map>
-            
+            <view 
+              :prop="mapTrigger" 
+              :change:prop="amap.updateMapData"
+              class="renderjs-trigger"
+            ></view>
+            <view id="amap-container" class="delivery-map"></view>
+          </view>
+          <view class="delivery-map-container" v-else-if="orderDetail.status !== 5 && (refreshing || (storeLocation.latitude && storeLocation.longitude))">
+             <view class="delivery-map map-placeholder">
+                <text class="loading-text">地图加载中...</text>
+             </view>
           </view>
 
           <view class="address-box">
@@ -114,7 +111,6 @@
         </template>
       </view>
 
-      <!-- 商品列表（仅商品订单显示） -->
       <view class="goods-section"
         v-if="!isGiftCardOrder() && orderDetail.orderItemList && orderDetail.orderItemList.length > 0">
         <view class="section-title">商品清单</view>
@@ -138,7 +134,6 @@
         </view>
       </view>
 
-      <!-- 费用明细 -->
       <view class="price-section" :class="{ 'gift-card-price': isGiftCardOrder() }">
         <view class="section-title">费用明细</view>
         <view class="price-item">
@@ -168,7 +163,6 @@
         </view>
       </view>
 
-      <!-- 咖啡卡订单信息 -->
       <view class="gift-card-info-section" v-if="isGiftCardOrder()">
         <view class="section-title">订单类型</view>
         <view class="gift-card-badge">
@@ -177,7 +171,6 @@
         </view>
       </view>
 
-      <!-- 订单信息 -->
       <view class="order-info-section" :class="{ 'gift-card-info': isGiftCardOrder() }">
         <view class="section-title">订单信息</view>
         <view class="info-item">
@@ -198,25 +191,20 @@
         </view>
       </view>
 
-      <!-- 备注 -->
       <view class="remark-section" v-if="orderDetail.note">
         <view class="section-title">订单备注</view>
-        <!-- 咖啡卡订单：格式化显示 -->
         <view v-if="isGiftCardOrder() && orderDetail.note.startsWith('GIFT_CARD:')" class="gift-card-remark">
           <view class="remark-item" v-for="(value, key) in parseGiftCardNote(orderDetail.note)" :key="key">
             <text class="remark-label">{{ getGiftCardLabel(key) }}：</text>
             <text class="remark-value">{{ formatGiftCardValue(key, value) }}</text>
           </view>
         </view>
-        <!-- 普通备注：直接显示 -->
         <text v-else class="remark-text">{{ orderDetail.note }}</text>
       </view>
 
-      <!-- 预留底部安全距离，避免被底部操作栏遮挡 -->
       <view style="height: 200rpx;"></view>
-    </scroll-view>
+    </view>
 
-    <!-- 底部操作栏 -->
     <view class="footer-bar" v-if="orderDetail.id">
       <view class="footer-actions">
         <button v-if="orderDetail.status === 0 || orderDetail.status === 1" class="action-btn cancel-btn"
@@ -236,16 +224,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getOrderDetail, cancelOrder as apiCancelOrder } from '@/services/order.js' // 直接引入 API
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { getOrderDetail, cancelOrder as apiCancelOrder } from '@/services/order.js'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { formatDateTime } from '@/utils/date.js'
 import { useOrderActions } from '@/composables/useOrderActions.js'
 import { useUserStore } from '@/store/user.js'
 import { getStoreInfo } from '@/services/store.js'
-import { geocode, getWalkingRoute } from '@/services/common.js'
+import { geocode } from '@/services/common.js'
 
-const { handleConfirmReceive, handlePayOrder } = useOrderActions() // 移除 handleCancelOrder，改用本地实现
+const { handleConfirmReceive, handlePayOrder } = useOrderActions()
 const userStore = useUserStore()
 
 const statusBarHeight = ref(0)
@@ -253,8 +241,6 @@ const orderDetail = ref({})
 const orderId = ref(null)
 const storeLocation = ref({ latitude: null, longitude: null })
 const receiverLocation = ref({ latitude: null, longitude: null })
-const mapMarkers = ref([])
-const polyline = ref([])
 const refreshing = ref(false)
 let isUnmounted = false
 
@@ -297,12 +283,10 @@ const formatTime = (timeStr) => formatDateTime(timeStr)
 const isGiftCardOrder = () => {
   const order = orderDetail.value
   if (!order) return false
-  // 兼容多种情况：数字 1、字符串 "1"、或者旧数据通过 deliveryCompany 判断
   const orderType = order.orderType
   if (orderType === 1 || orderType === '1') {
     return true
   }
-  // 兼容旧数据：如果 orderType 不存在，使用 deliveryCompany 判断
   if (orderType === null || orderType === undefined) {
     return order.deliveryCompany === '虚拟商品'
   }
@@ -356,22 +340,26 @@ const goBack = () => {
   uni.navigateBack()
 }
 
-// 下拉刷新
+// 页面下拉刷新处理
+onPullDownRefresh(async () => {
+  await onRefresh()
+  uni.stopPullDownRefresh()
+})
+
+// 下拉刷新逻辑
 const onRefresh = async () => {
   refreshing.value = true
   try {
-    // 清空地图相关数据，重新加载
-    mapMarkers.value = []
-    polyline.value = []
     storeLocation.value = { latitude: null, longitude: null }
     receiverLocation.value = { latitude: null, longitude: null }
-    
-    // 重新加载订单详情
     await loadOrderDetail()
   } catch (error) {
     console.error('刷新订单详情失败', error)
   } finally {
-    refreshing.value = false
+    // 确保 DOM 销毁和重建的节奏
+    setTimeout(() => {
+        refreshing.value = false
+    }, 100)
   }
 }
 
@@ -397,7 +385,6 @@ const loadOrderDetail = async () => {
     if (isUnmounted) return
     orderDetail.value = result || {}
 
-    // 如果是外卖订单且订单未取消，加载门店信息和收货地址坐标用于地图展示
     if (result && result.deliveryCompany && result.deliveryCompany !== '门店自提' && result.storeId && result.status !== 5) {
       await loadStoreLocation(result.storeId)
       await loadReceiverLocation(result)
@@ -419,176 +406,71 @@ const loadOrderDetail = async () => {
   }
 }
 
-// 加载门店位置信息（用于地图展示）
+// 加载门店位置信息
 const loadStoreLocation = async (storeId) => {
   try {
     const storeInfo = await getStoreInfo(storeId)
     if (isUnmounted) return
-
     if (storeInfo && storeInfo.latitude && storeInfo.longitude) {
       storeLocation.value = {
         latitude: parseFloat(storeInfo.latitude),
         longitude: parseFloat(storeInfo.longitude)
       }
-
-      // 添加门店标记点
-      mapMarkers.value.push({
-        id: 1,
-        latitude: storeLocation.value.latitude,
-        longitude: storeLocation.value.longitude,
-        title: storeInfo.name || orderDetail.value.storeName || '门店',
-        width: 40,
-        height: 40,
-        iconPath: '/static/location-fill.png', // 使用Logo作为门店图标
-        callout: {
-          content: '📍 ' + (storeInfo.name || orderDetail.value.storeName || '门店位置'),
-          color: '#333',
-          fontSize: 14,
-          borderRadius: 6,
-          bgColor: '#fff',
-          padding: 8,
-          display: 'ALWAYS',
-          textAlign: 'center',
-          anchorY: -10 // 调整气泡位置
-        }
-      })
     }
   } catch (error) {
     console.error('加载门店位置失败', error)
-    // 地图加载失败不影响订单详情展示
   }
 }
 
-// 加载收货地址坐标（用于地图展示）
+// 加载收货地址坐标
 const loadReceiverLocation = async (order) => {
   try {
-    // 构建完整地址
     const fullAddress = `${order.receiverProvince || ''}${order.receiverCity || ''}${order.receiverRegion || ''}${order.receiverDetailAddress || ''}`.trim()
     if (!fullAddress) {
       console.warn('收货地址为空，无法进行地理编码')
       return
     }
-
-    // 调用地理编码API
     const result = await geocode(fullAddress, order.receiverCity)
     if (isUnmounted) return
-
     if (result && result.latitude && result.longitude) {
       receiverLocation.value = {
         latitude: parseFloat(result.latitude),
         longitude: parseFloat(result.longitude)
-      }
-
-      // 添加收货地址标记点
-      mapMarkers.value.push({
-        id: 2,
-        latitude: receiverLocation.value.latitude,
-        longitude: receiverLocation.value.longitude,
-        title: order.receiverName || '收货地址',
-        width: 24,
-        height: 24,
-        iconPath: '/static/tabbar/profile-active.png', // 使用用户图标作为收货地址
-        callout: {
-          content: '🎯 ' + (order.receiverName || '收货地址'),
-          color: '#333',
-          fontSize: 14,
-          borderRadius: 6,
-          bgColor: '#fff',
-          padding: 8,
-          display: 'ALWAYS',
-          textAlign: 'center',
-          anchorY: -10
-        }
-      })
-
-      // 如果门店位置和收货地址都已加载，绘制配送路线
-      if (storeLocation.value.latitude && storeLocation.value.longitude) {
-        drawDeliveryRoute()
       }
     } else {
       console.warn('地理编码失败，收货地址：', fullAddress)
     }
   } catch (error) {
     console.error('加载收货地址位置失败', error)
-    // 地址解析失败不影响订单详情展示
   }
 }
 
-// 绘制配送路线（从门店到收货地址）- 使用真实路线规划
-const drawDeliveryRoute = async () => {
-  if (!storeLocation.value.latitude || !receiverLocation.value.latitude) {
-    return
-  }
-  
-  try {
-    // 构建起点和终点坐标字符串
-    const origin = `${storeLocation.value.longitude},${storeLocation.value.latitude}`
-    const destination = `${receiverLocation.value.longitude},${receiverLocation.value.latitude}`
-    
-    // 调用路线规划API获取真实路线坐标点
-    const response = await getWalkingRoute(origin, destination)
-    if (isUnmounted) return
-    
-    // 检查API返回的数据结构
-    const routePoints = response?.data || response
-    
-    if (routePoints && Array.isArray(routePoints) && routePoints.length > 0) {
-      // 将坐标点转换为地图polyline需要的格式
-      const points = routePoints.map(point => {
-        const [lng, lat] = point.split(',')
+// RenderJS 通信数据
+const mapTrigger = computed(() => {
+  if (!storeLocation.value.latitude || !storeLocation.value.longitude ||
+      !receiverLocation.value.latitude || !receiverLocation.value.longitude) {
         return {
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng)
-        }
-      }).filter(p => !isNaN(p.latitude) && !isNaN(p.longitude)) // 过滤无效坐标
-      
-      if (points.length > 0) {
-        polyline.value = [{
-          points: points,
-          color: '#6f4e37',
-          width: 4,
-          dottedLine: false,
-          arrowLine: true
-        }]
-        return // 成功绘制路线，直接返回
-      }
+        key: '', 
+        start: null,
+        end: null
     }
-    
-    // 如果路线规划失败或返回空数据，降级为两点连线
-    console.warn('路线规划失败或返回空数据，使用两点连线')
-    drawFallbackRoute()
-  } catch (error) {
-    console.error('获取路线规划失败', error)
-    // 降级为两点连线
-    drawFallbackRoute()
   }
-}
 
-// 绘制降级路线（两点连线）
-const drawFallbackRoute = () => {
-  if (!storeLocation.value.latitude || !receiverLocation.value.latitude) {
-    return
-  }
-  
-  polyline.value = [{
-    points: [
-      {
+  return {
+    start: {
         latitude: storeLocation.value.latitude,
         longitude: storeLocation.value.longitude
       },
-      {
+    end: {
         latitude: receiverLocation.value.latitude,
         longitude: receiverLocation.value.longitude
-      }
-    ],
-    color: '#6f4e37',
-    width: 4,
-    dottedLine: false,
-    arrowLine: true
-  }]
-}
+    },
+    // 请确保 Key 正确且已配置安全密钥
+    key: '792692c87df0e340483e8b585b687b8a', 
+    securityCode: '8572730bef1cba13b2d0389e50a10832' 
+  }
+})
 
-// 点击取消订单
 const onCancelOrderClick = () => {
   const reasons = ['不想要了', '商品选错', '信息填写错误', '其他原因']
   uni.showActionSheet({
@@ -600,18 +482,13 @@ const onCancelOrderClick = () => {
   })
 }
 
-// 执行取消逻辑
 const doCancelOrder = async (reason) => {
   try {
     uni.showLoading({ title: '处理中' })
-    // 调用 services/order.js 中的 cancelOrder 方法
-    // 注意：你需要确保 services/order.js 中的 cancelOrder 支持传 reason
-    // 如果原本只传 orderId，现在需要改成传 { orderId, reason } 或者直接复用 cancelOrder(orderId, reason)
     await apiCancelOrder(orderId.value, reason)
     if (isUnmounted) return
-
     uni.showToast({ title: '订单已取消', icon: 'success' })
-    loadOrderDetail() // 刷新详情
+    loadOrderDetail()
   } catch (e) {
     if (!isUnmounted) {
       uni.showToast({ title: e.message || '取消失败', icon: 'none' })
@@ -621,14 +498,12 @@ const doCancelOrder = async (reason) => {
   }
 }
 
-// 支付订单
 const payOrder = () => {
   handlePayOrder(orderDetail.value.id, () => {
     loadOrderDetail()
   })
 }
 
-// 确认收货
 const confirmReceive = () => {
   handleConfirmReceive(orderId.value, () => {
     loadOrderDetail()
@@ -645,6 +520,113 @@ onMounted(() => {
 })
 </script>
 
+<script module="amap" lang="renderjs">
+export default {
+  data() {
+    return {
+      map: null,
+      walking: null
+    }
+  },
+  methods: {
+    loadScript(key, securityCode) {
+        if (window.AMap) return Promise.resolve();
+        // 设置安全密钥
+        window._AMapSecurityConfig = { securityJsCode: securityCode || '' };
+        
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = `https://webapi.amap.com/maps?v=2.0&key=${key}&plugin=AMap.Walking`;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    },
+    async updateMapData(newValue, oldValue, ownerInstance, instance) {
+        if (!newValue || !newValue.start || !newValue.end) return;
+        if (!newValue.key) {
+            console.warn('RenderJS: 缺少高德地图 Key');
+            return;
+        }
+
+        try {
+            if (!window.AMap) {
+                await this.loadScript(newValue.key, newValue.securityCode);
+            }
+            
+            // 【关键修复开始】
+            // 获取当前 DOM 容器
+            const container = document.getElementById('amap-container');
+            
+            // 如果 map 对象存在，但是容器内容为空（说明被 v-if 重建了，是僵尸实例）
+            if (this.map && container && container.childElementCount === 0) {
+                console.log('RenderJS: 检测到 DOM 重建，销毁旧地图实例');
+                if (this.map.destroy) {
+                    this.map.destroy(); // AMap 2.0 销毁方法
+                }
+                this.map = null;
+                this.walking = null;
+            }
+            // 【关键修复结束】
+            
+            if (!this.map) {
+                // 初始化地图
+                this.map = new AMap.Map('amap-container', {
+                    resizeEnable: true,
+                    zoom: 13,
+                    dragEnable: true, 
+                    zoomEnable: true,
+                    touchZoom: true
+                });
+            }
+            
+            if (!this.walking) {
+                this.walking = new AMap.Walking({
+                    map: this.map,
+                    hideMarkers: false,
+                    isOutline: true,
+                    outlineColor: '#ffeeee',
+                    autoFitView: true
+                });
+            }
+            
+            const startNode = newValue.start;
+            const endNode = newValue.receiver || newValue.end;
+
+            if (!startNode || !startNode.longitude || !endNode || !endNode.longitude) {
+                console.warn('RenderJS: 坐标信息不完整');
+                return;
+            }
+
+            const startLng = parseFloat(startNode.longitude);
+            const startLat = parseFloat(startNode.latitude);
+            const endLng = parseFloat(endNode.longitude);
+            const endLat = parseFloat(endNode.latitude);
+            
+            if (isNaN(startLng) || isNaN(startLat) || isNaN(endLng) || isNaN(endLat)) {
+                console.warn('RenderJS: 坐标格式错误');
+                return;
+            }
+
+            const start = new AMap.LngLat(startLng, startLat);
+            const end = new AMap.LngLat(endLng, endLat);
+            
+            this.walking.search(start, end, (status, result) => {
+                if (status === 'complete') {
+                    console.log('步行路线规划成功');
+                } else {
+                    console.error('步行路线规划失败：' + result);
+                }
+            });
+            
+        } catch (e) {
+            console.error('RenderJS 地图加载出错', e);
+        }
+    }
+  }
+}
+</script>
+
 <style lang="scss" scoped>
 $primary: #6f4e37;
 $bg-color: #f8f8f8;
@@ -657,7 +639,7 @@ $border-color: #eeeeee;
 .order-detail-page {
   min-height: 100vh;
   background-color: $bg-color;
-  display: flex;
+  display: flex; 
   flex-direction: column;
   padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
 }
@@ -672,8 +654,6 @@ $border-color: #eeeeee;
   position: sticky;
   top: 0;
   z-index: 100;
-  // 移除阴影，保持简洁
-  // box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05); 
 }
 
 .nav-back {
@@ -682,7 +662,7 @@ $border-color: #eeeeee;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: -16rpx; // 修正视觉偏差
+  margin-left: -16rpx;
 }
 
 .page-title {
@@ -710,8 +690,8 @@ $border-color: #eeeeee;
   border-radius: 24rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03); // 更柔和的阴影
-  border: none; // 移除边框
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+  border: none;
 }
 
 .section-title {
@@ -821,12 +801,12 @@ $border-color: #eeeeee;
   justify-content: center;
   margin-bottom: 12rpx;
   transition: all 0.3s;
-  border: 4rpx solid $card-bg; // 增加白边，增加层次感
+  border: 4rpx solid $card-bg;
 }
 
 .step-item.active .step-circle {
   background-color: $primary;
-  box-shadow: 0 0 0 4rpx rgba($primary, 0.2); // 外发光效果
+  box-shadow: 0 0 0 4rpx rgba($primary, 0.2);
 }
 
 .step-label {
@@ -844,8 +824,8 @@ $border-color: #eeeeee;
   flex: 1;
   height: 4rpx;
   background-color: #e0e0e0;
-  margin: 0 -20rpx; // 负margin连接圆点
-  margin-bottom: 40rpx; // 对齐圆点中心
+  margin: 0 -20rpx;
+  margin-bottom: 40rpx;
   position: relative;
   z-index: 1;
 }
@@ -926,7 +906,7 @@ $border-color: #eeeeee;
   box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.05);
   position: relative;
   z-index: 1;
-  transform: translateZ(0); /* 开启硬件加速，让地图跟随滚动 */
+  transform: translateZ(0);
   -webkit-transform: translateZ(0);
 }
 
@@ -934,6 +914,18 @@ $border-color: #eeeeee;
   width: 100%;
   height: 360rpx;
   position: relative;
+}
+
+.map-placeholder {
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #999;
 }
 
 .map-tips {

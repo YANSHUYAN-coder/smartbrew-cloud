@@ -69,7 +69,7 @@
         <el-table-column prop="name" label="商品名称" width="200"></el-table-column>
         <el-table-column label="图片" width="100">
           <template #default="scope">
-            <el-image style="width: 50px; height: 50px; border-radius: 4px;" :src="scope.row.picUrl" fit="cover"></el-image>
+            <el-image style="width: 50px; height: 50px; border-radius: 4px;" :src="convertImageUrl(scope.row.picUrl)" fit="cover"></el-image>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述"></el-table-column>
@@ -147,10 +147,10 @@
             <el-form-item label="商品图片">
                 <div v-if="form.picUrl" style="position: relative; display: inline-block; margin-bottom: 10px;">
                     <el-image 
-                        :src="form.picUrl" 
+                        :src="convertImageUrl(form.picUrl)" 
                         style="width: 150px; height: 150px; border-radius: 4px; border: 1px solid #dcdfe6;"
                         fit="cover"
-                        :preview-src-list="[form.picUrl]"
+                        :preview-src-list="[convertImageUrl(form.picUrl)]"
                     ></el-image>
                     <el-button 
                         type="danger" 
@@ -276,6 +276,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Delete, Search, Refresh } from '@element-plus/icons-vue'
 import { getProductList, updateProductStatus, createProduct, updateProduct, deleteProduct, uploadProductImage, getProductDetail } from '@/api/product'
 import { getCategoryList } from '@/api/category'
+import { convertImageUrl } from '@/utils/image'
 
 interface SpecItem {
   key: string

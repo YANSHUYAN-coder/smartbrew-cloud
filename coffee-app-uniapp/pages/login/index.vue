@@ -123,8 +123,8 @@ const countdown = ref(0)
 let timer = null
 
 const form = reactive({
-  username: '',
-  password: '',
+  username: '13800138000',
+  password: '123456',
   confirmPassword: '',
   code: ''
 })

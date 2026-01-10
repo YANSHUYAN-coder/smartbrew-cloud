@@ -150,7 +150,7 @@
 						@click="selectPaymentType(1)"
 					>
 						<view class="payment-left">
-							<uni-icons  custom-prefix="iconfont" type="icon-alipay" size="20" :color="payType === 1 ? '#1296db' : '#999'"></uni-icons>
+							<text class="iconfont icon-alipay" :style="{ fontSize: '20px', color: payType === 1 ? '#1296db' : '#999' }"></text>
 							<text class="payment-name">支付宝</text>
 						</view>
 						<view class="payment-right" v-if="payType === 1">

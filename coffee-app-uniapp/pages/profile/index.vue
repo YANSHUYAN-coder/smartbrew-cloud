@@ -43,7 +43,7 @@
 					@click="handleOrderTypeClick(order)">
 					<view class="order-icon-wrapper">
 						<!-- <text class="order-icon">{{ order.icon }}</text> -->
-						<uni-icons custom-prefix="iconfont" :type="order.icon" size="24" color="#666"></uni-icons>
+						<text class="iconfont" :class="order.icon" style="font-size: 24px; color: #666;"></text>
 						<!-- 小红点显示数量（仅待付款、制作中、待取餐显示，已完成不显示） -->
 						<view v-if="order.key !== 'completed' && getOrderCount(order.key) > 0" class="order-badge">
 							<text class="badge-text">{{ getOrderCount(order.key) > 99 ? '99+' : getOrderCount(order.key) }}</text>

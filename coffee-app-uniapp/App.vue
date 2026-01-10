@@ -1,8 +1,8 @@
 <script setup>
-import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
-import { useUserStore } from '@/store/user.js'
-import { BASE_URL } from '@/utils/config.js'
-import { watch, onMounted } from 'vue'
+import {onLaunch, onShow, onHide} from '@dcloudio/uni-app'
+import {useUserStore} from '@/store/user.js'
+import {BASE_URL} from '@/utils/config.js'
+import {watch, onMounted} from 'vue'
 
 const userStore = useUserStore()
 
@@ -13,19 +13,21 @@ const updateNativeTheme = (isDark) => {
 
   const frontColor = isDark ? '#ffffff' : '#000000'
   const bgColor = isDark ? '#1A1A1A' : '#ffffff' // 调整顶部导航栏背景色
-  
+
   uni.setNavigationBarColor({
     frontColor: frontColor,
     backgroundColor: bgColor,
-    animation: { duration: 300, timingFunc: 'easeIn' }
-  }).catch(() => {}) // 忽略非原生导航栏页面的报错
+    animation: {duration: 300, timingFunc: 'easeIn'}
+  }).catch(() => {
+  }) // 忽略非原生导航栏页面的报错
 
   uni.setTabBarStyle({
     backgroundColor: isDark ? '#1A1A1A' : '#ffffff', // 调整 TabBar 背景色
     color: isDark ? '#999999' : '#999999',
     selectedColor: '#6f4e37',
     borderStyle: isDark ? 'black' : 'white'
-  }).catch(() => {})
+  }).catch(() => {
+  })
 }
 
 // 统一监听主题变化，注入全局类名 (H5端) 并更新原生组件颜色
@@ -93,7 +95,8 @@ const initWebSocket = () => {
   if (socketTask) {
     try {
       socketTask.close()
-    } catch(e) {}
+    } catch (e) {
+    }
   }
 
   // 建立新连接
@@ -222,7 +225,7 @@ const stopHeartbeat = () => {
 
 onLaunch(() => {
   console.log('App Launch')
-  
+
   // 启动时延迟同步主题，确保第一个页面已渲染
   setTimeout(() => {
     updateNativeTheme(userStore.isDarkMode)
@@ -253,7 +256,7 @@ onLaunch(() => {
     wsConnected = false
     isConnecting = false // 重置连接状态
     stopHeartbeat()
-    
+
     // 【核心修复】清除重连定时器，防止静默重连
     if (wsReconnectTimer) {
       clearTimeout(wsReconnectTimer)
@@ -279,22 +282,14 @@ onHide(() => {
 <style lang="scss">
 /* 每个页面公共css */
 @import '@/uni_modules/uni-scss/index.scss';
+
+/* 1. 引入改好了 Base64 的 iconfont.css */
 @import '@/static/iconfont.css';
+
 @import '@/styles/theme.scss';
 
-/* 引入字体图标 */
-@font-face {
-  font-family: 'iconfont';
-  src: url('static/iconfont.ttf?t=1650355047728') format('truetype');
-}
-
-.iconfont {
-  font-family: "iconfont" !important;
-  font-size: 16px;
-  font-style: normal;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* 2. 注意：这里删除了原来写死的 @font-face 和 .iconfont */
+/* 因为它们在上面的 iconfont.css 里已经定义过了，且原来写的路径是错误的 */
 
 view, text, image, scroll-view {
   box-sizing: border-box;
@@ -315,12 +310,12 @@ page {
   --bg-secondary: #000000;
   --bg-tertiary: #333333;
   --card-bg: #252525;
-  
+
   /* 文字颜色体系 */
   --text-primary: #FFFFFF;
   --text-secondary: #CCCCCC;
   --text-tertiary: #999999;
-  
+
   /* 边框和分割线 */
   --border-color: #404040;
   --border-light: #333333;

@@ -69,6 +69,14 @@ public class SecurityConfig {
                         .requestMatchers("/app/image/**").permitAll()
                         // 3.6. 放行门店公开信息接口
                         .requestMatchers("/app/store/**").permitAll()
+                        // 3.7. 放行商品菜单公开信息接口
+                        .requestMatchers("/app/product/**").permitAll()
+                        // 3.8. 放行公共字典和定位接口
+                        .requestMatchers("/common/**").permitAll()
+                        // 3.9. 放行公共搜索接口
+                        .requestMatchers("/api/product/**").permitAll()
+                        // 3.10. 放行分类列表（如果存在）
+                        .requestMatchers("/app/categories/**").permitAll()
 
                         // 4. 放行 Knife4j / Swagger 静态资源
                         .requestMatchers(

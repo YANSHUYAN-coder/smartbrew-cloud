@@ -4,7 +4,7 @@
 		<view class="header-wrapper" :style="{ paddingTop: statusBarHeight + 'px' }">
 			<view class="header-content">
 				<view class="search-bar">
-					<uni-icons custom-prefix="iconfont" type="search" color="#999" size="18"></uni-icons>
+					<text class="iconfont icon-search" style="font-size: 18px; color: #999;"></text>
 					<input class="search-input" type="text" v-model="searchKeyword" placeholder="搜拿铁/美式/甜点" :focus="true"
 						confirm-type="search" @confirm="handleSearch" @input="handleInput" />
 					<uni-icons v-if="searchKeyword" type="clear" color="#ccc" size="18" @click="clearSearch"></uni-icons>

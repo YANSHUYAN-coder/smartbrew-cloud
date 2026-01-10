@@ -5,8 +5,7 @@
 			<!-- 搜索与切换行 -->
 			<view class="header-content">
 				<view class="search-bar">
-					<uni-icons custom-prefix="iconfont" type="icon-sousuo"
-					color="#000" size="16"></uni-icons>
+					<text class="iconfont icon-sousuo" style="font-size: 16px; color: #000;"></text>
 					<input class="search-input" type="text" placeholder="搜拿铁/美式/甜点" disabled @click="handleSearch" />
 				</view>
 				<!-- 业务切换胶囊 -->

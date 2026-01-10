@@ -4,7 +4,7 @@
  */
 
 // 获取本机 IP 地址（需要手动修改）
-const DEV_IP = '192.168.110.110' // ⚠️ 替换为你的电脑 IP 地址
+const DEV_IP = '106.12.70.182' // ⚠️ 已替换为服务器 IP
 const DEV_PORT = 8081
 
 // 生产环境地址
@@ -22,7 +22,7 @@ const getBaseUrl = () => {
     // #ifdef APP-PLUS
     // APP 环境：必须使用完整的 HTTP URL
     return process.env.NODE_ENV === 'development'
-        ? `http://106.12.70.182:8081/api`  // 开发环境
+        ? `http://${DEV_IP}:${DEV_PORT}/api`  // 开发环境使用本机 IP
         : `${PROD_DOMAIN}/api`  // 生产环境
     // #endif
 

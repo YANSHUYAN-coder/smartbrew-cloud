@@ -15,7 +15,7 @@
 						</view>
 					</view>
 					<view class="message-box" @click="navigateTo('/pages/message/list')">
-						<uni-icons custom-prefix="iconfont" type="icon-message" color="#000" size="24"></uni-icons>
+            <text class="iconfont icon-message" style="font-size:24px;color:#000;"></text>
 						<view class="badge" v-if="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
 					</view>
 				</view>
@@ -72,8 +72,11 @@
 		<view class="function-grid">
 				<view v-for="(item, index) in functions" :key="index" class="function-item click-active"
 				@click="handleFunctionClick(item)">
-				<!-- <view class="function-icon">{{ item.icon }}</view> -->
-				<uni-icons custom-prefix="iconfont" :type="item.icon" size="28"></uni-icons>
+          <text
+              class="iconfont"
+              :class="item.icon"
+              style="font-size: 28px; color: #333;">
+          </text>
 				<text class="function-name">{{ item.name }}</text>
 			</view>
 		</view>

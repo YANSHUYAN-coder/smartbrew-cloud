@@ -1,14 +1,5 @@
 <template>
     <view class="buy-page">
-        <!-- 顶部导航 -->
-        <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
-            <view class="nav-left" @click="goBack">
-                <uni-icons type="left" size="20" color="#333" />
-            </view>
-            <text class="nav-title">购买咖啡卡</text>
-            <view class="nav-right" />
-        </view>
-
         <!-- 内容区域 -->
         <scroll-view scroll-y class="content-scroll" :enable-back-to-top="true" :scroll-with-animation="true">
             <!-- 面额选择 -->

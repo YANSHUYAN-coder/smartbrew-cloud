@@ -103,6 +103,7 @@ public class OrderServiceImpl extends ServiceImpl<OmsOrderMapper, OmsOrder> impl
         if (status != null) {
             wrapper.eq(OmsOrder::getStatus, status);
         }
+        wrapper.eq(OmsOrder::getOrderType,0);
         wrapper.orderByDesc(OmsOrder::getCreateTime);
         Page<OmsOrder> page = orderMapper.selectPage(orderPage, wrapper);
 

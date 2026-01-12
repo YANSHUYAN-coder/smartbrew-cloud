@@ -145,8 +145,8 @@
 		{
 			"path": "pages/giftcard/buy",
 			"style": {
-				"navigationBarTitleText": "购买礼品卡",
-				"navigationStyle": "custom",
+				"navigationBarTitleText": "购买咖啡卡",
+				"navigationStyle": "default",
 				"backgroundColor": "#f5f5f5"
 			}
 		},

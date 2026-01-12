@@ -72,6 +72,15 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+
+    /**
+     * 创建咖啡卡
+     * @param amount     面值金额
+     * @param name       咖啡卡名称
+     * @param greeting   祝福语
+     * @param validDays  有效天数（为空时采用默认值）
+     * @return
+     */
     @Override
     public GiftCard createForCurrent(BigDecimal amount, String name, String greeting, Integer validDays) {
         Long userId = UserContext.getUserId();
@@ -135,6 +144,15 @@ public class GiftCardServiceImpl extends ServiceImpl<GiftCardMapper, GiftCard> i
         return giftCardTxnMapper.selectPage(page, wrapper);
     }
 
+
+    /**
+     * 创建咖啡卡订单
+     * @param amount 面值金额
+     * @param name 咖啡卡名称
+     * @param greeting 祝福语
+     * @param validDays 有效天数
+     * @return
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OmsOrder createGiftCardOrder(BigDecimal amount, String name, String greeting, Integer validDays) {

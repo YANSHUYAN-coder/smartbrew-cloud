@@ -55,6 +55,10 @@ let wsReconnectTimer = null
 let wsHeartbeatTimer = null
 let socketTask = null // 保存 socket 任务实例
 
+// 【新增】防止弹窗重复变量
+let lastNotifyOrderId = null // 记录上一次弹窗的订单ID
+let isModalShowing = false   // 记录当前是否有弹窗正在显示
+
 // 初始化 WebSocket 的函数
 const initWebSocket = () => {
   // 1. 检查是否已有连接或正在连接
@@ -160,7 +164,23 @@ const initWebSocket = () => {
       // 这里假设没有 id，只处理业务逻辑
 
       if (msg.type === 'PICKUP_READY') {
+        // 1. 去重：如果这个订单ID刚刚才弹过窗，忽略它
+        // （防止后端因为网络问题重发同一条消息）
+        if (lastNotifyOrderId === msg.orderId) {
+          console.log('重复消息已拦截，订单ID:', msg.orderId)
+          return
+        }
+
+        // 2. 防叠：如果屏幕上已经有一个弹窗没关掉，忽略新消息
+        // （防止多个不同订单同时完成导致弹窗叠罗汉）
+        if (isModalShowing) {
+          console.log('当前已有弹窗显示，暂不处理新消息')
+          return
+        }
+
         uni.vibrateLong()
+        isModalShowing = true // 🔒 上锁
+        lastNotifyOrderId = msg.orderId // 📝 记录ID
 
         // 检查是否已经在显示 Modal（避免重复弹窗）
         // UniApp 没有直接 API 查 Modal 状态，通常用全局变量或 Store 控制
@@ -170,6 +190,10 @@ const initWebSocket = () => {
           content: `您的订单 ${msg.pickupCode} 号已制作完成，请前往取餐！`,
           showCancel: false,
           confirmText: '我知道了',
+          // 无论点击确定还是点击遮罩关闭，都会触发 complete
+          complete: () => {
+            isModalShowing = false // 🔓 解锁，允许下一个弹窗出现
+          },
           success: function (res) {
             if (res.confirm) {
               uni.navigateTo({
@@ -262,6 +286,9 @@ onLaunch(() => {
       clearTimeout(wsReconnectTimer)
       wsReconnectTimer = null
     }
+    // 清理弹窗状态
+    lastNotifyOrderId = null
+    isModalShowing = false
     console.log('已清理 WebSocket 所有连接和定时器')
   })
 })

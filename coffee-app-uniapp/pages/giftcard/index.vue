@@ -1,13 +1,13 @@
 <template>
     <view class="gift-page">
         <!-- 顶部导航 -->
-        <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
+        <!-- <view class="nav-bar" :style="{ paddingTop: statusBarHeight + 'px' }">
             <view class="nav-left" @click="goBack">
                 <uni-icons type="left" size="20" color="#333" />
             </view>
             <text class="nav-title">咖啡卡</text>
             <view class="nav-right" />
-        </view>
+        </view> -->
 
         <!-- 内容区域 -->
         <scroll-view scroll-y class="content-scroll">
@@ -76,7 +76,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { formatDate } from '@/utils/date.js'
-import { onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh,onShow } from '@dcloudio/uni-app'
 import { getStatusBarHeight } from '@/utils/system.js'
 import { getGiftCardList } from '@/services/giftcard.js'
 
@@ -163,6 +163,14 @@ onMounted(() => {
 // 页面显示时重新加载（从购买页面返回时刷新列表）
 onShow(() => {
     loadCards()
+})
+
+// 下拉刷新
+onPullDownRefresh(async () => {
+    await Promise.all([
+        loadCards()
+    ])
+    uni.stopPullDownRefresh()
 })
 </script>
 

@@ -123,8 +123,8 @@ const countdown = ref(0)
 let timer = null
 
 const form = reactive({
-  username: '13800138000',
-  password: '123456',
+  username: '',
+  password: '',
   confirmPassword: '',
   code: ''
 })
@@ -248,13 +248,13 @@ const handleMobileLogin = async () => {
 const handleLogin = async () => {
   try {
     uni.showLoading({title: '登录中...', mask: true})
-
+	console.log("password：",form.password);
     // 调用登录接口
     const res = await post('/auth/login', {
       phone: form.username,
       password: form.password
     })
-
+	
     await processLoginSuccess(res)
 
   } catch (e) {

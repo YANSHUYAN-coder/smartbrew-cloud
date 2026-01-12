@@ -12,7 +12,7 @@
 						class="avatar" mode="aspectFill" />
 					<view class="user-details">
 						<view class="user-name-row">
-							<text class="user-name">{{userInfo.nickname || '未登录'}}</text>
+							<text class="user-name">{{userInfo?.nickname || '未登录'}}</text>
 							<view class="level-badge" v-if="profileStats && profileStats.levelName">{{ profileStats.levelName }}</view>
 							<view class="level-badge" v-else-if="userStore.isLogin">普通会员</view>
 						</view>
@@ -241,7 +241,7 @@
 
 	// 加载个人中心数据
 	const loadProfileData = async () => {
-		userInfo.value = userStore.userInfo
+		userInfo.value = userStore.userInfo || {}
 		
 		// 如果已登录，加载所有统计数据
 		if (userStore.isLogin) {

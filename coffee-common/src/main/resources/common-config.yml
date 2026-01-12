@@ -18,7 +18,7 @@ spring:
 
   # 3. RabbitMQ 配置 (共用)
   rabbitmq:
-    host: 192.168.248.128
+    host: 192.168.14.130
     port: 5672
     username: admin
     password: 12345678
@@ -48,7 +48,7 @@ spring:
 
 # 4. MinIO 配置
 minio:
-  endpoint: http://192.168.248.128:9000
+  endpoint: http://192.168.14.130:9000
   access-key: admin
   secret-key: 12345678
   bucket-name: coffee-bucket

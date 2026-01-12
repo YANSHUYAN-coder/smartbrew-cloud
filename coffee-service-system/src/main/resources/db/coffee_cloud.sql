@@ -1,17 +1,17 @@
 /*
  Navicat Premium Data Transfer
 
- Source Server         : MySQL
+ Source Server         : 106.12.70.182
  Source Server Type    : MySQL
- Source Server Version : 80043 (8.0.43)
- Source Host           : localhost:3306
+ Source Server Version : 80407 (8.4.7)
+ Source Host           : 106.12.70.182:3306
  Source Schema         : coffee_cloud
 
  Target Server Type    : MySQL
- Target Server Version : 80043 (8.0.43)
+ Target Server Version : 80407 (8.4.7)
  File Encoding         : 65001
 
- Date: 03/01/2026 17:23:59
+ Date: 12/01/2026 14:40:35
 */
 
 SET NAMES utf8mb4;
@@ -106,12 +106,11 @@ CREATE TABLE `oms_cart_item`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 52 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 55 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '购物车表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_cart_item
 -- ----------------------------
-INSERT INTO `oms_cart_item` VALUES (50, 1, 1, 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', '大杯,冰,全糖', NULL, 20.00, 4, '2025-12-31 15:21:35', '2026-01-03 14:30:19');
 
 -- ----------------------------
 -- Table structure for oms_order
@@ -154,7 +153,7 @@ CREATE TABLE `oms_order`  (
   `delivery_distance` int NULL DEFAULT NULL COMMENT '配送距离（米）',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `order_sn`(`order_sn` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 41 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 44 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order
@@ -162,6 +161,9 @@ CREATE TABLE `oms_order`  (
 INSERT INTO `oms_order` VALUES (38, '20251230175051125fc3d', '103', 1, NULL, 20.00, 0.00, 0.00, NULL, 0.00, 20.00, 1, 1, 0, '门店自提', NULL, '到店自取', '', '', '广东省', '深圳市', '南山区', '智咖·云门店', '', 0, '2025-12-30 17:51:41', NULL, NULL, '2025-12-30 17:50:51', '2025-12-30 17:51:41', NULL, NULL, 0.00, NULL);
 INSERT INTO `oms_order` VALUES (39, '202512301752491f4ae46', '104', 1, NULL, 20.00, 0.00, 0.00, NULL, 0.00, 20.00, 1, 1, 0, '门店自提', NULL, '到店自取', '', '', '广东省', '深圳市', '南山区', '智咖·云门店', '', 0, '2025-12-30 17:53:02', NULL, NULL, '2025-12-30 17:52:49', '2025-12-30 17:53:02', NULL, NULL, 0.00, NULL);
 INSERT INTO `oms_order` VALUES (40, '202601031510551878e10', '101', 1, NULL, 14.00, 0.00, 0.00, NULL, 0.00, 19.00, 1, 1, 0, '外卖配送', NULL, 'xz', '13014015016', NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '', 0, '2026-01-03 15:11:45', NULL, NULL, '2026-01-03 15:10:56', '2026-01-03 15:11:45', NULL, 3, 5.00, 2335);
+INSERT INTO `oms_order` VALUES (41, '202601081650241af879a', '101', 1, NULL, 22.00, 0.00, 0.00, NULL, 0.00, 27.00, 1, 1, 0, '外卖配送', NULL, 'xz', '13014015016', NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '', 0, '2026-01-08 16:50:42', NULL, NULL, '2026-01-08 16:50:24', '2026-01-08 16:50:42', NULL, 3, 5.00, 2335);
+INSERT INTO `oms_order` VALUES (42, '202601091020361d7850b', '101', 1, NULL, 94.00, 0.00, 0.00, NULL, 0.00, 99.00, 1, 5, 0, '外卖配送', NULL, 'xz', '13014015016', NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '', 0, NULL, NULL, NULL, '2026-01-09 10:20:36', '2026-01-09 10:35:37', '订单超时未支付，自动取消', 3, 5.00, 2335);
+INSERT INTO `oms_order` VALUES (43, '202601091022001dc2432', '102', 1, NULL, 14.00, 0.00, 0.00, NULL, 0.00, 19.00, 1, 1, 0, '外卖配送', NULL, 'xz', '13014015016', NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '', 0, '2026-01-09 10:22:18', NULL, NULL, '2026-01-09 10:22:00', '2026-01-09 10:22:18', NULL, 3, 5.00, 2335);
 
 -- ----------------------------
 -- Table structure for oms_order_item
@@ -182,7 +184,7 @@ CREATE TABLE `oms_order_item`  (
   `product_attr` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '商品销售属性:[{\"key\":\"规格\",\"value\":\"大杯\"}]',
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 52 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 55 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '订单明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_order_item
@@ -227,7 +229,11 @@ INSERT INTO `oms_order_item` VALUES (40, 36, '2025123017174414a5259', 1, 'https:
 INSERT INTO `oms_order_item` VALUES (41, 37, '202512301730471b9ed27', 2, 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', '美式咖啡', NULL, 14.00, 1, 6, NULL, '大杯,冰', '2025-12-30 17:30:47');
 INSERT INTO `oms_order_item` VALUES (42, 38, '20251230175051125fc3d', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-30 17:50:51');
 INSERT INTO `oms_order_item` VALUES (43, 39, '202512301752491f4ae46', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 1, 1, NULL, '大杯,冰,全糖', '2025-12-30 17:52:49');
+INSERT INTO `oms_order_item` VALUES (50, 42, '202601091020361d7850b', 1, 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=200&auto=format&fit=crop', '生椰拿铁', NULL, 20.00, 4, 1, NULL, '大杯,冰,全糖', '2026-01-09 10:20:37');
 INSERT INTO `oms_order_item` VALUES (51, 40, '202601031510551878e10', 2, 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', '美式咖啡', NULL, 14.00, 1, 6, NULL, '大杯,冰', '2026-01-03 15:10:56');
+INSERT INTO `oms_order_item` VALUES (52, 41, '202601081650241af879a', 3, 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?q=80&w=200&auto=format&fit=crop', '提拉米苏', NULL, 22.00, 1, 10, NULL, '标准份', '2026-01-08 16:50:24');
+INSERT INTO `oms_order_item` VALUES (53, 42, '202601091020361d7850b', 2, 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', '美式咖啡', NULL, 14.00, 1, 7, NULL, '热', '2026-01-09 10:20:37');
+INSERT INTO `oms_order_item` VALUES (54, 43, '202601091022001dc2432', 2, 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=200&auto=format&fit=crop', '美式咖啡', NULL, 14.00, 1, 7, NULL, '热', '2026-01-09 10:22:00');
 
 -- ----------------------------
 -- Table structure for oms_store
@@ -248,7 +254,7 @@ CREATE TABLE `oms_store`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '门店配置表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '门店配置表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of oms_store
@@ -325,7 +331,7 @@ INSERT INTO `pms_product` VALUES (17, '经典黄油可颂', 18.00, 4, '使用法
 INSERT INTO `pms_product` VALUES (18, '蓝莓乳酪贝果', 22.00, 4, '低糖低油的健康贝果，面团经过水煮工艺，口感扎实有嚼劲。内馅包裹着大颗蓝莓果肉与顺滑奶油奶酪，经过烘烤后爆浆流心，酸甜适口，越嚼越香。', 'https://images.unsplash.com/photo-1517433670267-08bbd4be890f?q=80&w=600&auto=format&fit=crop', 190, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31', 0, 0);
 INSERT INTO `pms_product` VALUES (19, '烟熏鸡胸肉三明治', 38.00, 5, '精选全麦吐司，夹入低温慢煮的烟熏鸡胸肉，肉质鲜嫩不柴。搭配新鲜生菜、番茄片、黄瓜与特制低脂蜂蜜芥末酱。营养均衡，饱腹感强，是健身人士的首选。', 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?q=80&w=600&auto=format&fit=crop', 160, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31', 0, 0);
 INSERT INTO `pms_product` VALUES (20, '品牌纪念马克杯', 88.00, 6, '独家定制的品牌纪念马克杯，采用优质骨瓷烧制，质地轻盈透光。极简设计风格，杯身印有经典Logo。宽口设计适合拉花，为您居家品尝咖啡增添一份仪式感。', 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?q=80&w=600&auto=format&fit=crop', 50, 1, '2025-12-16 14:53:31', '2025-12-16 14:53:31', 0, 0);
-INSERT INTO `pms_product` VALUES (21, '香草拿铁', 25.00, 1, '精选阿拉比卡咖啡豆，融合香草糖浆与丝滑蒸奶，顶部覆盖绵密奶泡。口感层次丰富，香草的甜美与咖啡的醇厚完美融合，带来温暖舒适的味觉体验。', 'http://192.168.248.128:9000/coffee-bucket/product/a147c5273d844ae0ad287d30fce5b1fb.png', 0, 1, '2025-12-23 14:52:45', '2025-12-26 15:59:56', 0, 0);
+INSERT INTO `pms_product` VALUES (21, '香草拿铁', 25.00, 1, '精选阿拉比卡咖啡豆，融合香草糖浆与丝滑蒸奶，顶部覆盖绵密奶泡。口感层次丰富，香草的甜美与咖啡的醇厚完美融合，带来温暖舒适的味觉体验。', 'http://coffee-minio:9000/coffee-bucket/product/d10f82910fa1436c859da8b427ea3e8a.png', 0, 1, '2025-12-23 14:52:45', '2026-01-09 15:11:47', 0, 0);
 
 -- ----------------------------
 -- Table structure for pms_sku_stock
@@ -342,25 +348,25 @@ CREATE TABLE `pms_sku_stock`  (
   `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 23 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'SKU库存表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of pms_sku_stock
 -- ----------------------------
-INSERT INTO `pms_sku_stock` VALUES (1, 1, '2024010101', 20.00, 103, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-30 17:32:45');
+INSERT INTO `pms_sku_stock` VALUES (1, 1, '2024010101', 20.00, 107, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2026-01-09 10:35:37');
 INSERT INTO `pms_sku_stock` VALUES (2, 1, '2024010102', 20.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"半糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (3, 1, '2024010103', 20.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (4, 1, '2024010104', 18.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}, {\"key\": \"糖度\", \"value\": \"全糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (5, 1, '2024010105', 18.00, 100, 10, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}, {\"key\": \"糖度\", \"value\": \"半糖\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (6, 2, '2024020101', 14.00, 201, 20, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2025-12-10 15:07:14', '2025-12-28 11:24:22');
-INSERT INTO `pms_sku_stock` VALUES (7, 2, '2024020102', 14.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
+INSERT INTO `pms_sku_stock` VALUES (7, 2, '2024020102', 14.00, 201, 20, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2026-01-09 10:35:37');
 INSERT INTO `pms_sku_stock` VALUES (8, 2, '2024020103', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (9, 2, '2024020104', 12.00, 200, 20, '[{\"key\": \"容量\", \"value\": \"中杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (10, 3, '2024030101', 22.00, 50, 5, '[{\"key\": \"规格\", \"value\": \"标准份\"}]', '2025-12-10 15:07:14', '2025-12-10 15:07:14');
 INSERT INTO `pms_sku_stock` VALUES (13, 11, '', 38.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-23 15:40:28', '2025-12-23 15:40:28');
 INSERT INTO `pms_sku_stock` VALUES (14, 22, '', 0.00, 100, NULL, '[]', '2025-12-26 14:16:44', '2025-12-26 14:16:44');
 INSERT INTO `pms_sku_stock` VALUES (15, 23, '', 0.00, 100, NULL, '[]', '2025-12-26 14:28:09', '2025-12-26 14:28:09');
-INSERT INTO `pms_sku_stock` VALUES (20, 21, '', 25.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"热\"}]', '2025-12-26 15:59:56', '2025-12-26 15:59:56');
+INSERT INTO `pms_sku_stock` VALUES (22, 21, '', 25.00, 100, NULL, '[{\"key\": \"容量\", \"value\": \"大杯\"}, {\"key\": \"温度\", \"value\": \"冰\"}]', '2026-01-09 11:38:52', '2026-01-09 11:38:52');
 
 -- ----------------------------
 -- Table structure for sms_coupon
@@ -393,12 +399,12 @@ CREATE TABLE `sms_coupon`  (
   `update_by` varchar(64) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '更新人',
   `remark` varchar(500) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci COMMENT = '优惠券表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci COMMENT = '优惠券表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sms_coupon
 -- ----------------------------
-INSERT INTO `sms_coupon` VALUES (1, 0, '全场立减券', 0, 100, 3.00, 1, 20.00, '2025-12-25 16:16:21', '2026-01-24 16:16:21', 0, '满20减3', 100, 4, 2, '2025-12-25 16:16:21', 'C001', 0, 100, NULL, '2025-12-25 16:16:21', NULL, NULL, NULL, NULL);
+INSERT INTO `sms_coupon` VALUES (1, 0, '全场立减券', 0, 100, 3.00, 1, 20.00, '2025-12-25 16:16:21', '2026-01-24 16:16:21', 0, '满20减3', 100, 4, 3, '2025-12-25 16:16:21', 'C001', 0, 100, NULL, '2025-12-25 16:16:21', NULL, NULL, NULL, NULL);
 INSERT INTO `sms_coupon` VALUES (2, 0, '饮品抵扣券', 0, 100, 5.00, 1, 0.00, '2025-12-25 16:16:21', '2026-01-24 16:16:21', 0, '无门槛', 100, 0, 0, '2025-12-25 16:16:21', 'C002', 0, 500, NULL, '2025-12-25 16:16:21', NULL, NULL, NULL, NULL);
 INSERT INTO `sms_coupon` VALUES (3, 0, '拿铁免单券', 0, 50, 28.00, 1, 0.00, '2025-12-25 16:16:21', '2026-01-24 16:16:21', 2, '拿铁专属', 50, 0, 0, '2025-12-25 16:16:21', 'C003', 0, 2800, NULL, '2025-12-25 16:16:21', NULL, NULL, NULL, NULL);
 INSERT INTO `sms_coupon` VALUES (5, 0, '11', NULL, 100, 5.00, 1, 45.00, '2025-12-29 00:00:00', '2026-01-29 00:00:00', 0, NULL, 100, 0, 0, '2025-12-29 00:00:00', NULL, NULL, 100, NULL, '2025-12-29 09:16:50', '2025-12-29 09:32:45', NULL, NULL, NULL);
@@ -427,13 +433,14 @@ CREATE TABLE `sms_coupon_history`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_member_id`(`member_id` ASC) USING BTREE,
   INDEX `idx_coupon_id`(`coupon_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci COMMENT = '优惠券领取记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci COMMENT = '优惠券领取记录表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sms_coupon_history
 -- ----------------------------
 INSERT INTO `sms_coupon_history` VALUES (1, 1, 1, '2025122500018e2b8a', '自信阿德勒', 1, '2025-12-25 16:38:36', '2026-01-24 16:16:21', 1, '2025-12-25 17:43:58', 13, '202512251743571fc859f', '2025-12-25 17:43:58', NULL, NULL, NULL);
 INSERT INTO `sms_coupon_history` VALUES (2, 1, 1, '202512260001462003', '自信阿德勒', 1, '2025-12-26 10:33:20', '2026-01-24 16:16:21', 1, '2025-12-26 10:51:20', 15, '202512261051191e6a76c', '2025-12-26 10:51:20', NULL, NULL, NULL);
+INSERT INTO `sms_coupon_history` VALUES (3, 1, 1, '2026011000017db5fc', '自信阿德勒', 1, '2026-01-10 16:24:46', '2026-01-24 16:16:21', 0, NULL, NULL, NULL, '2026-01-10 16:24:46', NULL, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for sys_message
@@ -451,7 +458,7 @@ CREATE TABLE `sys_message`  (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_user_id`(`user_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统消息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统消息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_message
@@ -464,7 +471,7 @@ INSERT INTO `sys_message` VALUES (1, 1, '取餐提醒', '您的订单 2025122414
 DROP TABLE IF EXISTS `ums_member`;
 CREATE TABLE `ums_member`  (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '用户名',
+  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '用户名',
   `phone` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '手机号',
   `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '密码',
   `nickname` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '昵称',
@@ -483,14 +490,15 @@ CREATE TABLE `ums_member`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `username`(`username` ASC) USING BTREE,
   UNIQUE INDEX `phone`(`phone` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_member
 -- ----------------------------
-INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$qER.iOY2WSDk/8vRUXv9BeLrKgfAxVXpezwHTdXB6NxtwZWlQmMQ2', '自信阿德勒', 'http://192.168.248.128:9000/coffee-bucket/avatar/07b8af66566f4e67836b52f9fafed6d6.jpg', 2, 1, '1999-12-22', '广东省 汕尾市 城区', NULL, '', 478, 420, 2, '2025-12-07 18:23:53', '2026-01-03 15:11:45');
+INSERT INTO `ums_member` VALUES (1, 'test_user', '13800138000', '$2a$10$qER.iOY2WSDk/8vRUXv9BeLrKgfAxVXpezwHTdXB6NxtwZWlQmMQ2', '自信阿德勒', 'http://coffee-minio:9000/coffee-bucket/avatar/3c04c9fe44294ffab02190f063b2ef7e.jpg', 2, 1, '1999-12-22', '广东省 汕尾市 城区', NULL, '', 424, 466, 2, '2025-12-07 18:23:53', '2026-01-10 16:24:46');
 INSERT INTO `ums_member` VALUES (8, 'admin', '1380013802', '$2a$10$2asM8m6GCZYchML7cKQdaurUDLEA8Ulrv5tkTiTZKsVv6MCDuaYva', 'admin', NULL, 1, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 17:04:19');
 INSERT INTO `ums_member` VALUES (9, 'test_user2', '13800138001', '.ZpFBbxBmMAdLP7xCisGHi', 'test_user2', NULL, 2, 1, NULL, NULL, NULL, NULL, 0, 0, 1, '2025-12-07 18:23:53', '2025-12-13 16:54:33');
+INSERT INTO `ums_member` VALUES (11, NULL, '15019577027', '$2a$10$qER.iOY2WSDk/8vRUXv9BeLrKgfAxVXpezwHTdXB6NxtwZWlQmMQ2', NULL, NULL, 0, 1, NULL, NULL, NULL, NULL, 0, 0, NULL, '2026-01-11 19:57:39', '2026-01-11 19:58:36');
 
 -- ----------------------------
 -- Table structure for ums_member_integration_history
@@ -510,7 +518,7 @@ CREATE TABLE `ums_member_integration_history`  (
   INDEX `idx_member_id`(`member_id` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE,
   INDEX `idx_change_type`(`change_type` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 26 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户积分明细表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户积分明细表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_member_integration_history
@@ -540,6 +548,9 @@ INSERT INTO `ums_member_integration_history` VALUES (22, 1, 3, 20, 'order_pay', 
 INSERT INTO `ums_member_integration_history` VALUES (23, 1, 1, 10, 'sign_in', 5, '签到获得，连续1天', '2026-01-03 14:15:25', '2026-01-03 14:15:25');
 INSERT INTO `ums_member_integration_history` VALUES (24, 1, 1, 10, 'sign_in', 6, '签到获得，连续1天', '2026-01-03 14:30:00', '2026-01-03 14:30:00');
 INSERT INTO `ums_member_integration_history` VALUES (25, 1, 3, 19, 'order_pay', 40, '订单完成获得，订单号：202601031510551878e10', '2026-01-03 15:11:45', '2026-01-03 15:11:45');
+INSERT INTO `ums_member_integration_history` VALUES (26, 1, 3, 27, 'order_pay', 41, '订单完成获得，订单号：202601081650241af879a', '2026-01-08 16:50:42', '2026-01-08 16:50:42');
+INSERT INTO `ums_member_integration_history` VALUES (27, 1, 3, 19, 'order_pay', 43, '订单完成获得，订单号：202601091022001dc2432', '2026-01-09 10:22:18', '2026-01-09 10:22:18');
+INSERT INTO `ums_member_integration_history` VALUES (28, 1, 2, -100, 'coupon_redeem', 1, '兑换优惠券：全场立减券', '2026-01-10 16:24:46', '2026-01-10 16:24:46');
 
 -- ----------------------------
 -- Table structure for ums_member_level
@@ -595,7 +606,7 @@ CREATE TABLE `ums_member_receive_address`  (
 INSERT INTO `ums_member_receive_address` VALUES (1, 1, '张三', '13800138000', 0, '518000', '广东省', '深圳市', '南山区', '粤海街道科技园中区科兴科学园B栋301', '2025-12-10 15:53:18', '2026-01-03 14:30:42', NULL, NULL);
 INSERT INTO `ums_member_receive_address` VALUES (2, 1, '张三(公司)', '13800138000', 0, '518057', '广东省', '深圳市', '福田区', '福田街道平安金融中心108层', '2025-12-10 15:53:18', '2025-12-22 15:33:23', NULL, NULL);
 INSERT INTO `ums_member_receive_address` VALUES (3, 8, '李四', '13900139000', 1, '100000', '北京市', '北京市', '朝阳区', '建国门外街道国贸三期55层', '2025-12-10 15:53:18', '2025-12-10 15:53:18', NULL, NULL);
-INSERT INTO `ums_member_receive_address` VALUES (4, 1, 'xz', '13014015016', 1, NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '2025-12-31 16:32:04', '2026-01-03 14:30:43', 113.2228920, 23.2258700);
+INSERT INTO `ums_member_receive_address` VALUES (4, 1, 'yy ', '13014015016', 1, NULL, '广东省', '广州市', '白云区', '石门街道石门街望湖一路99号力合科创广州创新中心(建设中)', '2025-12-31 16:32:04', '2026-01-11 19:52:02', 113.2228920, 23.2258700);
 
 -- ----------------------------
 -- Table structure for ums_member_sign_in
@@ -613,7 +624,7 @@ CREATE TABLE `ums_member_sign_in`  (
   UNIQUE INDEX `uk_member_date`(`member_id` ASC, `sign_date` ASC) USING BTREE COMMENT '用户每日只能签到一次',
   INDEX `idx_member_id`(`member_id` ASC) USING BTREE,
   INDEX `idx_sign_date`(`sign_date` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户签到记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户签到记录表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_member_sign_in
@@ -802,7 +813,7 @@ CREATE TABLE `ums_user_role`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户角色关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of ums_user_role
@@ -810,5 +821,6 @@ CREATE TABLE `ums_user_role`  (
 INSERT INTO `ums_user_role` VALUES (1, 1, 6, '2025-12-07 23:13:51');
 INSERT INTO `ums_user_role` VALUES (2, 8, 3, '2025-12-07 23:28:43');
 INSERT INTO `ums_user_role` VALUES (3, 9, 4, '2025-12-13 16:02:09');
+INSERT INTO `ums_user_role` VALUES (4, 11, 6, '2026-01-11 20:01:20');
 
 SET FOREIGN_KEY_CHECKS = 1;

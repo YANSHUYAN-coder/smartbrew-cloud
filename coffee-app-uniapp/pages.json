@@ -136,8 +136,9 @@
 		{
 			"path": "pages/giftcard/index",
 			"style": {
-				"navigationBarTitleText": "礼品卡",
-				"navigationStyle": "custom",
+				"navigationBarTitleText": "咖啡卡",
+				"navigationStyle": "default",
+				"enablePullDownRefresh": true,
 				"backgroundColor": "#f5f5f5"
 			}
 		},
@@ -153,7 +154,8 @@
 			"path": "pages/giftcard/transactions",
 			"style": {
 				"navigationBarTitleText": "交易明细",
-				"navigationStyle": "custom",
+				"navigationStyle": "default",
+				"enablePullDownRefresh": true,
 				"backgroundColor": "#f5f5f5"
 			}
 		},

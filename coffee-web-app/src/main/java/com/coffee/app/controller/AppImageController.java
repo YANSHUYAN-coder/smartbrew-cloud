@@ -33,8 +33,8 @@ public class AppImageController {
      * 通过后端转发 MinIO 的图片，解决跨域问题
      * 
      * 使用方式：将 MinIO URL 中的域名部分替换为后端地址
-     * 原 URL: http://192.168.248.128:9000/coffee-bucket/product/xxx.png
-     * 新 URL: http://your-backend/api/app/image/proxy?url=http://192.168.248.128:9000/coffee-bucket/product/xxx.png
+     * 原 URL: http://192.168.14.130:9000/coffee-bucket/product/xxx.png
+     * 新 URL: http://your-backend/api/app/image/proxy?url=http://192.168.14.130:9000/coffee-bucket/product/xxx.png
      */
     @GetMapping("/proxy")
     @Operation(summary = "图片代理", description = "通过后端代理转发图片，解决跨域和网络访问问题")

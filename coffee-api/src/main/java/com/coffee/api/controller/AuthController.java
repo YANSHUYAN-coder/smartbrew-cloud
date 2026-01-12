@@ -56,6 +56,13 @@ public class AuthController {
 
         // 密码加密
         member.setPassword(passwordEncoder.encode(member.getPassword()));
+
+        // 设置会员等级
+        member.setLevelId(1L);
+
+        // 设置默认用户名和昵称
+        member.setUsername(member.getPhone());
+        member.setNickname(member.getPhone());
         
         // 保存用户
         boolean saved = umsMemberService.save(member);

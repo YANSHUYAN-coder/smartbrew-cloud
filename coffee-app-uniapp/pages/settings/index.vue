@@ -246,9 +246,22 @@ const handleLogout = () => {
   })
 }
 
+// 通用跳转函数
+const navTo = (url) => {
+	if (!hasLogin.value) {
+		uni.navigateTo({
+			url: '/pages/login/index'
+		})
+		return
+	}
+	uni.navigateTo({
+		url
+	})
+}
+
 // 下拉刷新
 onPullDownRefresh(async () => {
-  calculateCache()
+  await calculateCache()
   setTimeout(() => {
     uni.stopPullDownRefresh()
   }, 1000)

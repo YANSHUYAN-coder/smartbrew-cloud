@@ -55,7 +55,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         
         // 返回UserDetails对象
         return new User(
-            member.getUsername(),
+            member.getPhone(),
             member.getPassword() != null ? member.getPassword() : "", 
             true,  // 账户是否可用
             true,  // 账户是否过期

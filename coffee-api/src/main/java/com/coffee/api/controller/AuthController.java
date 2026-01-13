@@ -205,7 +205,7 @@ public class AuthController {
 
     @Operation(summary = "发送短信验证码")
     @PostMapping("/sendCode")
-    public Result<String> sendCode(@RequestParam String mobile) {
+    public Result<String> sendCode(@RequestParam(name = "mobile") String mobile) {
         // 1. 简单校验手机号
         if (StrUtil.isBlank(mobile) || mobile.length() != 11) {
             return Result.failed("请输入正确的11位手机号");

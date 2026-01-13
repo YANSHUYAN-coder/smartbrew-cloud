@@ -7,6 +7,7 @@ import org.springframework.amqp.rabbit.retry.MessageRecoverer;
 import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier; // 【新增】引入 Qualifier
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import lombok.extern.slf4j.Slf4j;
@@ -103,9 +104,11 @@ public class RabbitMqConfig {
 
     /**
      * 绑定队列到交换机
+     * 【修复】添加 @Qualifier 指定具体 Bean 名称，解决多 Bean 歧义问题
      */
     @Bean
-    public Binding bindingOrderTimeout(Queue orderTimeoutQueue, CustomExchange orderDelayExchange) {
+    public Binding bindingOrderTimeout(@Qualifier("orderTimeoutQueue") Queue orderTimeoutQueue,
+                                       @Qualifier("orderDelayExchange") CustomExchange orderDelayExchange) {
         return BindingBuilder.bind(orderTimeoutQueue)
                 .to(orderDelayExchange)
                 .with(ORDER_TIMEOUT_ROUTING_KEY)
@@ -136,6 +139,7 @@ public class RabbitMqConfig {
      */
     @Bean
     public Binding orderPayBinding() {
+        // 这里直接调用方法获取 Bean，不会有歧义问题
         return BindingBuilder.bind(orderPayQueue()).to(orderEventExchange()).with(ORDER_PAY_KEY);
     }
 

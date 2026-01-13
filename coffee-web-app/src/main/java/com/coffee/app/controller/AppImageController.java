@@ -39,7 +39,7 @@ public class AppImageController {
     @GetMapping("/proxy")
     @Operation(summary = "图片代理", description = "通过后端代理转发图片，解决跨域和网络访问问题")
     public ResponseEntity<InputStreamResource> proxyImage(
-            @Parameter(description = "原始图片 URL") @RequestParam("url") String imageUrl) {
+            @Parameter(description = "原始图片 URL") @RequestParam("imageUrl") String imageUrl) {
         try {
             // 验证 URL 是否合法（允许访问 MinIO 和其他 HTTPS 图片）
             if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {

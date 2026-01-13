@@ -40,7 +40,7 @@ public class AppCouponController {
      * 获取我的优惠券（包含详情）
      */
     @GetMapping("/my/list")
-    public Result<List<CouponHistoryVO>> listMyCoupons(@RequestParam(required = false) Integer useStatus) {
+    public Result<List<CouponHistoryVO>> listMyCoupons(@RequestParam(name = "useStatus",required = false) Integer useStatus) {
         return Result.success(couponService.listMemberCouponsWithDetail(useStatus));
     }
 }

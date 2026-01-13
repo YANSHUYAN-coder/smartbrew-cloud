@@ -46,7 +46,7 @@ public class CommonDictController {
      */
     @GetMapping("/regeo")
     @Operation(summary = "逆地理编码", description = "根据经纬度获取省市区信息")
-    public Result<JSONObject> regeo(@RequestParam String location) {
+    public Result<JSONObject> regeo(@RequestParam(name = "location") String location) {
         JSONObject addressComponent = aMapUtil.getAddressComponent(location);
         return addressComponent != null ? Result.success(addressComponent) : Result.failed("解析地址失败");
     }
@@ -57,7 +57,8 @@ public class CommonDictController {
      */
     @GetMapping("/geocode")
     @Operation(summary = "地理编码", description = "根据地址获取经纬度坐标")
-    public Result<Map<String, Object>> geocode(@RequestParam String address, @RequestParam(required = false) String city) {
+    public Result<Map<String, Object>> geocode(@RequestParam(name = "address") String address,
+                                               @RequestParam(name = "city",required = false) String city) {
         String location = aMapUtil.geocode(address, city);
         if (location != null && !location.isEmpty()) {
             String[] coords = location.split(",");
@@ -76,7 +77,7 @@ public class CommonDictController {
      */
     @GetMapping("/route/walking")
     @Operation(summary = "步行路线规划", description = "获取从起点到终点的真实步行路线坐标点")
-    public Result<List<String>> getWalkingRoute(@RequestParam String origin, @RequestParam String destination) {
+    public Result<List<String>> getWalkingRoute(@RequestParam(name = "origin") String origin, @RequestParam(name = "destination") String destination) {
         try {
             List<String> routePoints = aMapUtil.getWalkingRoute(origin, destination);
             if (routePoints != null && !routePoints.isEmpty()) {
@@ -100,7 +101,7 @@ public class CommonDictController {
      */
     @GetMapping("/distance")
     @Operation(summary = "计算距离", description = "计算用户当前位置与门店的距离")
-    public Result<Map<String, Object>> getStoreDistance(@RequestParam String userLocation, @RequestParam(required = false) Long storeId) {
+    public Result<Map<String, Object>> getStoreDistance(@RequestParam(name = "userLocation") String userLocation, @RequestParam(name = "storeId",required = false) Long storeId) {
         // 获取门店信息
         OmsStore store;
         if (storeId != null) {

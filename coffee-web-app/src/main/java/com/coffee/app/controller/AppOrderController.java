@@ -50,7 +50,7 @@ public class AppOrderController {
     @Operation(summary = "获取当前用户订单列表", description = "按创建时间倒序分页返回当前登录用户的订单列表（包含商品明细）")
     public Result<Page<OrderVO>> list(
             @ModelAttribute PageParam pageParam,
-            @Parameter(description = "订单状态，可选") @RequestParam(required = false) Integer status) {
+            @Parameter(description = "订单状态，可选") @RequestParam(name = "status",required = false) Integer status) {
         Page<OrderVO> page = orderService.listCurrent(pageParam, status);
         return Result.success(page);
     }
@@ -94,7 +94,7 @@ public class AppOrderController {
     @Operation(summary = "获取订单列表(滚动分页)", description = "使用游标分页方式获取订单列表，避免深度分页性能问题")
     public Result<CursorPage<OrderVO>> listCursor(
             @ModelAttribute CursorPageParam pageParam,
-            @Parameter(description = "订单状态，可选") @RequestParam(required = false) Integer status) {
+            @Parameter(description = "订单状态，可选") @RequestParam(name = "status",required = false) Integer status) {
         return Result.success(orderService.listCurrentCursor(pageParam, status));
     }
 }

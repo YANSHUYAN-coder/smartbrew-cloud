@@ -26,7 +26,7 @@ public class AppStoreController {
 
     @Operation(summary = "获取门店信息")
     @GetMapping("/info")
-    public Result<OmsStore> getInfo(@RequestParam(required = false) Long storeId) {
+    public Result<OmsStore> getInfo(@RequestParam(name = "storeId", required = false) Long storeId) {
         if (storeId != null) {
             return Result.success(storeService.getById(storeId));
         }
@@ -35,8 +35,8 @@ public class AppStoreController {
 
     @Operation(summary = "获取所有门店列表")
     @GetMapping("/list")
-    public Result<List<OmsStore>> list(@RequestParam(required = false) Double longitude, 
-                                       @RequestParam(required = false) Double latitude) {
+    public Result<List<OmsStore>> list(@RequestParam(name = "longitude", required = false) Double longitude,
+                                       @RequestParam(name = "latitude", required = false) Double latitude) {
         return Result.success(storeService.listNearby(longitude, latitude));
     }
 }

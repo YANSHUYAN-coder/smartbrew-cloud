@@ -25,7 +25,7 @@ public class AdminMemberLevelController {
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('ums:member-level:list')")
     public Result<Page<UmsMemberLevel>> list(@ModelAttribute PageParam pageParam,
-                                             @RequestParam(required = false) String keyword) {
+                                             @RequestParam(name = "keyword",required = false) String keyword) {
         Page<UmsMemberLevel> page = memberLevelService.getList(pageParam, keyword);
         return Result.success(page);
     }

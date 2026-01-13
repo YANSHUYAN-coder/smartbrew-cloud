@@ -53,7 +53,7 @@ public class AdminDashboardController {
     @GetMapping("/sales-trend")
     @PreAuthorize("hasAuthority('dashboard:view')")
     public Result<List<Map<String, Object>>> getSalesTrend(
-            @RequestParam(defaultValue = "7") int days) {
+            @RequestParam(name = "days", defaultValue = "7") int days) {
         List<Map<String, Object>> trend = dashboardService.getSalesTrend(days);
         return Result.success(trend);
     }
@@ -64,7 +64,7 @@ public class AdminDashboardController {
     @GetMapping("/top-products")
     @PreAuthorize("hasAuthority('dashboard:view')")
     public Result<List<Map<String, Object>>> getTopProducts(
-            @RequestParam(defaultValue = "5") int topN) {
+            @RequestParam(name = "topN", defaultValue = "5") int topN) {
         List<Map<String, Object>> topProducts = dashboardService.getTopProducts(topN);
         return Result.success(topProducts);
     }

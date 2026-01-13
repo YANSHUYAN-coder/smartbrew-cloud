@@ -25,7 +25,7 @@ public class AppPayController {
 
     @Operation(summary = "支付宝支付", description = "获取支付宝 App 支付串")
     @PostMapping("/alipay")
-    public Result<String> alipay(@RequestParam Long orderId) {
+    public Result<String> alipay(@RequestParam("orderId") Long orderId) {
         // 返回 orderStr 给前端
         String orderStr = aliPayService.payByAlipay(orderId);
         return Result.success(orderStr);
@@ -59,7 +59,7 @@ public class AppPayController {
 
     @Operation(summary = "同步支付状态", description = "前端支付成功后主动触发状态同步")
     @PostMapping("/sync")
-    public Result<String> syncStatus(@RequestParam Long orderId) {
+    public Result<String> syncStatus(@RequestParam("orderId") Long orderId) {
         log.info("收到前端同步请求，订单ID: {}", orderId);
         boolean success = aliPayService.syncPaymentStatus(orderId);
         return success ? Result.success("状态同步成功") : Result.failed("状态同步失败，可能尚未支付或查询异常");
@@ -67,7 +67,7 @@ public class AppPayController {
 
     @Operation(summary = "咖啡卡支付", description = "使用咖啡卡余额支付订单")
     @PostMapping("/coffee-card")
-    public Result<String> payByCoffeeCard(@RequestParam Long orderId) {
+    public Result<String> payByCoffeeCard(@RequestParam("orderId") Long orderId) {
         boolean success = orderService.payByCoffeeCard(orderId);
         return success ? Result.success("支付成功") : Result.failed("支付失败");
     }

@@ -23,10 +23,10 @@ public class AdminSmsCouponController {
 
     @Operation(summary = "获取优惠券列表")
     @GetMapping("/list")
-    public Result<Page<SmsCoupon>> list(@RequestParam(defaultValue = "1") Integer pageNum,
-                                        @RequestParam(defaultValue = "10") Integer pageSize,
-                                        @RequestParam(required = false) String name,
-                                        @RequestParam(required = false) Integer type) {
+    public Result<Page<SmsCoupon>> list(@RequestParam(name = "pageNum",defaultValue = "1") Integer pageNum,
+                                        @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize,
+                                        @RequestParam(name = "name", required = false) String name,
+                                        @RequestParam(name = "type", required = false) Integer type) {
         Page<SmsCoupon> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<SmsCoupon> wrapper = new LambdaQueryWrapper<>();
         wrapper.like(StringUtils.hasText(name), SmsCoupon::getName, name);

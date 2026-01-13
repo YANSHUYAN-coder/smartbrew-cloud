@@ -32,7 +32,7 @@ public class AdminUmsMemberController {
     @GetMapping("/list")
     @PreAuthorize("hasAuthority('ums:member:list')")
     public Result<Page<MemberVO>> list(@ModelAttribute PageParam pageParam,
-                                        @RequestParam(required = false) String phone) {
+                                        @RequestParam(name = "phone",required = false) String phone) {
         Page<MemberVO> page = memberService.getListWithRoles(pageParam, phone);
         return Result.success(page);
     }

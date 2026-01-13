@@ -31,7 +31,7 @@ public class AdminImageController {
     @GetMapping("/proxy")
     @Operation(summary = "图片代理", description = "通过后端代理转发图片")
     public ResponseEntity<InputStreamResource> proxyImage(
-            @Parameter(description = "原始图片 URL") @RequestParam("url") String imageUrl) {
+            @Parameter(description = "原始图片 URL") @RequestParam("imageUrl") String imageUrl) {
         try {
             if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
                 return ResponseEntity.badRequest().build();

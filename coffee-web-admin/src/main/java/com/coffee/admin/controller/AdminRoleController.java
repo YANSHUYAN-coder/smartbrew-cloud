@@ -22,7 +22,7 @@ public class AdminRoleController {
     @GetMapping("/list")
 //    @PreAuthorize("hasAuthority('system:role:list')")
     public Result<Page<UmsRole>> list(@ModelAttribute PageParam pageParam,
-                                      @RequestParam(required = false) String keyword) {
+                                      @RequestParam(name = "keyword",required = false) String keyword) {
         return Result.success(roleService.getAllRoles(pageParam, keyword));
     }
 

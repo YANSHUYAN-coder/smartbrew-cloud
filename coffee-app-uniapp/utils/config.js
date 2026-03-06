@@ -51,3 +51,6 @@ export default {
     config
 }
 
+// 统一定义一个图片基础域名（未来你买域名了，只改这一个地方就行）
+export const IMAGE_BASE_URL = 'http://106.12.70.182';
+

@@ -53,7 +53,7 @@ const initWebSocket = () => {
   // 【关键修改】如果之前日志显示连上了，说明地址是对的。
   // 如果之前是 localhost:8082/ws/server 连不上，试着加上 /api
   // 这里我们用之前的成功经验（看你之前的日志是连上了，说明你当时的配置是对的，保持原样或加 /api）
-  const socket = new SockJS('http://localhost:8082/api/ws/server');
+  const socket = new SockJS('/api/ws/server');
 
   stompClient.value = Stomp.over(socket);
   // stompClient.value.debug = () => {}; // 如果不想看控制台刷屏日志，取消注释这行

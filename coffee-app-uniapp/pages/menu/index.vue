@@ -173,6 +173,7 @@
 	import SkuModal from '@/components/SkuModal.vue'
 	import MenuSkeleton from '@/components/MenuSkeleton.vue'
 	import FlyCart from '@/components/FlyCart.vue'
+  import {IMAGE_BASE_URL} from "@/utils/config";
 
 
 	const statusBarHeight = ref(0)

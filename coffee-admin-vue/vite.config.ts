@@ -17,7 +17,7 @@ export default defineConfig({
     port: 8084,
     proxy: {
       '/api': {
-        target: 'http://106.12.70.182:8082', // 指向远程服务器
+        target: 'http://localhost:8082', // 指向远程服务器
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, '')
       }

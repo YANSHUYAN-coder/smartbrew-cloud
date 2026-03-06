@@ -147,7 +147,7 @@ public class MinioUtil {
             // 4. 返回文件访问路径
             // 如果桶是公开的 (public)，直接拼接 URL 返回
             // 格式: endpoint/bucketName/objectName
-            return minioConfig.getEndpoint() + "/" + minioConfig.getBucketName() + "/" + objectName;
+            return "/" + minioConfig.getBucketName() + "/" + objectName;
 
         } catch (Exception e) {
             log.error("File upload failed: {}", objectName, e);

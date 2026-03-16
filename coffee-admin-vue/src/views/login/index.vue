@@ -35,6 +35,11 @@
       </el-form>
     </el-card>
   </div>
+  <div class="login-footer">
+    <a href="https://beian.miit.gov.cn/" target="_blank">
+      粤ICP备2026024110号-1
+    </a>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -152,5 +157,20 @@ const handleLogin = () => {
 
 :deep(.el-input__wrapper.is-focus) {
   border-color: #8d6e63;
+}
+
+.login-footer {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+}
+.login-footer a {
+  color: #939393;
+  text-decoration: none;
+}
+.login-footer a:hover {
+  text-decoration: underline;
 }
 </style>

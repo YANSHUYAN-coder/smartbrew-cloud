@@ -69,7 +69,12 @@ public class AppWebSocketServer {
 
     @OnError
     public void onError(Session session, Throwable error) {
-        log.error("WebSocket 发生错误", error);
+        if (error instanceof java.net.SocketException || error instanceof java.io.EOFException) {
+            log.warn("用户异常断开 WebSocket 连接: {}", error.getMessage());
+        } else {
+            // 其他未知错误依然打印详细日志
+            log.error("WebSocket 发生严重错误", error);
+        }
     }
 
     /**

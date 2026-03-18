@@ -30,15 +30,16 @@ export function useOrderActions() {
         if (onSuccess) onSuccess()
       } else {
         // 支付宝支付
-        // 1. 处理沙箱环境（仅开发环境）
-        if (process.env.NODE_ENV === 'development') {
-          // #ifdef APP-PLUS
+        // 1. 强制处理沙箱环境（打正式包也要用沙箱）
+        // #ifdef APP-PLUS
+        if (uni.getSystemInfoSync().platform === 'android') {
+          const EnvEnum = plus.android.importClass("com.alipay.sdk.app.EnvUtils$EnvEnum")
           const EnvUtils = plus.android.importClass("com.alipay.sdk.app.EnvUtils")
-          if (EnvUtils) {
-            EnvUtils.setEnv(EnvUtils.EnvEnum.SANDBOX)
+          if (EnvUtils && EnvEnum) {
+            EnvUtils.setEnv(EnvEnum.SANDBOX)
           }
-          // #endif
         }
+        // #endif
 
         // 2. 获取后端签名的支付串
         const orderStr = await alipay(orderId)

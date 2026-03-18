@@ -3,8 +3,9 @@
     "configurations" : [
         {
             "customPlaygroundType" : "local",
-            "packageName" : "uni.app.UNI0B7A25D",
-            "playground" : "standard",
+            "localRepoPath" : "D:/_develop/springAi/smartbrew-cloud/coffee-app-uniapp",
+            "packageName" : "uni.app.UNICOFFEEAPP",
+            "playground" : "custom",
             "type" : "uni-app:app-android"
         }
     ]

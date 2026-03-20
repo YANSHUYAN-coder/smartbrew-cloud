@@ -11,21 +11,10 @@
       </div>
       <el-form ref="loginFormRef" :model="loginForm" :rules="rules" size="large">
         <el-form-item prop="phone">
-          <el-input 
-            v-model="loginForm.phone" 
-            placeholder="手机号" 
-            prefix-icon="Iphone" 
-          />
+          <el-input v-model="loginForm.phone" placeholder="手机号" prefix-icon="Iphone" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input 
-            v-model="loginForm.password" 
-            type="password" 
-            placeholder="密码" 
-            prefix-icon="Lock" 
-            show-password 
-            @keyup.enter="handleLogin"
-          />
+          <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" show-password @keyup.enter="handleLogin" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" class="login-button" @click="handleLogin" :loading="loading">
@@ -34,11 +23,16 @@
         </el-form-item>
       </el-form>
     </el-card>
-  </div>
-  <div class="login-footer">
-    <a href="https://beian.miit.gov.cn/" target="_blank">
-      粤ICP备2026024110号-1
-    </a>
+
+    <div class="login-footer">
+      <a href="https://beian.miit.gov.cn/" target="_blank">
+        粤ICP备2026024110号-1
+      </a>
+      <div style="display:inline-block; margin-left:20px;">
+        <img src="@/assets/ghs.png" style="vertical-align: middle; margin-right: 4px;"/>
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=44011102484703" rel="noreferrer" target="_blank">粤公网安备44011102484703号</a>
+      </div>
+    </div>
   </div>
 </template>
 
